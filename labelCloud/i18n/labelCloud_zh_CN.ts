@@ -3,101 +3,101 @@
 <context>
     <name>GUI</name>
     <message>
-        <location filename="../view/gui.py" line="965" />
+        <location filename="../view/gui.py" line="976" />
         <source>labelCloud</source>
         <translation>labelCloud</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="776" />
+        <location filename="../view/gui.py" line="787" />
         <source>No 2D Image File</source>
         <translation>没有对应的二维图像</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="776" />
+        <location filename="../view/gui.py" line="787" />
         <source>Could not find a related image in the image folder (%s).
 Check your path to the folder or if an image for this point cloud exists.</source>
         <translation>在图像目录（%s）里找不到对应图像。
 请检查目录路径，或确认这帧点云是否有对应图像。</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="792" />
+        <location filename="../view/gui.py" line="803" />
         <source>2D Image (%s)</source>
         <translation>二维图像（%s）</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="801" />
+        <location filename="../view/gui.py" line="812" />
         <source>&lt;b&gt;labelCloud could not find any valid point cloud files inside the specified folder.&lt;/b&gt;</source>
         <translation>&lt;b&gt;labelCloud 在指定目录里没有找到任何有效的点云文件。&lt;/b&gt;</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="807" />
+        <location filename="../view/gui.py" line="818" />
         <source>Please copy all your point clouds into &lt;code&gt;%s&lt;/code&gt; or update the point cloud folder location. labelCloud supports the following point cloud file formats:
  %s.</source>
         <translation>请把点云复制到 &lt;code&gt;%s&lt;/code&gt;，或修改点云目录。labelCloud 支持以下点云格式：
  %s。</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="815" />
+        <location filename="../view/gui.py" line="826" />
         <source>No Point Clouds Found</source>
         <translation>未找到点云文件</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="821" />
+        <location filename="../view/gui.py" line="832" />
         <source>Current: &lt;em&gt;%s&lt;/em&gt;</source>
         <translation>当前：&lt;em&gt;%s&lt;/em&gt;</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="905" />
+        <location filename="../view/gui.py" line="916" />
         <source>Change Point Cloud Folder</source>
         <translation>更改点云目录</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="921" />
+        <location filename="../view/gui.py" line="932" />
         <source>Change Label Folder</source>
         <translation>更改标注目录</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="966" />
+        <location filename="../view/gui.py" line="977" />
         <source>Insert Point Cloud number: ()</source>
         <translation>输入点云序号：()</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="975" />
+        <location filename="../view/gui.py" line="986" />
         <source>Insert Point Cloud number: %s</source>
         <translation>输入点云序号：%s</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="558" />
+        <location filename="../view/gui.py" line="569" />
         <source>Follow the active / default class</source>
         <translation>跟随当前/默认类别</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="584" />
+        <location filename="../view/gui.py" line="595" />
         <source>— no point cloud loaded</source>
         <translation>— 未载入点云</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="619" />
+        <location filename="../view/gui.py" line="630" />
         <source>loaded</source>
         <translation>载入</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="619" />
+        <location filename="../view/gui.py" line="630" />
         <source>saved</source>
         <translation>已保存</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="621" />
+        <location filename="../view/gui.py" line="632" />
         <source>Recent:</source>
         <translation>最近：</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="589" />
+        <location filename="../view/gui.py" line="600" />
         <source>Frame %s/%s · &lt;b&gt;%s&lt;/b&gt;</source>
         <translation>第 %s/%s 帧 · &lt;b&gt;%s&lt;/b&gt;</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="606" />
+        <location filename="../view/gui.py" line="617" />
         <source>✓ saved · %s</source>
         <translation>✓ 已保存 · %s</translation>
     </message>
@@ -120,472 +120,498 @@ Check your path to the folder or if an image for this point cloud exists.</sourc
         <translation>%v/%m</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="167" />
+        <location filename="../resources/interfaces/interface.ui" line="191" />
         <source>Save current labels and load previous point cloud.</source>
         <translation>保存当前标注并加载上一帧点云。</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="170" />
+        <location filename="../resources/interfaces/interface.ui" line="194" />
         <source>« Previous</source>
         <translation>« 上一帧</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="177" />
+        <location filename="../resources/interfaces/interface.ui" line="201" />
         <source>Set</source>
         <translation>跳转</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="190" />
+        <location filename="../resources/interfaces/interface.ui" line="214" />
         <source>Save current labels and load next point cloud.</source>
         <translation>保存当前标注并加载下一帧点云。</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="199" />
+        <location filename="../resources/interfaces/interface.ui" line="223" />
         <source>Next »</source>
         <translation>下一帧 »</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="227" />
+        <location filename="../resources/interfaces/interface.ui" line="251" />
         <source>Bounding Box Controls</source>
         <translation>检测框操作</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="251" />
+        <location filename="../resources/interfaces/interface.ui" line="275" />
         <source>Move bounding box up. [Q]</source>
         <translation>上移检测框 [Q]</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="298" />
+        <location filename="../resources/interfaces/interface.ui" line="322" />
         <source>Move bounding box down. [E]</source>
         <translation>下移检测框 [E]</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="345" />
+        <location filename="../resources/interfaces/interface.ui" line="369" />
         <source>Move bounding box right. [D]</source>
         <translation>右移检测框 [D]</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="392" />
+        <location filename="../resources/interfaces/interface.ui" line="416" />
         <source>Move bounding box left. [A]</source>
         <translation>左移检测框 [A]</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="439" />
+        <location filename="../resources/interfaces/interface.ui" line="463" />
         <source>Move bounding box backward. [W]</source>
         <translation>后移检测框 [W]</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="483" />
+        <location filename="../resources/interfaces/interface.ui" line="507" />
         <source>Move bounding box forward. [S]</source>
         <translation>前移检测框 [S]</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="524" />
+        <location filename="../resources/interfaces/interface.ui" line="548" />
         <source>Rotate bounding box around the Z-axis. [Y]/[X]</source>
         <translation>绕 Z 轴旋转检测框 [Y]/[X]</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="578" />
+        <location filename="../resources/interfaces/interface.ui" line="602" />
         <source>Increase bounding box dimensions.</source>
         <translation>放大检测框尺寸</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="621" />
+        <location filename="../resources/interfaces/interface.ui" line="645" />
         <source>Decrease bounding box dimensions.</source>
         <translation>缩小检测框尺寸</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="699" />
+        <location filename="../resources/interfaces/interface.ui" line="723" />
         <source>Open 2D image</source>
         <translation>打开二维图像</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="766" />
+        <location filename="../resources/interfaces/interface.ui" line="790" />
         <source>Pick Bounding Box</source>
         <translation>点选建框</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="824" />
+        <location filename="../resources/interfaces/interface.ui" line="848" />
         <source>Span Bounding Box</source>
         <translation>四点建框</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="844" />
+        <location filename="../resources/interfaces/interface.ui" line="868" />
         <source>Save Label</source>
         <translation>保存标注</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1762" />
+        <location filename="../resources/interfaces/interface.ui" line="1788" />
         <source>Labels</source>
         <translation>标注</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="971" />
+        <location filename="../resources/interfaces/interface.ui" line="995" />
         <source>Current Class:</source>
         <translation>当前类别：</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1019" />
+        <location filename="../resources/interfaces/interface.ui" line="1043" />
         <source>Current BBox:</source>
         <translation>当前检测框：</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1169" />
+        <location filename="../resources/interfaces/interface.ui" line="1193" />
         <source>Center</source>
         <translation>中心</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1182" />
+        <location filename="../resources/interfaces/interface.ui" line="1206" />
         <source>Rotation</source>
         <translation>旋转</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1358" />
+        <location filename="../resources/interfaces/interface.ui" line="1382" />
         <source>Dimension</source>
         <translation>尺寸</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1445" />
+        <location filename="../resources/interfaces/interface.ui" line="1469" />
         <source>Volume</source>
         <translation>体积</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1496" />
+        <location filename="../resources/interfaces/interface.ui" line="1520" />
         <source>Deselect current bounding box.</source>
         <translation>取消选中当前检测框。</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1499" />
+        <location filename="../resources/interfaces/interface.ui" line="1523" />
         <source>Deselect</source>
         <translation>取消选中</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1516" />
+        <location filename="../resources/interfaces/interface.ui" line="1540" />
         <source>Delete current bounding box. [DEL]</source>
         <translation>删除当前检测框 [DEL]</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1519" />
+        <location filename="../resources/interfaces/interface.ui" line="1543" />
         <source>Delete</source>
         <translation>删除</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1649" />
+        <location filename="../resources/interfaces/interface.ui" line="1568" />
         <source>Assign labels to points inside a box</source>
         <translation>把框内点云标记为该类别</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1658" />
+        <location filename="../resources/interfaces/interface.ui" line="1577" />
         <source>Assign</source>
         <translation>标记</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1751" />
+        <location filename="../resources/interfaces/interface.ui" line="1777" />
         <source>File</source>
         <translation>文件</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1769" />
+        <location filename="../resources/interfaces/interface.ui" line="1795" />
         <source>Set Default Object Class …</source>
         <translation>设置默认类别 …</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1792" />
+        <location filename="../resources/interfaces/interface.ui" line="1819" />
         <source>Settings</source>
         <translation>设置</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1799" />
+        <location filename="../resources/interfaces/interface.ui" line="1826" />
         <source>Language</source>
         <translation>语言</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1823" />
+        <location filename="../resources/interfaces/interface.ui" line="1850" />
         <source>Set Point Cloud Folder…</source>
         <translation>设置点云目录…</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1828" />
+        <location filename="../resources/interfaces/interface.ui" line="1855" />
         <source>Set Label Folder…</source>
         <translation>设置标注目录…</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1833" />
+        <location filename="../resources/interfaces/interface.ui" line="1860" />
         <source>Load Single Point Cloud…</source>
         <translation>加载单个点云…</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1844" />
+        <location filename="../resources/interfaces/interface.ui" line="1871" />
         <source>Z-Rotation Only Mode</source>
         <translation>仅绕 Z 轴旋转</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1847" />
+        <location filename="../resources/interfaces/interface.ui" line="1874" />
         <source>Only allows bounding box rotation around the z-axis.</source>
         <translation>只允许检测框绕 Z 轴旋转。</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1855" />
+        <location filename="../resources/interfaces/interface.ui" line="1882" />
         <source>Color with labels</source>
         <translation>按标注着色</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1860" />
+        <location filename="../resources/interfaces/interface.ui" line="1887" />
         <source>Delete All Current Labels</source>
         <translation>删除当前所有标注</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1865" />
+        <location filename="../resources/interfaces/interface.ui" line="1892" />
         <source>Set Default Bounding Box Dimensions ...</source>
         <translation>设置默认检测框尺寸 …</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1870" />
+        <location filename="../resources/interfaces/interface.ui" line="1897" />
         <source>Set Default Transformation Steps …</source>
         <translation>设置默认变换步长 …</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1875" />
+        <location filename="../resources/interfaces/interface.ui" line="1902" />
         <source>Point Size</source>
         <translation>点大小</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1886" />
+        <location filename="../resources/interfaces/interface.ui" line="1913" />
         <source>Show Floor</source>
         <translation>显示地面网格</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1889" />
+        <location filename="../resources/interfaces/interface.ui" line="1916" />
         <source>Shows a grid along the x-y-plane (z=0).</source>
         <translation>在 x-y 平面（z=0）上显示网格。</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1900" />
+        <location filename="../resources/interfaces/interface.ui" line="1927" />
         <source>Show Orientation</source>
         <translation>显示朝向</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1911" />
+        <location filename="../resources/interfaces/interface.ui" line="1938" />
         <source>Keep Perspective</source>
         <translation>保持视角</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1914" />
+        <location filename="../resources/interfaces/interface.ui" line="1941" />
         <source>Saves the last perspective and reuses it,
 when opening that point cloud again.</source>
         <translation>记住上一帧的视角，再次打开该点云时沿用。</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1926" />
+        <location filename="../resources/interfaces/interface.ui" line="1953" />
         <source>Align Point Cloud</source>
         <translation>对齐点云</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1929" />
+        <location filename="../resources/interfaces/interface.ui" line="1956" />
         <source>Transforms the point cloud so that the floor is the x-y-plane.</source>
         <translation>把点云变换到“地面为 x-y 平面”的姿态。</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1934" />
+        <location filename="../resources/interfaces/interface.ui" line="1961" />
         <source>Change Settings ...</source>
         <translation>修改设置 …</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1939" />
+        <location filename="../resources/interfaces/interface.ui" line="1966" />
         <source>test</source>
         <translation>测试</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1947" />
+        <location filename="../resources/interfaces/interface.ui" line="1974" />
         <source>Propagate Labels</source>
         <translation>沿用上一帧标注</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1950" />
+        <location filename="../resources/interfaces/interface.ui" line="1977" />
         <source>Propagate Labels to the next Point Cloud
 if it does not have labels yet.</source>
         <translation>下一帧还没有标注时，沿用上一帧的检测框。</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="2027" />
+        <location filename="../resources/interfaces/interface.ui" line="2063" />
         <source>Follow System Language</source>
         <translation>跟随系统语言</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="2035" />
+        <location filename="../resources/interfaces/interface.ui" line="2071" />
         <source>English</source>
         <translation>English</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="2043" />
+        <location filename="../resources/interfaces/interface.ui" line="2079" />
         <source>中文（简体）</source>
         <translation>中文（简体）</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="2016" />
+        <location filename="../resources/interfaces/interface.ui" line="2052" />
         <source>Keyboard Shortcuts ...</source>
         <translation>快捷键一览 …</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="2019" />
+        <location filename="../resources/interfaces/interface.ui" line="2055" />
         <source>Shows every keyboard shortcut. [F1]</source>
         <translation>显示全部快捷键 [F1]</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="644" />
+        <location filename="../resources/interfaces/interface.ui" line="668" />
         <source>Parameter changed by the - / + buttons below.</source>
         <translation>下面 − / + 按钮所调整的参数。</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="651" />
+        <location filename="../resources/interfaces/interface.ui" line="675" />
         <source>Decrease the selected parameter by one step.</source>
         <translation>把所选参数减小一个步长。</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="654" />
+        <location filename="../resources/interfaces/interface.ui" line="678" />
         <source>−</source>
         <translation>−</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="661" />
+        <location filename="../resources/interfaces/interface.ui" line="685" />
         <source>Increase the selected parameter by one step.</source>
         <translation>把所选参数增大一个步长。</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="664" />
+        <location filename="../resources/interfaces/interface.ui" line="688" />
         <source>+</source>
         <translation>+</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="798" />
+        <location filename="../resources/interfaces/interface.ui" line="822" />
         <source>Fit Box (click object)</source>
         <translation>辅助拟合（点目标）</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="801" />
+        <location filename="../resources/interfaces/interface.ui" line="825" />
         <source>Click a pole or a wire to fit a box around it. [Ctrl+G]</source>
         <translation>在电线杆或电线上点一下，自动拟合出检测框。[Ctrl+G]</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1779" />
+        <location filename="../resources/interfaces/interface.ui" line="1805" />
         <source>Assist</source>
         <translation>辅助</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1956" />
+        <location filename="../resources/interfaces/interface.ui" line="1983" />
         <source>Pre-annotate This Frame [Ctrl+Shift+G]</source>
         <translation>自动预标注本帧 [Ctrl+Shift+G]</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1961" />
+        <location filename="../resources/interfaces/interface.ui" line="1988" />
         <source>Confirm Proposal [Enter]</source>
         <translation>确认候选框 [Enter]</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1966" />
+        <location filename="../resources/interfaces/interface.ui" line="1993" />
         <source>Reject All Proposals [Ctrl+Shift+Del]</source>
         <translation>拒绝全部候选框 [Ctrl+Shift+Del]</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1971" />
+        <location filename="../resources/interfaces/interface.ui" line="1998" />
         <source>Fit Box at Cursor [Ctrl+G]</source>
         <translation>在光标处拟合 [Ctrl+G]</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1976" />
+        <location filename="../resources/interfaces/interface.ui" line="2003" />
         <source>Refit Active Box [Ctrl+R]</source>
         <translation>重新拟合当前框 [Ctrl+R]</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1981" />
+        <location filename="../resources/interfaces/interface.ui" line="2008" />
         <source>Snap Box to Ground [Ctrl+E]</source>
         <translation>吸附到地面 [Ctrl+E]</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1986" />
+        <location filename="../resources/interfaces/interface.ui" line="2022" />
         <source>Flip Box 180° [Ctrl+U]</source>
         <translation>检测框翻转 180° [Ctrl+U]</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1991" />
+        <location filename="../resources/interfaces/interface.ui" line="2027" />
         <source>Dataset Statistics ... [Ctrl+I]</source>
         <translation>数据集统计 … [Ctrl+I]</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="731" />
+        <location filename="../resources/interfaces/interface.ui" line="755" />
         <source>Pointer (no drawing)</source>
         <translation>指针（不建框）</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="734" />
+        <location filename="../resources/interfaces/interface.ui" line="758" />
         <source>Leave the drawing modes: the mouse only navigates the point cloud again. [Esc]</source>
         <translation>退出建框模式：鼠标只用来浏览点云。[Esc]</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="988" />
+        <location filename="../resources/interfaces/interface.ui" line="1012" />
         <source>New boxes in next frames:</source>
         <translation>下一帧新框类别：</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="991" />
+        <location filename="../resources/interfaces/interface.ui" line="1015" />
         <source>Class every new box gets when you move to the next frames, so one pass can label poles and the next pass wires.</source>
         <translation>切到下一帧后新建的框默认用这个类别 —— 这样你可以一遍只标杆、下一遍只标线。</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="998" />
+        <location filename="../resources/interfaces/interface.ui" line="1022" />
         <source>Class used for new boxes frame after frame (persists across frames).</source>
         <translation>后续各帧新建框使用的类别（跨帧保持）。</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="2008" />
+        <location filename="../resources/interfaces/interface.ui" line="2044" />
         <source>Save Log ... [Ctrl+Shift+S]</source>
         <translation>保存日志 … [Ctrl+Shift+S]</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="2011" />
+        <location filename="../resources/interfaces/interface.ui" line="2047" />
         <source>Shows where and when the labels of the recent frames were written.</source>
         <translation>显示最近各帧的标注写入时间与路径。</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1999" />
+        <location filename="../resources/interfaces/interface.ui" line="2035" />
         <source>Predict Boxes for the Next Frame [Ctrl+Shift+P]</source>
         <translation>预测下一帧的检测框 [Ctrl+Shift+P]</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="2002" />
+        <location filename="../resources/interfaces/interface.ui" line="2038" />
         <source>Carries the boxes of this frame into the next one, keeps their size and
 drops the ones whose points are gone.</source>
         <translation>把本帧的检测框带到下一帧：尺寸保持，位置跟着点走；框内点明显变少的目标不再预测。</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1564" />
+        <location filename="../resources/interfaces/interface.ui" line="1670" />
         <source>Frame and saving</source>
         <translation>本帧与保存</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1601" />
+        <location filename="../resources/interfaces/interface.ui" line="1707" />
         <source>—</source>
         <translation>—</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1613" />
+        <location filename="../resources/interfaces/interface.ui" line="1719" />
         <source>Activity log</source>
         <translation>活动日志</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1630" />
+        <location filename="../resources/interfaces/interface.ui" line="1736" />
         <source>Prediction ...</source>
         <translation>预测设置 …</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1620" />
+        <location filename="../resources/interfaces/interface.ui" line="1726" />
         <source>Refit ...</source>
         <translation>重拟合设置 …</translation>
     </message>
     <message>
-        <location filename="../resources/interfaces/interface.ui" line="1623" />
+        <location filename="../resources/interfaces/interface.ui" line="1729" />
         <source>How far Ctrl+R looks for points, and when it trims empty stretches.</source>
         <translation>Ctrl+R 往外找多远、以及什么时候把没有点的空段剪掉。</translation>
+    </message>
+    <message>
+        <location filename="../resources/interfaces/interface.ui" line="167" />
+        <source>Overlay previous frames:</source>
+        <translation>叠加前几帧：</translation>
+    </message>
+    <message>
+        <location filename="../resources/interfaces/interface.ui" line="170" />
+        <source>Draws the points of the previous frames in a dim colour, so an object that is only partly visible in this frame can be seen as a whole. The data has no ego pose, so the copies shift while the vehicle moves: this is a viewing aid, not a merged cloud.</source>
+        <translation>把前几帧的点用暗色叠加上去，这一帧只看得到一部分的目标（被树挡住的杆、断续的电线）就能看全。数据没有位姿，车一动副本会错开 —— 这是观察辅助，不是合并后的点云。</translation>
+    </message>
+    <message>
+        <location filename="../resources/interfaces/interface.ui" line="177" />
+        <source>How many previous frames to overlay (0 = off).</source>
+        <translation>叠加多少帧之前的点云（0 = 关闭）。</translation>
+    </message>
+    <message>
+        <location filename="../resources/interfaces/interface.ui" line="2013" />
+        <source>Carry This Box Forward to the End [Ctrl+Shift+E]</source>
+        <translation>把当前框带到后续帧直到目标消失 [Ctrl+Shift+E]</translation>
+    </message>
+    <message>
+        <location filename="../resources/interfaces/interface.ui" line="2016" />
+        <source>Follows the active box through the following frames, writing it where
+the object is still there, and stops when its points are gone.</source>
+        <translation>把当前框逐帧带到后面：目标还在就写入，点数没了就自动停止。</translation>
     </message>
 </context>
 <context>
@@ -1229,7 +1255,7 @@ Bounding Box Parameter</source>
         <translation>已按所选地面对齐点云。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="609" />
+        <location filename="../control/controller.py" line="719" />
         <source>Scroll to change the bounding box dimension.</source>
         <translation>滚动滚轮可修改检测框尺寸。</translation>
     </message>
@@ -1259,17 +1285,17 @@ Bounding Box Parameter</source>
         <translation>无效的语义分割标注</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="989" />
+        <location filename="../view/gui.py" line="1000" />
         <source>Point Cloud File (%s)</source>
         <translation>点云文件（%s）</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="992" />
+        <location filename="../view/gui.py" line="1003" />
         <source>Select a file name to save the point cloud</source>
         <translation>选择点云保存的文件名</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="1010" />
+        <location filename="../view/gui.py" line="1021" />
         <source>Failed to save a point cloud</source>
         <translation>保存点云失败</translation>
     </message>
@@ -1294,7 +1320,7 @@ Bounding Box Parameter</source>
         <translation>已选中检测框，可以开始修正。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="970" />
+        <location filename="../control/controller.py" line="1081" />
         <source>Hold right mouse button to translate or left mouse button to rotate the bounding box.</source>
         <translation>按住鼠标右键平移、按住左键旋转检测框。</translation>
     </message>
@@ -1319,157 +1345,157 @@ Bounding Box Parameter</source>
         <translation>检测框尺寸已锁定（Ctrl+L 解锁）。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="518" />
+        <location filename="../control/controller.py" line="628" />
         <source>Select a box first to focus on its points.</source>
         <translation>请先选中一个检测框，再聚焦显示框内点。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="526" />
+        <location filename="../control/controller.py" line="636" />
         <source>No points inside the active box to focus on.</source>
         <translation>当前检测框内没有点，无法聚焦。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="542" />
+        <location filename="../control/controller.py" line="652" />
         <source>Focus on the active box (Ctrl+F shows everything again).</source>
         <translation>已聚焦到当前检测框（Ctrl+F 恢复显示全部点）。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1161" />
+        <location filename="../control/controller.py" line="1272" />
         <source>Undone the last change.</source>
         <translation>已撤销上一步操作。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1166" />
+        <location filename="../control/controller.py" line="1277" />
         <source>Nothing to undo.</source>
         <translation>没有可撤销的操作。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1172" />
+        <location filename="../control/controller.py" line="1283" />
         <source>Redone the last change.</source>
         <translation>已重做。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1177" />
+        <location filename="../control/controller.py" line="1288" />
         <source>Nothing to redo.</source>
         <translation>没有可重做的操作。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1184" />
+        <location filename="../control/controller.py" line="1295" />
         <source>Copied the box; Ctrl+V pastes it (also in the next frame).</source>
         <translation>已复制检测框；Ctrl+V 粘贴（切到下一帧也能粘贴）。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1192" />
+        <location filename="../control/controller.py" line="1303" />
         <source>Pasted the box.</source>
         <translation>已粘贴检测框。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1196" />
+        <location filename="../control/controller.py" line="1307" />
         <source>Nothing to paste: copy a box first.</source>
         <translation>没有可粘贴的检测框，请先复制。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1206" />
+        <location filename="../control/controller.py" line="1317" />
         <source>Box size locked (Ctrl+L).</source>
         <translation>检测框尺寸已锁定（Ctrl+L）。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1206" />
+        <location filename="../control/controller.py" line="1317" />
         <source>Box size unlocked (Ctrl+L).</source>
         <translation>检测框尺寸已解锁（Ctrl+L）。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="361" />
+        <location filename="../control/controller.py" line="471" />
         <source>Saving failed - your edits are NOT on disk (see the log).</source>
         <translation>保存失败——你的修改还没写进磁盘（详见日志）。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="372" />
+        <location filename="../control/controller.py" line="482" />
         <source>Saving failed</source>
         <translation>保存失败</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="507" />
+        <location filename="../control/controller.py" line="617" />
         <source>Autosaved.</source>
         <translation>已自动保存。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1254" />
+        <location filename="../control/controller.py" line="1365" />
         <source>Move the mouse over an object first.</source>
         <translation>请先把鼠标移到目标上。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1269" />
+        <location filename="../control/controller.py" line="1380" />
         <source>Could not fit a box here - click closer to the object.</source>
         <translation>这里拟合不出检测框——请点得离目标更近。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1277" />
+        <location filename="../control/controller.py" line="1388" />
         <source>Fitted a %s box.</source>
         <translation>已拟合一个 %s 检测框。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1284" />
+        <location filename="../control/controller.py" line="1395" />
         <source>Select a box first, then refit it.</source>
         <translation>请先选中一个检测框，再重新拟合。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1306" />
+        <location filename="../control/controller.py" line="1417" />
         <source>Not enough points inside the box to refit it.</source>
         <translation>框内点太少，无法重新拟合。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1338" />
+        <location filename="../control/controller.py" line="1529" />
         <source>Snapped the box onto the ground.</source>
         <translation>已把检测框吸附到地面。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1342" />
+        <location filename="../control/controller.py" line="1533" />
         <source>The box already sits on the ground.</source>
         <translation>检测框已经贴在地面上了。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1351" />
+        <location filename="../control/controller.py" line="1542" />
         <source>Pre-annotation is still running ...</source>
         <translation>预标注还在运行中 …</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1364" />
+        <location filename="../control/controller.py" line="1555" />
         <source>Running pre-annotation in the background ...</source>
         <translation>正在后台运行预标注 …</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1385" />
+        <location filename="../control/controller.py" line="1576" />
         <source>Pre-annotation failed - see the log for details.</source>
         <translation>预标注失败，详见日志。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1396" />
+        <location filename="../control/controller.py" line="1587" />
         <source>Confirmed. %s proposals left in this frame.</source>
         <translation>已确认。本帧还剩 %s 个候选框。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1406" />
+        <location filename="../control/controller.py" line="1597" />
         <source>Rejected %s proposals in this frame.</source>
         <translation>已拒绝本帧 %s 个候选框。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="658" />
+        <location filename="../control/controller.py" line="768" />
         <source>Group selection: %s boxes.</source>
         <translation>已选中 %s 个检测框（成组操作）。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1018" />
+        <location filename="../control/controller.py" line="1129" />
         <source>Changed %s boxes.</source>
         <translation>已同时修改 %s 个检测框。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1136" />
+        <location filename="../control/controller.py" line="1247" />
         <source>Deleted %s boxes.</source>
         <translation>已删除 %s 个检测框。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1145" />
+        <location filename="../control/controller.py" line="1256" />
         <source>Cleared the group selection.</source>
         <translation>已清空成组选择。</translation>
     </message>
@@ -1479,49 +1505,94 @@ Bounding Box Parameter</source>
         <translation>点击查看标注保存到了哪里。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="202" />
+        <location filename="../control/controller.py" line="293" />
         <source>Predicted %s boxes from the previous frame (%s dropped).</source>
         <translation>已从上一帧预测 %s 个检测框（丢弃 %s 个）。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="210" />
+        <location filename="../control/controller.py" line="301" />
         <source>No box predicted: the objects are no longer there.</source>
         <translation>没有可预测的检测框：目标已经不在视野里。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="321" />
+        <location filename="../control/controller.py" line="431" />
         <source>Next-frame prediction enabled.</source>
         <translation>已开启下一帧预测。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="321" />
+        <location filename="../control/controller.py" line="431" />
         <source>Next-frame prediction disabled.</source>
         <translation>已关闭下一帧预测。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="291" />
+        <location filename="../control/controller.py" line="401" />
         <source>Prediction: off</source>
         <translation>预测：关</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="296" />
+        <location filename="../control/controller.py" line="406" />
         <source>adaptive %s%%</source>
         <translation>自适应 %s%%</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="296" />
+        <location filename="../control/controller.py" line="406" />
         <source>fixed %s%%</source>
         <translation>固定 %s%%</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="301" />
+        <location filename="../control/controller.py" line="411" />
         <source>Prediction: on · %s</source>
         <translation>预测：开 · %s</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1315" />
+        <location filename="../control/controller.py" line="1426" />
         <source>Refit: length %.2f -&gt; %.2f, height %.2f -&gt; %.2f m.</source>
         <translation>重拟合：长度 %.2f → %.2f，高度 %.2f → %.2f 米。</translation>
     </message>
+    <message>
+        <location filename="../control/controller.py" line="181" />
+        <source>Overlaying the %s previous frames.</source>
+        <translation>已叠加前 %s 帧。</translation>
+    </message>
+    <message>
+        <location filename="../control/controller.py" line="188" />
+        <source>Overlay off.</source>
+        <translation>已关闭叠加。</translation>
+    </message>
+    <message>
+        <location filename="../control/controller.py" line="1446" />
+        <source>Propagation is still running ...</source>
+        <translation>传播还在运行中 …</translation>
+    </message>
+    <message>
+        <location filename="../control/controller.py" line="1454" />
+        <source>Select a box first: it will be carried forward.</source>
+        <translation>请先选中一个检测框，程序会把它带到后续帧。</translation>
+    </message>
+    <message>
+        <location filename="../control/controller.py" line="1464" />
+        <source>There are no later frames.</source>
+        <translation>后面没有帧了。</translation>
+    </message>
+    <message>
+        <location filename="../control/controller.py" line="1484" />
+        <source>Carrying the box forward through the next frames ...</source>
+        <translation>正在把检测框带到后续帧 …</translation>
+    </message>
+    <message>
+        <location filename="../control/controller.py" line="1492" />
+        <source>Propagating: frame %s/%s, %s written.</source>
+        <translation>传播中：第 %s/%s 帧，已写入 %s 帧。</translation>
+    </message>
+    <message>
+        <location filename="../control/controller.py" line="1504" />
+        <source>Propagated to %s frames (%s skipped): %s.</source>
+        <translation>已向后写入 %s 帧（跳过 %s）：%s。</translation>
+    </message>
+    <message>
+        <location filename="../control/controller.py" line="1512" />
+        <source>Propagation failed - see the log for details.</source>
+        <translation>传播失败，详见日志。</translation>
+    </message>
 </context>
-<context><name>keymap</name><message><source>Load previous point cloud</source><translation>加载上一帧点云</translation></message><message><source>Load next point cloud</source><translation>加载下一帧点云</translation></message><message><source>Reset the point cloud view</source><translation>重置点云视角</translation></message><message><source>Save labels</source><translation>保存标注</translation></message><message><source>Move bounding box backward</source><translation>检测框后移</translation></message><message><source>Move bounding box forward</source><translation>检测框前移</translation></message><message><source>Move bounding box left</source><translation>检测框左移</translation></message><message><source>Move bounding box right</source><translation>检测框右移</translation></message><message><source>Move bounding box up</source><translation>检测框上移</translation></message><message><source>Move bounding box down</source><translation>检测框下移</translation></message><message><source>Move along the box's own x-axis</source><translation>沿检测框自身 x 轴正向移动</translation></message><message><source>Move against the box's own x-axis</source><translation>沿检测框自身 x 轴负向移动</translation></message><message><source>Move along the box's own y-axis</source><translation>沿检测框自身 y 轴正向移动</translation></message><message><source>Move against the box's own y-axis</source><translation>沿检测框自身 y 轴负向移动</translation></message><message><source>Rotate around z-axis counterclockwise</source><translation>绕 Z 轴逆时针旋转</translation></message><message><source>Rotate around z-axis clockwise</source><translation>绕 Z 轴顺时针旋转</translation></message><message><source>Rotate around y-axis counterclockwise</source><translation>绕 Y 轴逆时针旋转</translation></message><message><source>Rotate around y-axis clockwise</source><translation>绕 Y 轴顺时针旋转</translation></message><message><source>Rotate around x-axis counterclockwise</source><translation>绕 X 轴逆时针旋转</translation></message><message><source>Rotate around x-axis clockwise</source><translation>绕 X 轴顺时针旋转</translation></message><message><source>Increase length</source><translation>增大长度</translation></message><message><source>Decrease length</source><translation>减小长度</translation></message><message><source>Increase width</source><translation>增大宽度</translation></message><message><source>Decrease width</source><translation>减小宽度</translation></message><message><source>Increase height</source><translation>增大高度</translation></message><message><source>Decrease height</source><translation>减小高度</translation></message><message><source>Select previous bounding box</source><translation>选中上一个检测框</translation></message><message><source>Select next bounding box</source><translation>选中下一个检测框</translation></message><message><source>Assign previous class</source><translation>切换为上一个类别</translation></message><message><source>Assign next class</source><translation>切换为下一个类别</translation></message><message><source>Delete the active bounding box</source><translation>删除当前检测框</translation></message><message><source>Cancel drawing / deselect</source><translation>取消绘制 / 取消选中</translation></message><message><source>Undo</source><translation>撤销</translation></message><message><source>Redo</source><translation>重做</translation></message><message><source>Copy the active bounding box</source><translation>复制当前检测框</translation></message><message><source>Paste the copied bounding box</source><translation>粘贴检测框</translation></message><message><source>Duplicate the active bounding box in place</source><translation>原地复制当前检测框</translation></message><message><source>Lock/unlock the box dimensions</source><translation>锁定/解锁检测框尺寸</translation></message><message><source>Apply the class template (dimensions + upright)</source><translation>套用类别模板（尺寸 + 竖直朝向）</translation></message><message><source>Fit a box around the object under the cursor</source><translation>在光标处的目标上拟合检测框</translation></message><message><source>Refit the active box to the points inside it</source><translation>把当前检测框重新拟合到框内点</translation></message><message><source>Pre-annotate this frame and queue the proposals</source><translation>自动预标注本帧，候选框排队待确认</translation></message><message><source>Confirm the proposal under review</source><translation>确认当前候选框</translation></message><message><source>Next unconfirmed proposal</source><translation>下一个未确认的候选框</translation></message><message><source>Previous unconfirmed proposal</source><translation>上一个未确认的候选框</translation></message><message><source>Reject all proposals in this frame</source><translation>拒绝本帧全部候选框</translation></message><message><source>Flip the box by 180 degrees</source><translation>把检测框翻转 180°</translation></message><message><source>Show dataset statistics</source><translation>显示数据集统计</translation></message><message><source>Show the activity log</source><translation>显示活动日志</translation></message><message><source>Toggle next-frame prediction</source><translation>开关下一帧预测</translation></message><message><source>Snap the active box onto the ground</source><translation>把当前检测框吸附到地面</translation></message><message><source>Refit again after changing the refit settings</source><translation>用新的设置再拟合一次</translation></message><message><source>Show only the points inside the active box</source><translation>只显示当前框内的点</translation></message><message><source>Show this shortcut list</source><translation>显示本快捷键表</translation></message><message><source>Point Cloud</source><translation>点云</translation></message><message><source>Bounding Box</source><translation>检测框</translation></message><message><source>Labels</source><translation>标注</translation></message><message><source>Assist</source><translation>辅助</translation></message><message><source>Help</source><translation>帮助</translation></message><message><source>View</source><translation>视图</translation></message></context></TS>
+<context><name>keymap</name><message><source>Load previous point cloud</source><translation>加载上一帧点云</translation></message><message><source>Load next point cloud</source><translation>加载下一帧点云</translation></message><message><source>Reset the point cloud view</source><translation>重置点云视角</translation></message><message><source>Save labels</source><translation>保存标注</translation></message><message><source>Move bounding box backward</source><translation>检测框后移</translation></message><message><source>Move bounding box forward</source><translation>检测框前移</translation></message><message><source>Move bounding box left</source><translation>检测框左移</translation></message><message><source>Move bounding box right</source><translation>检测框右移</translation></message><message><source>Move bounding box up</source><translation>检测框上移</translation></message><message><source>Move bounding box down</source><translation>检测框下移</translation></message><message><source>Move along the box's own x-axis</source><translation>沿检测框自身 x 轴正向移动</translation></message><message><source>Move against the box's own x-axis</source><translation>沿检测框自身 x 轴负向移动</translation></message><message><source>Move along the box's own y-axis</source><translation>沿检测框自身 y 轴正向移动</translation></message><message><source>Move against the box's own y-axis</source><translation>沿检测框自身 y 轴负向移动</translation></message><message><source>Rotate around z-axis counterclockwise</source><translation>绕 Z 轴逆时针旋转</translation></message><message><source>Rotate around z-axis clockwise</source><translation>绕 Z 轴顺时针旋转</translation></message><message><source>Rotate around y-axis counterclockwise</source><translation>绕 Y 轴逆时针旋转</translation></message><message><source>Rotate around y-axis clockwise</source><translation>绕 Y 轴顺时针旋转</translation></message><message><source>Rotate around x-axis counterclockwise</source><translation>绕 X 轴逆时针旋转</translation></message><message><source>Rotate around x-axis clockwise</source><translation>绕 X 轴顺时针旋转</translation></message><message><source>Increase length</source><translation>增大长度</translation></message><message><source>Decrease length</source><translation>减小长度</translation></message><message><source>Increase width</source><translation>增大宽度</translation></message><message><source>Decrease width</source><translation>减小宽度</translation></message><message><source>Increase height</source><translation>增大高度</translation></message><message><source>Decrease height</source><translation>减小高度</translation></message><message><source>Select previous bounding box</source><translation>选中上一个检测框</translation></message><message><source>Select next bounding box</source><translation>选中下一个检测框</translation></message><message><source>Assign previous class</source><translation>切换为上一个类别</translation></message><message><source>Assign next class</source><translation>切换为下一个类别</translation></message><message><source>Delete the active bounding box</source><translation>删除当前检测框</translation></message><message><source>Cancel drawing / deselect</source><translation>取消绘制 / 取消选中</translation></message><message><source>Undo</source><translation>撤销</translation></message><message><source>Redo</source><translation>重做</translation></message><message><source>Copy the active bounding box</source><translation>复制当前检测框</translation></message><message><source>Paste the copied bounding box</source><translation>粘贴检测框</translation></message><message><source>Duplicate the active bounding box in place</source><translation>原地复制当前检测框</translation></message><message><source>Lock/unlock the box dimensions</source><translation>锁定/解锁检测框尺寸</translation></message><message><source>Apply the class template (dimensions + upright)</source><translation>套用类别模板（尺寸 + 竖直朝向）</translation></message><message><source>Fit a box around the object under the cursor</source><translation>在光标处的目标上拟合检测框</translation></message><message><source>Refit the active box to the points inside it</source><translation>把当前检测框重新拟合到框内点</translation></message><message><source>Pre-annotate this frame and queue the proposals</source><translation>自动预标注本帧，候选框排队待确认</translation></message><message><source>Confirm the proposal under review</source><translation>确认当前候选框</translation></message><message><source>Next unconfirmed proposal</source><translation>下一个未确认的候选框</translation></message><message><source>Previous unconfirmed proposal</source><translation>上一个未确认的候选框</translation></message><message><source>Reject all proposals in this frame</source><translation>拒绝本帧全部候选框</translation></message><message><source>Flip the box by 180 degrees</source><translation>把检测框翻转 180°</translation></message><message><source>Show dataset statistics</source><translation>显示数据集统计</translation></message><message><source>Show the activity log</source><translation>显示活动日志</translation></message><message><source>Toggle next-frame prediction</source><translation>开关下一帧预测</translation></message><message><source>Snap the active box onto the ground</source><translation>把当前检测框吸附到地面</translation></message><message><source>Carry the box forward through the next frames</source><translation>把当前框带到后续帧</translation></message><message><source>Refit again after changing the refit settings</source><translation>用新的设置再拟合一次</translation></message><message><source>Show only the points inside the active box</source><translation>只显示当前框内的点</translation></message><message><source>Show this shortcut list</source><translation>显示本快捷键表</translation></message><message><source>Point Cloud</source><translation>点云</translation></message><message><source>Bounding Box</source><translation>检测框</translation></message><message><source>Labels</source><translation>标注</translation></message><message><source>Assist</source><translation>辅助</translation></message><message><source>Help</source><translation>帮助</translation></message><message><source>View</source><translation>视图</translation></message></context></TS>

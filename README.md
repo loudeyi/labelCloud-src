@@ -96,6 +96,39 @@ list. Everything below is in the application, no file editing required.
    **`Ctrl+Shift+R`** applies the current settings to the active box again, so you
    can try a value and immediately see the effect.
 
+### Label one object across many frames (`Ctrl+Shift+E`)
+
+1. Put a box on the object in the frame where it is best visible (fit it with `Ctrl+R`
+   if you like).
+2. Press **`Ctrl+Shift+E`** — *Assist → Carry This Box Forward to the End*. The box is
+   carried into the following frames in the background:
+   * its next pose is **extrapolated from the last frames** (position and heading),
+     and its **size is the median of those frames**, so it follows the object instead
+     of copying one box;
+   * each frame's box is **re-fitted to the points** (configurable) and **appended** to
+     that frame's label file, so other objects already there are kept;
+   * a frame that already contains this object is left alone (no duplicates);
+   * the pass **stops by itself when the object is gone** — when the points inside the
+     box fall below the prediction thresholds — and the status line reports how many
+     frames were written and where it stopped: `Propagated to 42 frames (0 skipped):
+     object left the view at 177641487...pcd (3 points, adaptive rule)`.
+3. The status bar shows progress while it runs; you can keep working. The result is
+   *the answer to "how long was this pole in view"*, which is useful on its own.
+
+`propagate_max_frames` caps the pass (200 by default) and `propagate_refit = False`
+writes the extrapolated box without re-fitting it.
+
+### Seeing an object whole: overlay previous frames
+
+The **Overlay previous frames** spin box in the left *Point Cloud* group draws the
+points of the N previous frames in a dim grey-blue. A pole that is hidden behind a
+tree in this frame, or a cable that only shows a few points, becomes visible as a
+whole.
+
+Because the data has **no ego pose**, the copies shift as the vehicle moves — this is
+a viewing aid, not a merged cloud. Keep N small (2–5) and remember that fitting still
+uses only the current frame. `0` turns it off.
+
 ### Predicting the next frame (`Ctrl+Shift+P`)
 
 1. Enable it in the **Labels** menu or with `Ctrl+Shift+P`. The bottom-right panel
@@ -106,7 +139,15 @@ list. Everything below is in the application, no file editing required.
 3. `Enter` confirms the proposal under review and jumps to the next, `Ctrl+→` /
    `Ctrl+←` walk them, `Ctrl+Shift+Del` rejects the rest.
    Unconfirmed proposals are **not written**, so browsing cannot replace your labels.
-4. A box is dropped when the object is gone: fewer points than
+4. The prediction **follows the object's motion**: position and heading are
+   extrapolated from the last frames (an exponential moving average of the
+   frame-to-frame steps), and the size is the **median of the last frames**, so a
+   single badly fitted box does not define the prediction. `predict_use_motion = False`
+   copies the previous box instead.
+5. Tick **predict even when the frame already has labels** to use predictions on frames
+   that already have their own boxes (off by default, because it mixes guesses into
+   your labels).
+6. A box is dropped when the object is gone: fewer points than
    `always below this absolute count`, or fewer than the adaptive/fixed share of its
    own recent point count. See **Prediction …**:
 
@@ -117,7 +158,7 @@ list. Everything below is in the application, no file editing required.
    | *Drop when fewer than this share* | for example 50 %: the points halved, so the object is leaving |
    | *... and always below this absolute count* | a floor, so two stray points never predict a box |
 
-5. `predict_as_candidates = False` (dialog checkbox) makes predictions count as
+7. `predict_as_candidates = False` (dialog checkbox) makes predictions count as
    finished boxes, which are then saved like your own.
 
 ### Knowing what was saved (bottom-right panel)
@@ -352,6 +393,7 @@ example `copy_box = Ctrl+Shift+C`. `F1` shows the same table inside the applicat
 | `Ctrl+Shift+Del` | Reject all proposals in this frame |
 | `Ctrl+U` | Flip the box by 180 degrees |
 | `Ctrl+E` | Snap the active box onto the ground |
+| `Ctrl+Shift+E` | Carry the box forward through the next frames |
 | `Ctrl+Shift+R` | Refit again after changing the refit settings |
 
 ### Help

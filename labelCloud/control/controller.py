@@ -9,6 +9,7 @@ from PyQt5.QtCore import Qt as Keys
 
 from ..definitions import BBOX_SIDES, Colors, Context, LabelingMode
 from ..io.labels.config import LabelConfig
+from ..model.point_cloud import PointCloud
 from ..view.status_manager import shorten_filename
 from ..utils import oglhelper
 from ..view.gui import GUI
@@ -90,6 +91,12 @@ class Controller:
 
         # Background pre-annotation (offline pole/wire tool)
         self.preannotate_worker = None
+        # Background forward propagation ("label this object to the end")
+        self.propagate_worker = None
+
+        # Points of the previous frames, drawn dimmed as a viewing aid
+        self.ghost_cloud = None
+        self._ghost_source_id = None
 
         #: Class every *new* box gets, frame after frame. ``None`` follows the
         #: active box / the class definition. Lets one pass label poles and the
@@ -104,6 +111,7 @@ class Controller:
         self.drawing_mode.set_view(self.view)
         self.align_mode.set_view(self.view)
         self.view.gl_widget.set_bbox_controller(self.bbox_controller)
+        self.view.gl_widget.ghost_provider = lambda: self.ghost_cloud
         self.bbox_controller.pcd_manager = self.pcd_manager
 
         # Read labels from folders
@@ -155,6 +163,82 @@ class Controller:
         self.bbox_controller.set_bboxes(self.pcd_manager.get_labels_from_file())
         self.on_frame_loaded([], [])
 
+    # MULTI-FRAME OVERLAY (viewing aid)
+
+    def accumulate_frames(self) -> int:
+        from .config_manager import config
+
+        return config.getint("POINTCLOUD", "accumulate_frames", fallback=0)
+
+    def set_accumulate_frames(self, count: int) -> None:
+        """How many previous frames to draw dimmed behind the current one."""
+        from .config_manager import config, config_manager
+
+        config.set("POINTCLOUD", "accumulate_frames", str(max(0, int(count))))
+        config_manager.write_into_file()
+        self.refresh_ghost_cloud(force=True)
+        if count:
+            self.view.status_manager.set_message(
+                QCoreApplication.translate(
+                    "labelCloud", "Overlaying the %s previous frames."
+                )
+                % count
+            )
+        else:
+            self.view.status_manager.set_message(
+                QCoreApplication.translate("labelCloud", "Overlay off.")
+            )
+
+    def refresh_ghost_cloud(self, force: bool = False) -> None:
+        """(Re)build the dimmed overlay of the previous frames.
+
+        The overlay is only rebuilt when the frame or the setting changed: reading a
+        point cloud per frame is cheap, but doing it on every 20 ms tick would not be.
+        """
+        count = self.accumulate_frames()
+        pointcloud = self.pcd_manager.pointcloud
+        if count <= 0 or pointcloud is None:
+            self.ghost_cloud = None
+            self._ghost_source_id = None
+            return
+        key = (self.pcd_manager.current_id, count)
+        if not force and key == self._ghost_source_id and self.ghost_cloud is not None:
+            return
+        self._ghost_source_id = key
+
+        start = max(0, self.pcd_manager.current_id - count)
+        previous = list(self.pcd_manager.pcds[start : self.pcd_manager.current_id])
+        clouds = []
+        for path in previous:
+            try:
+                from ..io.pointclouds import BasePointCloudHandler
+
+                handler = BasePointCloudHandler.get_handler(path.suffix)
+                points, _colors = handler.read_point_cloud(path=path)
+                clouds.append(points)
+            except Exception as error:  # noqa: BLE001 - overlay is optional
+                logging.debug("Overlay could not read %s: %s", path, error)
+        if not clouds:
+            self.ghost_cloud = None
+            return
+
+        points = np.vstack(clouds).astype(np.float32)
+        colour = np.array([0.45, 0.45, 0.55], dtype=np.float32)
+        colors = np.tile(colour, (len(points), 1))
+        ghost = PointCloud(
+            path=self.pcd_manager.pcd_path,
+            points=points,
+            colors=colors,
+            write_buffer=True,
+        )
+        # share the transform of the current cloud so both are drawn in the same place
+        ghost.pcd_mins = pointcloud.pcd_mins
+        ghost.pcd_maxs = pointcloud.pcd_maxs
+        ghost.set_translations(*pointcloud.get_translation())
+        ghost.set_rotations(*pointcloud.get_rotations())
+        self.ghost_cloud = ghost
+        logging.info("Overlaying %s previous frames (%s points).", len(clouds), len(points))
+
     # FRAME LOADING: STATUS, CLASS PIN, PREDICTION
 
     def on_frame_loaded(self, prediction_sources, previous_bboxes) -> None:
@@ -162,10 +246,13 @@ class Controller:
         pcd_path = getattr(self.pcd_manager, "pcd_path", None)
         if pcd_path is not None:
             self.record_load(pcd_path)
-        if not self.bbox_controller.bboxes:
-            self.bbox_controller.set_active_bbox(0)
+        # Select the first box of the frame (and deselect when there is none), like
+        # upstream did: the box actions (refit, carry forward) need an active box,
+        # and having to click one first is pure friction right after a frame load.
+        self.bbox_controller.set_active_bbox(0)
         self.apply_next_class_to_view()
         self.predict_into_current_frame(prediction_sources, previous_bboxes)
+        self.refresh_ghost_cloud(force=True)
 
     def capture_prediction_sources(self):
         """Boxes of the current frame plus how many points each one holds.
@@ -190,8 +277,12 @@ class Controller:
 
     def predict_into_current_frame(self, sources, previous_bboxes) -> int:
         """Show boxes predicted from the previous frame in the frame just loaded."""
-        if self.bbox_controller.bboxes:
-            return 0  # this frame has its own labels: do not mix predictions in
+        if self.bbox_controller.bboxes and not config.getboolean(
+            "LABEL", "predict_over_existing", fallback=False
+        ):
+            # by default a frame with its own labels is left alone; the option exists
+            # for the "predict anyway and compare" workflow
+            return 0
 
         if sources:
             predicted, dropped = self.predict_from(sources)
@@ -251,9 +342,28 @@ class Controller:
         do_refit = config.getboolean("LABEL", "predict_refit", fallback=True)
         as_candidates = config.getboolean("LABEL", "predict_as_candidates", fallback=True)
 
+        use_motion = config.getboolean("LABEL", "predict_use_motion", fallback=True)
         predicted, dropped = [], 0
         for state, previous_count, history in sources:
             bbox = state.to_bbox()
+
+            # --- follow the object's motion instead of copying the last box ------
+            if use_motion:
+                velocity = history.velocity()
+                if velocity is not None:
+                    centre = bbox.get_center()
+                    bbox.set_x_translation(centre[0] + velocity[0])
+                    bbox.set_y_translation(centre[1] + velocity[1])
+                    bbox.set_z_translation(centre[2] + velocity[2])
+                yaw_velocity = history.yaw_velocity()
+                if yaw_velocity:
+                    bbox.set_z_rotation(bbox.get_z_rotation() + yaw_velocity)
+                stable = history.stable_dimensions()
+                # Size is rigid, so the median of the last frames beats a single
+                # (possibly badly fitted) box. A locked box keeps exactly its size.
+                if stable and not getattr(bbox, "locked", False):
+                    bbox.set_dimensions(*stable)
+
             try:
                 count = int(bbox.is_inside(points).sum())
             except Exception:  # noqa: BLE001
@@ -272,7 +382,7 @@ class Controller:
                 )
                 dropped += 1
                 continue
-            history.observe(count)
+            history.observe(count, bbox)
             if do_refit:
                 refitted = assist.refit_box(bbox, points)
                 if refitted is not None:
@@ -947,6 +1057,7 @@ class Controller:
         "refit_box": "cmd_refit_box",
         "snap_box": "cmd_snap_box",
         "refit_box_settings": "cmd_refit_with_settings",
+        "propagate_to_end": "cmd_propagate_to_end",
         "preannotate_frame": "cmd_preannotate_frame",
         "accept_candidate": "cmd_accept_candidate",
         "next_candidate": "cmd_next_candidate",
@@ -1323,6 +1434,86 @@ class Controller:
     def cmd_refit_with_settings(self, factor: float = 1.0) -> None:
         """Refit without asking (Ctrl+Shift+R) — the settings live in the dialog."""
         self.refit_active_box_with_feedback()
+
+    # PROPAGATE ONE BOX THROUGH THE FOLLOWING FRAMES
+
+    def cmd_propagate_to_end(self, factor: float = 1.0) -> None:
+        """Follow the active box forward until its object leaves the view."""
+        from .prediction import PointHistory
+        from .propagate_worker import PropagateWorker
+
+        if self.propagate_worker is not None and self.propagate_worker.isRunning():
+            self.view.status_manager.set_message(
+                QCoreApplication.translate("labelCloud", "Propagation is still running ...")
+            )
+            return
+
+        bbox = self.bbox_controller.get_active_bbox()
+        pointcloud = self.pcd_manager.pointcloud
+        if bbox is None or pointcloud is None:
+            self.view.status_manager.set_message(
+                QCoreApplication.translate(
+                    "labelCloud", "Select a box first: it will be carried forward."
+                )
+            )
+            return
+
+        current_id = self.pcd_manager.current_id
+        frames = list(self.pcd_manager.pcds[current_id + 1 :])
+        if not frames:
+            self.view.status_manager.set_message(
+                QCoreApplication.translate("labelCloud", "There are no later frames.")
+            )
+            return
+
+        # seed the history with this frame so the motion model has a starting point
+        try:
+            count = int(bbox.is_inside(pointcloud.points).sum())
+        except Exception:  # noqa: BLE001
+            count = 0
+        history = PointHistory()
+        history.observe(count, bbox)
+
+        worker = PropagateWorker(
+            bbox, history, frames, self.pcd_manager.label_manager, self.view
+        )
+        worker.progress.connect(self.on_propagate_progress)
+        worker.finished_ok.connect(self.on_propagate_done)
+        worker.failed.connect(self.on_propagate_failed)
+        self.propagate_worker = worker
+        self.view.status_manager.set_message(
+            QCoreApplication.translate(
+                "labelCloud", "Carrying the box forward through the next frames ..."
+            )
+        )
+        worker.start()
+
+    def on_propagate_progress(self, index: int, total: int, written: int) -> None:
+        self.view.status_manager.set_message(
+            QCoreApplication.translate(
+                "labelCloud", "Propagating: frame %s/%s, %s written."
+            )
+            % (index + 1, total, written)
+        )
+        self.view.update_session_panel()
+
+    def on_propagate_done(self, outcome) -> None:
+        self.bbox_controller.dirty = True
+        message = QCoreApplication.translate(
+            "labelCloud", "Propagated to %s frames (%s skipped): %s."
+        ) % (outcome.frames_written, outcome.frames_skipped, outcome.reason)
+        self.view.status_manager.set_message(message)
+        logging.info("Propagation finished: %s", message)
+        self.view.update_session_panel()
+        # the frames on disk changed, so refresh the statistics view if it is open
+        self.refresh_save_state()
+
+    def on_propagate_failed(self, message: str) -> None:
+        self.view.status_manager.set_message(
+            QCoreApplication.translate(
+                "labelCloud", "Propagation failed - see the log for details."
+            )
+        )
 
     def cmd_snap_box(self, factor: float = 1.0) -> None:
         """Snap the active box onto the local ground (F-22)."""

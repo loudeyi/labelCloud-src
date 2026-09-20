@@ -189,6 +189,14 @@ predict_min_points = 5
 predict_min_point_ratio = 0.5
 ; compare with the object's own recent history instead of a fixed share
 predict_adaptive = True
+; follow the object's motion: extrapolate position and heading from the last frames
+; and take the size from the median of those frames (strongly tied to recent frames)
+predict_use_motion = True
+; predict even when the next frame already has its own labels
+predict_over_existing = False
+; "carry this box forward" (Ctrl+Shift+E): re-fit each frame and how far to go
+propagate_refit = True
+propagate_max_frames = 200
 ; adaptive sensitivity: drop below (mean - sensitivity x deviation)
 predict_sensitivity = 1.5
 ; save the current frame automatically every N seconds (0 disables it)

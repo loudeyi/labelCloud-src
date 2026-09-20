@@ -34,6 +34,21 @@ The label file format is unchanged: `folder` / `filename` / `path` /
 * **Dataset statistics** (`Ctrl+I`): frames with boxes / confirmed empty / not yet
   labelled / unreadable, plus boxes per class.
 
+### Carry a box forward (Ctrl+Shift+E)
+
+* Labels one object across the following frames in a background thread: the pose is
+  extrapolated from the last frames, the size is their median, each frame is
+  re-fitted and the box is appended to that frame's label file (existing objects are
+  kept, duplicates are skipped), and the pass stops by itself when the object leaves
+  the view. The status line reports how many frames were written and why it stopped.
+
+### Multi-frame overlay
+
+* "Overlay previous frames" draws the points of the N previous frames dimmed, so a
+  pole hidden by a tree or a barely visible cable can be seen as a whole. The data has
+  no ego pose, so the copies shift with vehicle motion — it is a viewing aid, and the
+  documentation says so.
+
 ### Refit (Ctrl+R) tuning
 
 * The refit **grows onto the object** instead of only fitting what is already
@@ -50,13 +65,19 @@ The label file format is unchanged: `folder` / `filename` / `path` /
 
 ### Interface
 
-* The frame/saving card moved to the **bottom-right corner** of the window; the class
-  selectors stay where they were, so the layout is unchanged.
+* The frame/saving card sits at the **bottom-right corner**, below the object list;
+  the class selectors keep the position they always had, so the layout is unchanged.
+* After a frame loads, its first box is selected again (upstream behaviour), so the box
+  actions work without clicking one first.
 * File names are elided from the front (`…083316023.pcd`) because every frame shares
   the same timestamp prefix.
 
 ### Next-frame prediction
 
+* Predictions **follow the object's motion**: position and heading come from an
+  exponential moving average of the last frames' steps and the size is the median of
+  those frames (`predict_use_motion`). A new option allows predicting on frames that
+  already have labels (`predict_over_existing`, off by default).
 * **`predict_next_frame`** (`Ctrl+Shift+P`, *Labels* menu): a frame without its own
   labels receives the previous frame's boxes. Size and heading are carried over, the
   position is re-fitted to the points inside, and a box whose points are gone is

@@ -160,6 +160,30 @@
           </widget>
          </item>
          <item>
+          <layout class="QHBoxLayout" name="accumulate_row">
+           <item>
+            <widget class="QLabel" name="accumulate_label">
+             <property name="text">
+              <string>Overlay previous frames:</string>
+             </property>
+             <property name="toolTip">
+              <string>Draws the points of the previous frames in a dim colour, so an object that is only partly visible in this frame can be seen as a whole. The data has no ego pose, so the copies shift while the vehicle moves: this is a viewing aid, not a merged cloud.</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QSpinBox" name="spin_accumulate_frames">
+             <property name="toolTip">
+              <string>How many previous frames to overlay (0 = off).</string>
+             </property>
+             <property name="maximum">
+              <number>50</number>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
           <layout class="QHBoxLayout" name="horizontalLayout_4">
            <item>
             <widget class="QPushButton" name="button_prev_pcd">
@@ -1530,6 +1554,88 @@
           </property>
          </widget>
         </item>
+
+
+        <item>
+        <widget class="QPushButton" name="button_assign_label">
+          <property name="sizePolicy">
+          <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+          </sizepolicy>
+          </property>
+          <property name="toolTip">
+          <string>Assign labels to points inside a box</string>
+          </property>
+          <property name="layoutDirection">
+          <enum>Qt::LeftToRight</enum>
+          </property>
+          <property name="styleSheet">
+          <string notr="true"/>
+          </property>
+          <property name="text">
+          <string>Assign</string>
+          </property>
+          <property name="flat">
+          <bool>false</bool>
+          </property>
+        </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QListWidget" name="label_list">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Ignored" vsizetype="Maximum">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="font">
+         <font>
+          <family>DejaVu Sans,Arial</family>
+          <pointsize>12</pointsize>
+          <italic>false</italic>
+         </font>
+        </property>
+        <property name="styleSheet">
+         <string notr="true"/>
+        </property>
+        <property name="frameShape">
+         <enum>QFrame::StyledPanel</enum>
+        </property>
+        <property name="frameShadow">
+         <enum>QFrame::Plain</enum>
+        </property>
+        <property name="verticalScrollBarPolicy">
+         <enum>Qt::ScrollBarAsNeeded</enum>
+        </property>
+        <property name="editTriggers">
+         <set>QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed</set>
+        </property>
+        <property name="isWrapping" stdset="0">
+         <bool>false</bool>
+        </property>
+        <property name="resizeMode">
+         <enum>QListView::Fixed</enum>
+        </property>
+        <property name="layoutMode">
+         <enum>QListView::SinglePass</enum>
+        </property>
+        <property name="viewMode">
+         <enum>QListView::ListMode</enum>
+        </property>
+        <property name="modelColumn">
+         <number>0</number>
+        </property>
+        <property name="uniformItemSizes">
+         <bool>false</bool>
+        </property>
+        <property name="batchSize">
+         <number>100</number>
+        </property>
+       </widget>
+      </item>
          <item>
           <widget class="QFrame" name="frame_session">
            <property name="styleSheet">
@@ -1637,86 +1743,6 @@
           </widget>
          </item>
 
-        <item>
-        <widget class="QPushButton" name="button_assign_label">
-          <property name="sizePolicy">
-          <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-          </sizepolicy>
-          </property>
-          <property name="toolTip">
-          <string>Assign labels to points inside a box</string>
-          </property>
-          <property name="layoutDirection">
-          <enum>Qt::LeftToRight</enum>
-          </property>
-          <property name="styleSheet">
-          <string notr="true"/>
-          </property>
-          <property name="text">
-          <string>Assign</string>
-          </property>
-          <property name="flat">
-          <bool>false</bool>
-          </property>
-        </widget>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <widget class="QListWidget" name="label_list">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Ignored" vsizetype="Maximum">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="font">
-         <font>
-          <family>DejaVu Sans,Arial</family>
-          <pointsize>12</pointsize>
-          <italic>false</italic>
-         </font>
-        </property>
-        <property name="styleSheet">
-         <string notr="true"/>
-        </property>
-        <property name="frameShape">
-         <enum>QFrame::StyledPanel</enum>
-        </property>
-        <property name="frameShadow">
-         <enum>QFrame::Plain</enum>
-        </property>
-        <property name="verticalScrollBarPolicy">
-         <enum>Qt::ScrollBarAsNeeded</enum>
-        </property>
-        <property name="editTriggers">
-         <set>QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed</set>
-        </property>
-        <property name="isWrapping" stdset="0">
-         <bool>false</bool>
-        </property>
-        <property name="resizeMode">
-         <enum>QListView::Fixed</enum>
-        </property>
-        <property name="layoutMode">
-         <enum>QListView::SinglePass</enum>
-        </property>
-        <property name="viewMode">
-         <enum>QListView::ListMode</enum>
-        </property>
-        <property name="modelColumn">
-         <number>0</number>
-        </property>
-        <property name="uniformItemSizes">
-         <bool>false</bool>
-        </property>
-        <property name="batchSize">
-         <number>100</number>
-        </property>
-       </widget>
-      </item>
       <item>
        <spacer name="verticalSpacer_3">
         <property name="orientation">
@@ -1784,6 +1810,7 @@
     <addaction name="act_fit_box"/>
     <addaction name="act_refit_box"/>
     <addaction name="act_snap_box"/>
+    <addaction name="act_propagate_to_end"/>
     <addaction name="act_flip_180"/>
     <addaction name="act_show_statistics"/>
    </widget>
@@ -1979,6 +2006,15 @@ if it does not have labels yet.</string>
   <action name="act_snap_box">
    <property name="text">
     <string>Snap Box to Ground [Ctrl+E]</string>
+   </property>
+  </action>
+  <action name="act_propagate_to_end">
+   <property name="text">
+    <string>Carry This Box Forward to the End [Ctrl+Shift+E]</string>
+   </property>
+   <property name="toolTip">
+    <string>Follows the active box through the following frames, writing it where
+the object is still there, and stops when its points are gone.</string>
    </property>
   </action>
   <action name="act_flip_180">

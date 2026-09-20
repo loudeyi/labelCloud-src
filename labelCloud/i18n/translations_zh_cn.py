@@ -313,6 +313,27 @@ TRANSLATIONS.update({
 })
 
 TRANSLATIONS.update({
+    # carry a box forward + multi-frame overlay
+    "Carry This Box Forward to the End [Ctrl+Shift+E]": "把当前框带到后续帧直到目标消失 [Ctrl+Shift+E]",
+    "Carry the box forward through the next frames": "把当前框带到后续帧",
+    "Follows the active box through the following frames, writing it where\nthe object is still there, and stops when its points are gone.": (
+        "把当前框逐帧带到后面：目标还在就写入，点数没了就自动停止。"
+    ),
+    "Overlay previous frames:": "叠加前几帧：",
+    "How many previous frames to overlay (0 = off).": "叠加多少帧之前的点云（0 = 关闭）。",
+    "Draws the points of the previous frames in a dim colour, so an object that is only partly visible in this frame can be seen as a whole. The data has no ego pose, so the copies shift while the vehicle moves: this is a viewing aid, not a merged cloud.": (
+        "把前几帧的点用暗色叠加上去，这一帧只看得到一部分的目标（被树挡住的杆、断续的电线）就能看全。"
+        "数据没有位姿，车一动副本会错开 —— 这是观察辅助，不是合并后的点云。"
+    ),
+    "Propagation is still running ...": "传播还在运行中 …",
+    "Select a box first: it will be carried forward.": "请先选中一个检测框，程序会把它带到后续帧。",
+    "There are no later frames.": "后面没有帧了。",
+    "Carrying the box forward through the next frames ...": "正在把检测框带到后续帧 …",
+    "Propagating: frame %s/%s, %s written.": "传播中：第 %s/%s 帧，已写入 %s 帧。",
+    "Propagated to %s frames (%s skipped): %s.": "已向后写入 %s 帧（跳过 %s）：%s。",
+    "Propagation failed - see the log for details.": "传播失败，详见日志。",
+    "Overlaying the %s previous frames.": "已叠加前 %s 帧。",
+    "Overlay off.": "已关闭叠加。",
     # refit settings
     "Refit ...": "重拟合设置 …",
     "How far Ctrl+R looks for points, and when it trims empty stretches.": (

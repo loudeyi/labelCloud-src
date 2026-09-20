@@ -208,6 +208,8 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
         self.button_next_pcd: QtWidgets.QPushButton
         self.button_set_pcd: QtWidgets.QPushButton
         self.progressbar_pcds: QtWidgets.QProgressBar
+        self.accumulate_label: QtWidgets.QLabel
+        self.spin_accumulate_frames: QtWidgets.QSpinBox
 
         # bbox control section
         self.combo_step_parameter: QtWidgets.QComboBox
@@ -421,6 +423,12 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
         self.button_show_image.pressed.connect(lambda: self.show_2d_image())
 
         # LABEL CONTROL
+        self.spin_accumulate_frames.setValue(
+            config.getint("POINTCLOUD", "accumulate_frames", fallback=0)
+        )
+        self.spin_accumulate_frames.valueChanged.connect(
+            self.controller.set_accumulate_frames
+        )
         self.button_pointer.clicked.connect(self.activate_pointer_mode)
         self.button_pick_bbox.clicked.connect(
             lambda: self.start_drawing_mode(PickingStrategy(self))
@@ -513,6 +521,9 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
         )
         self.act_refit_box.triggered.connect(lambda: self.controller.cmd_refit_box())
         self.act_snap_box.triggered.connect(lambda: self.controller.cmd_snap_box())
+        self.act_propagate_to_end.triggered.connect(
+            lambda: self.controller.cmd_propagate_to_end()
+        )
         self.act_flip_180.triggered.connect(lambda: self.controller.cmd_flip_180())
         self.act_show_statistics.triggered.connect(
             lambda: self.controller.cmd_show_statistics()

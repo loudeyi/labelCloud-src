@@ -22,26 +22,50 @@ from __future__ import annotations
 
 import logging
 import statistics
+from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
 DEFAULT_RATIO = 0.5
 DEFAULT_MIN_POINTS = 5
 DEFAULT_SENSITIVITY = 1.5
+#: How many previous frames the motion model looks at.
+DEFAULT_HISTORY_FRAMES = 4
+#: Weight of the newest step in the velocity estimate (0.5 = the MaFilter decay
+#: SUSTechPOINTS uses for the same purpose).
+VELOCITY_DECAY = 0.5
 #: How many observations of an object's point count are remembered.
 HISTORY_LENGTH = 6
 #: Weight of the newest observation in the exponential moving average.
 EMA_ALPHA = 0.4
 
 
-class PointHistory:
-    """Point counts of one object over the frames it has been followed through."""
+@dataclass
+class TrackSample:
+    """What one object looked like in one frame."""
 
-    __slots__ = ("counts", "ema", "deviation")
+    center: Tuple[float, float, float]
+    yaw: float
+    dimensions: Tuple[float, float, float]
+    count: int
+
+
+class PointHistory:
+    """What one object looked like over the frames it has been followed through.
+
+    Besides the point counts (used to decide whether the object is still there) this
+    carries the last few *poses* and *sizes*. That is what lets the prediction follow
+    the object's motion instead of copying the previous frame's box: a pole that
+    moves left at 0.8 m per frame keeps moving left, and its size is taken from the
+    last few frames rather than from a single noisy one.
+    """
+
+    __slots__ = ("counts", "ema", "deviation", "samples")
 
     def __init__(self) -> None:
         self.counts: List[int] = []
         self.ema: Optional[float] = None
         self.deviation: Optional[float] = None
+        self.samples: List[TrackSample] = []
 
     @classmethod
     def from_bbox(cls, bbox) -> "PointHistory":
@@ -51,9 +75,10 @@ class PointHistory:
         deviation = getattr(bbox, "point_count_deviation", None)
         history.ema = None if ema is None else float(ema)
         history.deviation = None if deviation is None else float(deviation)
+        history.samples = list(getattr(bbox, "track_samples", []) or [])
         return history
 
-    def observe(self, count: int) -> None:
+    def observe(self, count: int, bbox=None) -> None:
         self.counts.append(int(count))
         del self.counts[:-HISTORY_LENGTH]
         if self.ema is None:
@@ -64,11 +89,59 @@ class PointHistory:
             self.deviation = statistics.pstdev(self.counts)
         else:
             self.deviation = None
+        if bbox is not None:
+            self.samples.append(
+                TrackSample(
+                    center=tuple(float(v) for v in bbox.get_center()),
+                    yaw=float(bbox.get_z_rotation()),
+                    dimensions=tuple(float(v) for v in bbox.get_dimensions()),
+                    count=int(count),
+                )
+            )
+            del self.samples[:-max(DEFAULT_HISTORY_FRAMES, 2)]
 
     def attach_to(self, bbox) -> None:
         bbox.point_history = list(self.counts)
         bbox.point_count_ema = self.ema
         bbox.point_count_deviation = self.deviation
+        bbox.track_samples = list(self.samples)
+
+    # -- motion ------------------------------------------------------------- #
+    def velocity(self) -> Optional[Tuple[float, float, float]]:
+        """Per-frame displacement, estimated from the last few samples.
+
+        An exponential moving average of the frame-to-frame steps, so one jump does
+        not define the motion. ``None`` until there are two samples.
+        """
+        if len(self.samples) < 2:
+            return None
+        velocity = [0.0, 0.0, 0.0]
+        for previous, current in zip(self.samples, self.samples[1:]):
+            step = [c - p for c, p in zip(current.center, previous.center)]
+            velocity = [
+                VELOCITY_DECAY * step[i] + (1.0 - VELOCITY_DECAY) * velocity[i]
+                for i in range(3)
+            ]
+        return tuple(velocity)  # type: ignore[return-value]
+
+    def yaw_velocity(self) -> float:
+        """Per-frame change of the heading, wrapped to ±180°."""
+        if len(self.samples) < 2:
+            return 0.0
+        velocity = 0.0
+        for previous, current in zip(self.samples, self.samples[1:]):
+            step = (current.yaw - previous.yaw + 180.0) % 360.0 - 180.0
+            velocity = VELOCITY_DECAY * step + (1.0 - VELOCITY_DECAY) * velocity
+        return velocity
+
+    def stable_dimensions(self) -> Optional[Tuple[float, float, float]]:
+        """Median size over the samples: sizes are rigid, so this is the best guess."""
+        if not self.samples:
+            return None
+        return tuple(
+            float(statistics.median(sample.dimensions[i] for sample in self.samples))
+            for i in range(3)
+        )  # type: ignore[return-value]
 
     # -- decisions ---------------------------------------------------------- #
     def threshold(self, ratio: float, min_points: int, sensitivity: float, adaptive: bool):

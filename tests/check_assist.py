@@ -1940,6 +1940,121 @@ def test_refit_tuning():
     check("Ctrl+R refit: grows onto the object, trims empty stretches", ok, detail)
 
 
+PROPAGATE_SNIPPET = """
+import json
+import math
+from pathlib import Path
+import numpy as np
+from labelCloud.control.prediction import PointHistory
+from labelCloud.control.propagate import propagate_box
+from labelCloud.model.bbox import BBox
+
+rng = np.random.default_rng(23)
+out = {}
+
+def pole_points(cx, cy, z0=0.0, z1=10.0, n=400, radius=0.12):
+    a = rng.uniform(0, 2 * np.pi, n)
+    z = rng.uniform(z0, z1, n)
+    return np.column_stack([cx + radius * np.cos(a), cy + radius * np.sin(a), z])
+
+# the vehicle drives past a pole: it moves 0.5 m per frame in -y, and disappears
+# after frame 4 (sensor range), while a second, static pole stays.
+frames = [Path(f"f{i}.pcd") for i in range(6)]
+clouds = {}
+for i in range(6):
+    x = 12.0 - 0.3 * i          # slight closing motion in x as well
+    y = 3.0 - 0.5 * i           # moving sideways out of view
+    if i < 5:
+        clouds[frames[i]] = np.vstack([pole_points(x, y), pole_points(30.0, 0.0)])
+    else:
+        clouds[frames[i]] = pole_points(30.0, 0.0)     # the object is gone
+
+boxes = {frame: [] for frame in frames}
+box = BBox(12.0, 3.0, 5.0, 2.6, 4.0, 10.0)
+box.set_classname("pole")
+history = PointHistory()
+history.observe(int(box.is_inside(clouds[frames[0]]).sum()), box)
+
+outcome = propagate_box(
+    box, history, frames[1:],
+    read_points=lambda path: clouds[path],
+    read_boxes=lambda path: boxes[path],
+    write_boxes=lambda path, value: boxes.__setitem__(path, value),
+)
+out["written"] = outcome.frames_written
+out["skipped"] = outcome.frames_skipped
+out["reason_has_left"] = "left the view" in outcome.reason
+out["written_centres"] = [
+    [round(v, 2) for v in boxes[frame][0].get_center()] for frame in frames[1:5]
+]
+out["followed_the_motion"] = all(
+    boxes[frames[i]][0].get_center()[1] < boxes[frames[i - 1]][0].get_center()[1]
+    for i in range(2, 5)
+)
+out["size_from_history"] = [round(v, 2) for v in boxes[frames[1]][0].get_dimensions()]
+
+# a frame that already holds the object is left alone instead of duplicated
+boxes[frames[3]] = [BBox(11.1, 1.5, 5.0, 2.6, 4.0, 10.0)]
+boxes[frames[3]][0].set_classname("pole")
+history2 = PointHistory()
+history2.observe(int(box.is_inside(clouds[frames[0]]).sum()), box)
+outcome2 = propagate_box(
+    box, history2, frames[1:],
+    read_points=lambda path: clouds[path],
+    read_boxes=lambda path: boxes[path],
+    write_boxes=lambda path, value: boxes.__setitem__(path, value),
+)
+out["skipped_existing"] = outcome2.frames_skipped
+out["no_duplicate_at_frame3"] = len(boxes[frames[3]]) == 1
+
+print(json.dumps(out))
+"""
+
+
+def test_propagate_to_end():
+    """Carrying a box forward follows the motion and stops when the object is gone."""
+    classes = {
+        "classes": [
+            {
+                "name": "pole",
+                "id": 1,
+                "color": "#00ff7f",
+                "z_rotation_only": True,
+                "default_dimensions": {"length": 2.6, "width": 4.0, "height": None},
+            }
+        ],
+        "default": 1,
+        "type": "object_detection",
+        "format": "centroid_abs",
+    }
+    with tempfile.TemporaryDirectory() as tmp:
+        cwd = Path(tmp)
+        classes_path = cwd / "_classes.json"
+        classes_path.write_text(json.dumps(classes))
+        (cwd / "config.ini").write_text(BASE_CONFIG.format(cwd=cwd, classes=classes_path))
+        proc = subprocess.run(
+            [PYTHON, "-c", textwrap.dedent(PROPAGATE_SNIPPET)],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+        )
+    ok = proc.returncode == 0
+    detail = proc.stderr.strip().splitlines()[-1] if not ok else ""
+    if ok:
+        data = json.loads(proc.stdout.strip().splitlines()[-1])
+        ok = (
+            data["written"] == 4                 # frames 1..4, then the object is gone
+            and data["reason_has_left"] is True
+            and data["followed_the_motion"] is True
+            and abs(data["written_centres"][1][1] - 2.0) <= 0.6   # tracked the -0.5 m/frame
+            and data["size_from_history"][:2] == [2.6, 4.0]
+            and data["skipped_existing"] == 4    # every frame already had the object
+            and data["no_duplicate_at_frame3"] is True
+        )
+        detail = json.dumps(data)
+    check("carry box forward: follows motion, stops when gone, no duplicates", ok, detail)
+
+
 if __name__ == "__main__":
     print(f"python: {PYTHON}")
     print(f"repo:   {REPO}\n")
@@ -1968,6 +2083,7 @@ if __name__ == "__main__":
     test_mouse_modes_and_save_indicator()
     test_next_frame_prediction()
     test_refit_tuning()
+    test_propagate_to_end()
 
     failed = [name for name, ok, _ in RESULTS if not ok]
     print(f"\n{len(RESULTS) - len(failed)}/{len(RESULTS)} checks passed")

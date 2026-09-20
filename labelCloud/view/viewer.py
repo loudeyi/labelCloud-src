@@ -55,6 +55,8 @@ class GLWidget(QtOpenGL.QGLWidget):
         self.selected_side_vertices: npt.NDArray = np.array([])
         self.drawing_mode: DrawingManager = None  # type: ignore
         self.align_mode: Union[AlignMode, None] = None
+        #: returns the dimmed overlay of the previous frames, if enabled
+        self.ghost_provider = None
 
     def set_pointcloud_controller(self, pcd_manager: PointCloudManger) -> None:
         self.pcd_manager = pcd_manager
@@ -91,6 +93,12 @@ class GLWidget(QtOpenGL.QGLWidget):
     def paintGL(self) -> None:
         GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
         GL.glPushMatrix()  # push the current matrix to the current stack
+
+        # Draw the dimmed overlay of the previous frames first, so the current
+        # frame's points stay on top of it
+        ghost = self.ghost_provider() if self.ghost_provider is not None else None
+        if ghost is not None:
+            ghost.draw_pointcloud()
 
         # Draw point cloud
         self.pcd_manager.pointcloud.draw_pointcloud()  # type: ignore

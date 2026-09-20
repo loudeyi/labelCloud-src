@@ -125,6 +125,7 @@ BINDINGS: Tuple[Binding, ...] = (
     Binding("show_save_log", "Ctrl+Shift+S", "Show the activity log", "Help", False),
     Binding("toggle_predict_next_frame", "Ctrl+Shift+P", "Toggle next-frame prediction", "Labels", False),
     Binding("snap_box", "Ctrl+E", "Snap the active box onto the ground", "Assist", False),
+    Binding("propagate_to_end", "Ctrl+Shift+E", "Carry the box forward through the next frames", "Assist", False),
     Binding("refit_box_settings", "Ctrl+Shift+R", "Refit again after changing the refit settings", "Assist", False),
     Binding("toggle_focus", "Ctrl+F", "Show only the points inside the active box", "View", False),
     Binding("show_shortcuts", "F1", "Show this shortcut list", "Help", False),
