@@ -2176,6 +2176,203 @@ def test_keyframe_interpolation():
         detail = json.dumps(data)
     check("keyframe interpolation: lerp, shortest arc, skip empty, no duplicates", ok, detail)
 
+QUALITY_SNIPPET = """
+import json
+from pathlib import Path
+import numpy as np
+from labelCloud.control.quality import (
+    check_dataset,
+    check_frame_points,
+    class_medians,
+    overlap_2d,
+)
+from labelCloud.model.bbox import BBox
+
+out = {}
+
+def box(x, y, z, l, w, h, yaw=0.0, name="pole"):
+    b = BBox(x, y, z, l, w, h)
+    b.set_rotations(0.0, 0.0, yaw)
+    b.set_classname(name)
+    return b
+
+frames = [Path(f"f{i}.pcd") for i in range(4)]
+
+clean_a = box(0.0, 0.0, 5.0, 2.6, 4.0, 10.0)
+clean_b = box(20.0, 0.0, 5.0, 2.6, 4.0, 10.0)
+tall = box(40.0, 0.0, 15.0, 2.6, 4.0, 30.0)          # 3x the usual height
+dup_a = box(0.0, 0.0, 5.0, 2.6, 4.0, 10.0)
+dup_b = box(0.1, 0.05, 5.0, 2.6, 4.0, 10.0)          # the same pole twice
+tilted = box(20.0, 0.0, 5.0, 2.6, 4.0, 10.0)
+tilted.set_rotations(5.0, 0.0, 0.0)                   # a leaning pole
+wire = box(0.0, 0.0, 8.0, 20.0, 0.2, 0.2, 10.0, "wire")   # long axis in length!
+broken = box(5.0, 0.0, 0.0, 0.01, 0.02, 0.03)     # a few centimetres across
+# (BBox treats an all-zero size as "use the default dimensions", so a broken box
+#  is a tiny one rather than a zero one)
+mystery = box(10.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, "car")  # not a configured class
+far = box(100.0, 100.0, 5.0, 2.6, 4.0, 10.0)          # nothing near it
+
+boxes = {
+    frames[0]: [clean_a, clean_b, tall],
+    frames[1]: [dup_a, dup_b, tilted],
+    frames[2]: [wire, broken, mystery],
+    frames[3]: [far],
+}
+
+# points only around the first object of the last frame's neighbourhood
+points = np.column_stack([
+    np.linspace(-1.0, 1.0, 40),
+    np.linspace(-1.0, 1.0, 40),
+    np.linspace(4.0, 6.0, 40),
+])
+
+report = check_dataset(
+    frames,
+    read_boxes=lambda path: boxes[path],
+    known_classes={"pole", "wire"},
+    upright_classes={"pole"},
+    width_axis_classes={"wire"},
+    current_frame=3,
+    current_points=points,
+)
+out["frames"] = report.frames
+out["frames_labelled"] = report.frames_labelled
+out["boxes"] = report.boxes
+counts = report.counts_by_kind()
+out["counts"] = {key: counts[key] for key in sorted(counts)}
+out["issues"] = len(report.issues)
+out["frames_with_issues"] = report.frames_with_issues()
+out["kinds"] = [issue.kind for issue in report.issues]
+out["clean_boxes_untouched"] = not any(
+    issue.frame == 0 and issue.box_index in (0, 1) for issue in report.issues
+)
+out["wire_median"] = [round(value, 2) for value in report.medians["wire"]]
+out["sorted_by_frame"] = [issue.frame for issue in report.issues] == sorted(
+    issue.frame for issue in report.issues
+)
+out["size_detail"] = [
+    issue.detail for issue in report.issues if issue.kind == "size_outlier"
+]
+
+# a clean dataset reports nothing at all
+clean_report = check_dataset(
+    [frames[0]],
+    read_boxes=lambda path: [clean_a, clean_b],
+    known_classes={"pole", "wire"},
+    upright_classes={"pole"},
+    width_axis_classes={"wire"},
+)
+out["clean_report"] = len(clean_report.issues)
+
+# an unreadable label file is reported instead of aborting the scan
+def broken_reader(path):
+    if path == frames[1]:
+        raise ValueError("not json")
+    return boxes[path]
+
+partial = check_dataset(
+    frames[:2],
+    read_boxes=broken_reader,
+    known_classes={"pole", "wire"},
+)
+out["unreadable"] = [issue.kind for issue in partial.issues if issue.kind == "unreadable"]
+out["unreadable_files"] = [path.name for path in partial.unreadable]
+
+# the point rule on its own
+point_issues = check_frame_points([far, clean_a], points, 3, frames[3], min_points=5)
+out["point_rule"] = [(issue.kind, issue.box_index) for issue in point_issues]
+
+# oriented-box overlap (2D IoU)
+out["iou_identical"] = round(overlap_2d(clean_a, clean_a), 4)
+out["iou_half"] = round(overlap_2d(clean_a, box(1.3, 0.0, 5.0, 2.6, 4.0, 10.0)), 4)
+out["iou_apart"] = round(overlap_2d(clean_a, clean_b), 4)
+out["iou_same_rotated_90"] = round(
+    overlap_2d(clean_a, box(0.0, 0.0, 5.0, 2.6, 4.0, 10.0, 90.0)), 4
+)  # the same rectangle, turned
+out["iou_rotated"] = round(
+    overlap_2d(box(0.0, 0.0, 5.0, 4.0, 4.0, 10.0),
+               box(0.0, 0.0, 5.0, 4.0, 4.0, 10.0, 45.0)), 4
+)  # a square and the same square turned 45 deg: 1 / sqrt(2)
+out["medians"] = {name: [round(v, 2) for v in value] for name, value in class_medians(
+    {"pole": [[2.0, 4.0, 10.0], [4.0, 4.0, 10.0]], "empty": []}
+).items()}
+
+print(json.dumps(out))
+"""
+
+
+def test_quality_check():
+    """The folder check finds doubtful boxes and leaves clean datasets alone."""
+    classes = {
+        "classes": [
+            {
+                "name": "wire",
+                "id": 1,
+                "color": "#ff0000",
+                "z_rotation_only": False,
+                "default_dimensions": {"length": 0.2, "width": 20.0, "height": 0.2},
+            },
+            {
+                "name": "pole",
+                "id": 2,
+                "color": "#00ff7f",
+                "z_rotation_only": True,
+                "default_dimensions": {"length": 2.6, "width": 4.0, "height": None},
+            },
+        ],
+        "default": 2,
+        "type": "object_detection",
+        "format": "centroid_abs",
+    }
+    with tempfile.TemporaryDirectory() as tmp:
+        cwd = Path(tmp)
+        classes_path = cwd / "_classes.json"
+        classes_path.write_text(json.dumps(classes))
+        (cwd / "config.ini").write_text(BASE_CONFIG.format(cwd=cwd, classes=classes_path))
+        proc = subprocess.run(
+            [PYTHON, "-c", textwrap.dedent(QUALITY_SNIPPET)],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+        )
+    ok = proc.returncode == 0
+    detail = proc.stderr.strip().splitlines()[-1] if not ok else ""
+    if ok:
+        data = json.loads(proc.stdout.strip().splitlines()[-1])
+        ok = (
+            data["frames"] == 4
+            and data["frames_labelled"] == 4
+            and data["boxes"] == 10
+            and data["counts"]
+            == {
+                "axis_convention": 1,
+                "degenerate": 1,
+                "duplicate": 1,
+                "few_points": 1,
+                "not_upright": 1,
+                "size_outlier": 1,
+                "unknown_class": 1,
+            }
+            and data["issues"] == 7
+            and data["frames_with_issues"] == 4
+            and data["clean_boxes_untouched"] is True
+            and data["sorted_by_frame"] is True
+            and "height" in data["size_detail"][0]
+            and data["wire_median"] == [20.0, 0.2, 0.2]
+            and data["clean_report"] == 0
+            and data["unreadable"] == ["unreadable"]
+            and data["unreadable_files"] == ["f1.pcd"]
+            and data["point_rule"] == [["few_points", 0]]  # JSON turns tuples into lists
+            and data["iou_identical"] == 1.0
+            and abs(data["iou_half"] - 1 / 3) < 0.01
+            and data["iou_apart"] == 0.0
+            and data["iou_same_rotated_90"] == 1.0
+            and abs(data["iou_rotated"] - 0.7071) < 0.01
+            and data["medians"] == {"pole": [3.0, 4.0, 10.0]}
+        )
+        detail = json.dumps(data)
+    check("quality check: sizes, duplicates, tilt, axis, points, unreadable", ok, detail)
+
 
 if __name__ == "__main__":
     print(f"python: {PYTHON}")
@@ -2207,6 +2404,7 @@ if __name__ == "__main__":
     test_refit_tuning()
     test_propagate_to_end()
     test_keyframe_interpolation()
+    test_quality_check()
 
     failed = [name for name, ok, _ in RESULTS if not ok]
     print(f"\n{len(RESULTS) - len(failed)}/{len(RESULTS)} checks passed")

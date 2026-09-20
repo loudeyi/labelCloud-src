@@ -1016,6 +1016,8 @@ class Controller:
     #: command name from the keymap -> method on this controller
     COMMANDS = {
         "prev_pcd": "cmd_prev_pcd",
+        "go_to_frame": "cmd_go_to_frame",
+        "quality_check": "cmd_show_quality_check",
         "next_pcd": "cmd_next_pcd",
         "reset_view": "cmd_reset_view",
         "save": "cmd_save",
@@ -1724,6 +1726,25 @@ class Controller:
 
         self._group_call(flip)
         self.view.update_bbox_stats(self.bbox_controller.get_active_bbox())
+
+    def cmd_go_to_frame(self, index: int, factor: float = 1.0) -> None:
+        """Jump to a frame of the folder (used by the quality check)."""
+        index = int(index)
+        if index < 0 or index >= len(self.pcd_manager.pcds):
+            self.view.status_manager.set_message(
+                QCoreApplication.translate("labelCloud", "There is no frame %s.")
+                % (index + 1)
+            )
+            return
+        if index == self.pcd_manager.current_id:
+            return
+        self.custom_pcd(index)
+        self.bbox_controller.set_active_bbox(0)
+
+    def cmd_show_quality_check(self, factor: float = 1.0) -> None:
+        from ..view.quality_dialog import QualityDialog
+
+        QualityDialog(self.view, self).exec_()
 
     def cmd_show_statistics(self, factor: float = 1.0) -> None:
         from ..view.statistics_dialog import StatisticsDialog

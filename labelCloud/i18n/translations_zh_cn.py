@@ -587,6 +587,44 @@ TRANSLATIONS.update({
     "Fill the frames between the keyframe and here": "填充关键帧到当前帧之间的所有帧",
 })
 
+#: Quality check (Ctrl+Shift+Q) — the window and its issue kinds.
+TRANSLATIONS.update({
+    "Quality Check": "标注质检",
+    "Quality Check ... [Ctrl+Shift+Q]": "标注质检 … [Ctrl+Shift+Q]",
+    "Check the labels of the whole folder for mistakes": "检查整个文件夹里的标注有没有问题",
+    "Reads every label file and lists the boxes that look wrong: sizes far from\n"
+    "the usual size of their class, duplicates, tilted poles, wires whose long axis is\n"
+    "in the wrong field and boxes that cover no points.": (
+        "读一遍全部标注文件，列出可疑的框：尺寸和同类别常见尺寸差太多的、重复的、"
+        "该竖直却歪了的、长轴写错字段的电线，以及框内没有点的框。"
+    ),
+    "Scanning the label files ...": "正在扫描标注文件……",
+    "Show": "显示",
+    "All issues": "全部问题",
+    "Check the points of the current frame (slower)": "同时检查当前帧的点云（较慢）",
+    "Check again": "重新检查",
+    "Frame": "帧",
+    "Issue": "问题",
+    "Detail": "说明",
+    "Go to Frame": "跳到该帧",
+    "The check failed: %s": "检查失败：%s",
+    "%s of %s frames hold boxes (%s boxes)": "%s / %s 帧有标注（共 %s 个框）",
+    "Frames with at least one issue: %s": "至少有一处问题的帧数：%s",
+    "Double-click a row (or press Go to Frame) to open that frame. "
+    "The check never edits your labels.": (
+        "双击一行（或按“跳到该帧”）即可打开那一帧。质检只读，绝不改动你的标注。"
+    ),
+    "There is no frame %s.": "没有第 %s 帧。",
+    "Class not in _classes.json": "类别不在 _classes.json 里",
+    "Impossible size": "尺寸不可能是真的",
+    "Tilted although the class is upright": "类别要求竖直，但框是斜的",
+    "Long axis in length instead of width": "长轴写进了 length 而不是 width",
+    "Size far from the usual size of its class": "尺寸和同类别的常见尺寸差太多",
+    "Duplicate or overlapping box": "重复或重叠的框",
+    "Covers (almost) no points": "框里（几乎）没有点",
+    "Label file cannot be read": "标注文件读不出来",
+})
+
 #: Strings of the F1 dialog (context ``ShortcutDialog``).
 TRANSLATIONS.update({
     "Keyboard Shortcuts": "快捷键一览",

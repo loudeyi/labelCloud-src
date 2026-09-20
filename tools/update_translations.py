@@ -150,6 +150,19 @@ def add_keymap_messages() -> None:
     tree.write(TS_FILE, encoding="utf-8", xml_declaration=True)
 
 
+def add_quality_messages() -> None:
+    """Register the wording of the quality check's issue kinds.
+
+    They are a dictionary in ``view/quality_dialog.py`` rather than ``tr()`` calls, so
+    pylupdate5 cannot see them (same situation as the F1 dialog's binding labels).
+    """
+    from labelCloud.view.quality_dialog import KIND_LABELS
+
+    tree = ET.parse(TS_FILE)
+    ensure_extra_messages(tree.getroot(), "QualityDialog", list(KIND_LABELS.values()))
+    tree.write(TS_FILE, encoding="utf-8", xml_declaration=True)
+
+
 def run_lrelease() -> None:
     subprocess.run(
         [find_tool("lrelease"), str(TS_FILE), "-qm", str(QM_FILE)],
@@ -170,6 +183,7 @@ def main() -> int:
     translations = load_translations()
     run_pylupdate()
     add_keymap_messages()
+    add_quality_messages()
     total, translated, missing = merge_translations(translations)
     run_lrelease()
 

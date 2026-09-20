@@ -34,6 +34,19 @@ The label file format is unchanged: `folder` / `filename` / `path` /
 * **Dataset statistics** (`Ctrl+I`): frames with boxes / confirmed empty / not yet
   labelled / unreadable, plus boxes per class.
 
+### Quality check (Ctrl+Shift+Q)
+
+* Reads every label file of the folder (no point clouds, so a 500-frame dataset takes a
+  moment) and lists the boxes that look wrong, sorted by frame: sizes far from the
+  **median size of their own class**, duplicates and overlapping boxes (oriented 2D IoU),
+  classes that are upright but tilted, cable classes whose long axis sits in `length`
+  instead of `width`, impossible dimensions, class names that are not configured,
+  unreadable label files, and — for the frame on screen — boxes that cover no points.
+* The window is read-only and re-scans on demand; double-clicking a row (or *Go to
+  Frame*) jumps to that frame, so a finding can be inspected and fixed immediately.
+* Thresholds live in the new `[QUALITY]` config section (`size_ratio`,
+  `duplicate_iou`, `duplicate_distance`, `min_points`).
+
 ### Fill the frames between two keyframes (Ctrl+Shift+I, Ctrl+Shift+K)
 
 * `Ctrl+Shift+I` remembers the active box as the first keyframe (shown in the session

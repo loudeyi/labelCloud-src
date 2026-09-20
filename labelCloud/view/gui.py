@@ -524,6 +524,9 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
         self.act_propagate_to_end.triggered.connect(
             lambda: self.controller.cmd_propagate_to_end()
         )
+        self.act_quality_check.triggered.connect(
+            lambda: self.controller.cmd_show_quality_check()
+        )
         self.act_set_anchor.triggered.connect(
             lambda: self.controller.cmd_set_interpolation_anchor()
         )

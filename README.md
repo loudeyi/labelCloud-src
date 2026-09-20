@@ -45,6 +45,7 @@ without restarting.
 | **Dataset statistics** | `Ctrl+I` | Frames labelled / confirmed empty / not yet labelled, and boxes per class |
 | **Carry forward** | `Ctrl+Shift+E` | Follows the box into the next frames until the object is gone (5 frames per press) |
 | **Keyframe interpolation** | `Ctrl+Shift+I` then `Ctrl+Shift+K` | Boxes the two ends of a gap and fills every frame in between |
+| **Quality check** | `Ctrl+Shift+Q` | Reads every label file and lists the boxes that look wrong, with a jump to the frame |
 
 Proposals are drawn **dashed in orange** and never look like confirmed labels. Accepting one is a
 single keystroke; rejecting is one keystroke for the whole batch.
@@ -192,6 +193,28 @@ uses only the current frame. `0` turns it off.
 
 7. `predict_as_candidates = False` (dialog checkbox) makes predictions count as
    finished boxes, which are then saved like your own.
+
+### Checking the whole folder before handing it over (`Ctrl+Shift+Q`)
+
+The mistakes that survive a long labelling session are the boring ones, and they only
+show up when the dataset is used. **`Ctrl+Shift+Q`** (*Assist → Quality Check …*) reads
+every label file of the folder (labels only, so a few hundred frames take a moment) and
+lists what looks wrong:
+
+| Reported | Because |
+| --- | --- |
+| **Size far from the usual size of its class** | the dimension differs from the median of that class in *this* folder by more than `size_ratio` (1.6x) — the person who labelled 200 poles is the best definition of how big a pole is here |
+| **Duplicate or overlapping box** | two boxes of one class whose centres are closer than `duplicate_distance` (0.35 m) or whose footprints overlap by more than `duplicate_iou` (55 %) |
+| **Tilted although the class is upright** | a class marked `z_rotation_only` in `_classes.json` with roll or pitch |
+| **Long axis in length instead of width** | a cable-shaped class template (`width > length`) whose boxes ended up with the long axis in `length` |
+| **Impossible size** | a dimension below 5 cm or above 60 m |
+| **Class not in `_classes.json`** | a typo in a class name that was added by a label file |
+| **Covers (almost) no points** | fewer than `min_points` (5) points inside the box in the current frame — the one rule that needs points, and they are already loaded |
+| **Label file cannot be read** | broken JSON, or a format this check cannot parse (a `vertices` file, for example) |
+
+Double-click a row (or select it and press *Go to Frame*) to open that frame and fix it;
+*Check again* re-scans after the fix. The check never writes anything. The thresholds are
+the `[QUALITY]` config section.
 
 ### Knowing what was saved (bottom-right panel)
 
@@ -436,6 +459,7 @@ example `copy_box = Ctrl+Shift+C`. `F1` shows the same table inside the applicat
 | --- | --- |
 | `Ctrl+I` | Show dataset statistics |
 | `Ctrl+Shift+S` | Show the activity log |
+| `Ctrl+Shift+Q` | Check the labels of the whole folder for mistakes |
 | `F1` | Show this shortcut list |
 
 ### View
@@ -476,6 +500,8 @@ autosave_interval_seconds = 60
 [USER_INTERFACE]
 ; system (follow the OS locale), en, or zh_CN
 language = system
+; carry a box into at most this many frames per Ctrl+Shift+E
+propagate_max_frames = 5
 
 [REFIT]
 ; Ctrl+R: how far to look beyond the box, what still counts as the same object,
@@ -485,6 +511,15 @@ max_link_distance = 1.2
 max_empty_gap = 1.5
 min_cluster_points = 3
 refit_cross_section = False
+
+[QUALITY]
+; Ctrl+Shift+Q: how far a box may differ from the median size of its class (1.6x),
+; when two boxes of one class count as duplicates, and how few points make a box
+; a leftover (checked for the current frame only)
+size_ratio = 1.6
+duplicate_iou = 0.55
+duplicate_distance = 0.35
+min_points = 5
 
 [ASSIST]
 ; folder of the offline pole/wire pre-annotation tool; leave empty to disable it
