@@ -288,12 +288,14 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
         self.connect_events()
         self.set_checkbox_states()  # tick in menu
 
-        # Run startup dialog
-        self.startup_dialog = StartupDialog()
-        if self.startup_dialog.exec():
-            pass
+        # Run startup dialog (skippable for a fixed dataset / class setup, which
+        # is the normal case once the classes are settled)
+        if config.getboolean("FILE", "skip_startup_dialog", fallback=False):
+            logging.info("Startup dialog skipped (FILE/skip_startup_dialog).")
         else:
-            sys.exit()
+            self.startup_dialog = StartupDialog()
+            if not self.startup_dialog.exec():
+                sys.exit()
         # Segmentation only functionalities
         if LabelConfig().type == LabelingMode.OBJECT_DETECTION:
             self.button_assign_label.setVisible(False)

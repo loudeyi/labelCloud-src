@@ -117,6 +117,8 @@ calib_folder = $WORKDIR/calib/
 segmentation_folder = $WORKDIR/segmentation/
 ; 2d image folder [optional]
 image_folder = $PCD_DIR
+; skip the startup dialog and use the class definition file as it is
+skip_startup_dialog = False
 
 [POINTCLOUD]
 ; drawing size for points in point cloud
