@@ -9,7 +9,7 @@
 ![Python](https://img.shields.io/badge/python-3.8-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-linux-lightgrey.svg)
 
-**English** · [简体中文](README_zh_cn.md) · [Changelog](CHANGELOG.md)
+**English** · [简体中文](README_zh_cn.md) · [Changelog](CHANGELOG.md) · [Design notes](docs/README.md)
 
 ---
 
@@ -56,6 +56,7 @@ single keystroke; rejecting is one keystroke for the whole batch.
 | **Load indicator** | right of the status bar | `▸ loaded 13:47:02 1/1292  frame.pcd` — which point cloud is on screen, with its position in the folder |
 | **Save indicator** | right of the status bar | `✓ saved 13:38:09  frame.json`, `● unsaved changes`, `— unchanged, nothing to write`, or a red `✗ save FAILED`. The tooltip shows the full path |
 | **Activity log** | click either indicator, `Ctrl+Shift+S`, or *File → Save Log* | Every frame loaded and every write, with time, result and exact path |
+| **Session card** | right panel, above *Current BBox* | The same information at a glance: frame `2/1292`, the save state with its time, the last two events, the prediction state, and buttons for the activity log and the prediction settings |
 | **Next-frame prediction** | *Labels → Predict Boxes for the Next Frame*, or `Ctrl+Shift+P` | Carries the boxes of the current frame into the next one: size and heading are kept, the position follows the points, and an object whose points are gone stops being predicted |
 | **Autosave** | every 60 s (`LABEL/autosave_interval_seconds`) | Writes only when something was actually edited. A frame you merely browsed past is **not written at all** — press `Ctrl+S` to record it as "checked, and it is empty" |
 | **Group editing** | `Shift`+click boxes | Move/rotate/scale/class/delete/flip act on the whole group |

@@ -175,7 +175,9 @@ min_boundingbox_dimension = 0.01
 ; propagate labels to next point cloud if it has no labels yet
 propagate_labels = False
 ; predict the boxes of the previous frame in the next frame (see README)
-predict_next_frame = False
+; predictions are unconfirmed proposals by default and are not written until
+; you confirm them with Enter
+predict_next_frame = True
 ; predictions start as unconfirmed proposals (Enter confirms them)
 predict_as_candidates = True
 ; re-fit a predicted box to the points inside it (follows the object)
@@ -183,7 +185,12 @@ predict_refit = True
 ; drop a prediction when fewer than this many points are inside it ...
 predict_min_points = 5
 ; ... or when it keeps less than this share of the points it had before
-predict_min_point_ratio = 0.35
+; (0.5 = "the points halved, so the object is leaving")
+predict_min_point_ratio = 0.5
+; compare with the object's own recent history instead of a fixed share
+predict_adaptive = True
+; adaptive sensitivity: drop below (mean - sensitivity x deviation)
+predict_sensitivity = 1.5
 ; save the current frame automatically every N seconds (0 disables it)
 autosave_interval_seconds = 60
 

@@ -1717,7 +1717,7 @@ out["toggle_on"] = control.toggle_predict_next_frame(True)
 out["written_to_file"] = "predict_next_frame = True" in Path("config.ini").read_text()
 sources = control.capture_prediction_sources()
 out["source_count"] = len(sources)
-out["source_points"] = [c > 100 for _s, c in sources]
+out["source_points"] = [c > 100 for _s, c, _h in sources]
 
 # next frame: the first pole is still there, the second is gone
 control.pcd_manager = FakePcd(labels, pole_points(10.0, 2.0))
@@ -1750,6 +1750,21 @@ out["save_result"] = control.save(quiet=True)
 out["label_file_written"] = (labels / "frame.json").is_file()
 doc = json.loads((labels / "frame.json").read_text())
 out["written_objects"] = [o["name"] for o in doc["objects"]]
+
+# --- the drop rule: halving, and the adaptive variant ------------------------
+from labelCloud.control.prediction import PointHistory, decide
+
+steady = PointHistory()
+steady.observe(100)
+steady.observe(100)
+out["half_dropped"] = decide(49, steady, 0.5, 5, 1.5, False)[0]   # halved -> gone
+out["sixty_kept"] = decide(60, steady, 0.5, 5, 1.5, False)[0]
+
+occluded = PointHistory()
+for value in (100, 90, 80, 70):        # progressively hidden behind a tree
+    occluded.observe(value)
+out["adaptive_keeps_slow_decline"] = decide(60, occluded, 0.5, 5, 1.5, True)[0]
+out["adaptive_drops_collapse"] = decide(5, occluded, 0.5, 5, 1.5, True)[0]
 
 # --- switching it off stops the collection ----------------------------------
 from labelCloud.control.config_manager import config
@@ -1795,11 +1810,15 @@ def test_next_frame_prediction():
             and data["written_objects"] == ["pole"]
             and data["setting_before"] is False
             and data["toggle_on"] is True
-            and data["writing_to_file" if False else "written_to_file"] is True
+            and data["written_to_file"] is True
             and data["setting_after"] is True
             and data["sources_when_enabled"] == 1
             and data["toggle_off"] is False
             and data["sources_when_disabled"] == 0
+            and data["half_dropped"] is False       # 100 -> 49 points: gone
+            and data["sixty_kept"] is True          # 100 -> 60 points: still there
+            and data["adaptive_keeps_slow_decline"] is True
+            and data["adaptive_drops_collapse"] is False
         )
         detail = json.dumps(data)
     check("next-frame prediction: carry over, guard, persist", ok, detail)

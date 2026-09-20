@@ -1,28 +1,85 @@
+# ---------------------------------------------------------------------------
 # Python
+# ---------------------------------------------------------------------------
 __pycache__/
 *.py[cod]
+*$py.class
 *.egg-info/
+.eggs/
 build/
 dist/
-.eggs/
+pip-wheel-metadata/
 
+# ---------------------------------------------------------------------------
 # Virtual environments
+# ---------------------------------------------------------------------------
 .venv/
 venv/
+env/
+ENV/
 
-# labelCloud runtime artefacts — only at the repository root, i.e. the directory
-# labelCloud is launched from. Anchoring with a leading slash keeps patterns like
-# `labels/` from also ignoring the source package `labelCloud/io/labels/`.
+# ---------------------------------------------------------------------------
+# labelCloud runtime artefacts. These are anchored to the repository root: they
+# are what the application creates in the directory it is launched from. The
+# leading slash matters — an unanchored `labels/` would also ignore the source
+# package `labelCloud/io/labels/`.
+# ---------------------------------------------------------------------------
 /config.ini
+/config.ini.bak
+/.labelCloud.log
+*.labelCloud.log
 /pointclouds/
 /labels/
 /calib/
 /segmentation/
-/config.ini.bak
 /.bak/
 
-# Editors / OS
+# ---------------------------------------------------------------------------
+# Data must never end up in the repository by accident: point clouds, labels
+# and archives are large and are not part of the tool.
+# ---------------------------------------------------------------------------
+/*.pcd
+/*.ply
+/*.bin
+/*.las
+/*.laz
+/*.e57
+/*.zip
+/*.7z
+/*.tar
+/*.tar.gz
+/data/
+/datasets/
+
+# Everything under the packaged examples stays tracked (it is tiny and shipped
+# with the package), so no rule above may match resources/ or examples/. They
+# are all anchored to the root, which keeps `labelCloud/resources/*.pcd` safe.
+
+# ---------------------------------------------------------------------------
+# Test / tooling leftovers
+# ---------------------------------------------------------------------------
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.tmp_write
+*.orig
+*.rej
+*.bak
+/.scratch/
+/.pip-tmp/
+/smoke-*/
+/scratch-*/
+
+# ---------------------------------------------------------------------------
+# Editors and operating systems
+# ---------------------------------------------------------------------------
 .vscode/
 .idea/
 *.swp
+*.swo
+*~
 .DS_Store
+Thumbs.db
+desktop.ini

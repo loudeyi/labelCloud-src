@@ -313,6 +313,38 @@ TRANSLATIONS.update({
 })
 
 TRANSLATIONS.update({
+    # session panel + prediction settings (right panel)
+    "Frame and saving": "本帧与保存",
+    "Activity log": "活动日志",
+    "Prediction ...": "预测设置 …",
+    "— no point cloud loaded": "— 未载入点云",
+    "Frame: <b>%s</b><br/>%s/%s in %s": "本帧：<b>%s</b><br/>%s/%s（目录 %s）",
+    "Frame %s/%s · <b>%s</b>": "第 %s/%s 帧 · <b>%s</b>",
+    "Saving: %s": "保存：%s",
+    "Recent:": "最近：",
+    "Prediction: off": "预测：关",
+    "Prediction: on (%s)": "预测：开（%s）",
+    "Prediction: on · %s": "预测：开 · %s",
+    "adaptive, %s%% floor": "自适应，下限 %s%%",
+    "adaptive %s%%": "自适应 %s%%",
+    "fixed %s%%": "固定 %s%%",
+    "✓ saved · %s": "✓ 已保存 · %s",
+    "drop below %s%% of the previous count": "低于上一帧点数的 %s%% 就丢弃",
+    "Next-Frame Prediction": "下一帧预测设置",
+    "Carry boxes into the next frame": "把本帧的检测框带到下一帧",
+    "Show them as unconfirmed proposals (Enter confirms)": "先作为未确认候选（按 Enter 确认）",
+    "Re-fit each prediction to the points inside it": "每个预测框按框内点重新拟合",
+    "Adaptive threshold (compare with the object's own history)": "自适应阈值（与该目标自己的历史比较）",
+    "Adaptive sensitivity (mean - k x deviation):": "自适应灵敏度（均值 − k×标准差）：",
+    "Drop when fewer than this share of the previous points:": "框内点数低于上一帧的这个比例就丢弃：",
+    "... and always below this absolute count:": "… 并且绝对点数低于这个值也丢弃：",
+    "Example: with 50 %, a pole whose points halve between two frames is "
+    "dropped, so it is not predicted once it is behind the vehicle. The "
+    "adaptive threshold follows each object separately and is usually the "
+    "better choice.": (
+        "举例：设为 50% 时，两根帧之间点数减半的杆会被丢弃 —— 它已经到车后面了，不该再预测。"
+        "自适应阈值会分别跟踪每个目标，通常更省心。"
+    ),
     # save indicator states (context StatusManager)
     "● unsaved changes": "● 有未保存修改",
     "✓ saved": "✓ 已保存",
@@ -470,6 +502,7 @@ TRANSLATIONS.update({
     # symbols are identical in both languages but must be listed so the
     # "everything is translated" check stays meaningful
     "−": "−",
+    "—": "—",
     "+": "+",
     "Parameter changed by the - / + buttons below.": "下面 − / + 按钮所调整的参数。",
     "Decrease the selected parameter by one step.": "把所选参数减小一个步长。",

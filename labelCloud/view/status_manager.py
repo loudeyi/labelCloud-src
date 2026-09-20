@@ -6,6 +6,23 @@ from PyQt5.QtCore import QCoreApplication
 from ..definitions import Context, Mode
 
 
+def shorten_filename(path, keep: int = 16) -> str:
+    """Last characters of a file name, elided at the front.
+
+    Point clouds and label files are named after a nanosecond timestamp, so their
+    first digits are identical for every frame and only the tail tells them apart.
+    Truncating at the end (Qt's default) would show "1776414481083316..." for every
+    file, which is useless in a status bar. A plain function rather than a widget
+    method, so code that formats names does not depend on a view object.
+    """
+    if path is None:
+        return ""
+    name = str(path).replace("\\", "/").rsplit("/", 1)[-1]
+    if len(name) <= keep:
+        return name
+    return "…" + name[-keep:]
+
+
 class StatusManager:
     """The status bar: a persistent mode label plus a transient hint message.
 
@@ -49,6 +66,12 @@ class StatusManager:
         )
         self.save_label.setCursor(QtCore.Qt.PointingHandCursor)
         self.status_bar.addPermanentWidget(self.save_label, stretch=0)
+
+        # These must exist before the first set_save_state() call below, which
+        # notifies the session panel through `on_change`.
+        self._save_state = "unknown"
+        #: set by the GUI so the session panel refreshes with the status bar
+        self.on_change = None
         self.set_save_state("unknown")
 
         # Add temporary status message / tips
@@ -57,7 +80,6 @@ class StatusManager:
         self.message_label.setAlignment(QtCore.Qt.AlignLeft)
         self.status_bar.addWidget(self.message_label, stretch=1)
 
-        self._save_state = "unknown"
         self.msg_context = Context.DEFAULT
         self.mode = Mode.NAVIGATION
         self.set_mode(Mode.NAVIGATION)
@@ -105,9 +127,16 @@ class StatusManager:
                 "labelCloud", "Click to see where the labels were saved."
             )
         )
+        if self.on_change is not None:
+            self.on_change()
 
     def current_save_state(self) -> str:
         return getattr(self, "_save_state", "unknown")
+
+    @staticmethod
+    def shorten_filename(path, keep: int = 16) -> str:
+        """See :func:`shorten_filename`; kept as a method for Qt-style access."""
+        return shorten_filename(path, keep)
 
     def set_loaded_file(self, path, index: int = 0, total: int = 0) -> None:
         """Show which point cloud was loaded (compact: time + file name)."""
@@ -116,7 +145,7 @@ class StatusManager:
         if not path:
             self.load_label.setText("")
             return
-        name = str(path).replace("\\", "/").rsplit("/", 1)[-1]
+        name = self.shorten_filename(path)
         counter = f" {index + 1}/{total}" if total else ""
         self.load_label.setText(
             QCoreApplication.translate("StatusManager", "▸ loaded %s%s")
@@ -124,6 +153,8 @@ class StatusManager:
             + f"  {name}"
         )
         self.load_label.setToolTip(str(path))
+        if self.on_change is not None:
+            self.on_change()
 
     def set_cursor_position(self, position) -> None:
         """Show the world coordinates under the cursor (helps place boxes exactly)."""

@@ -39,7 +39,7 @@ from ..labeling_strategies import (
 from ..model.point_cloud import PointCloud
 from .settings_dialog import SettingsDialog  # type: ignore
 from .startup.dialog import StartupDialog
-from .status_manager import StatusManager
+from .status_manager import StatusManager, shorten_filename
 from .viewer import GLWidget
 
 if TYPE_CHECKING:
@@ -196,6 +196,7 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
         # STATUS BAR
         self.status_bar: QtWidgets.QStatusBar
         self.status_manager = StatusManager(self.status_bar)
+        self.status_manager.on_change = lambda: self.update_session_panel()
 
         # CENTRAL WIDGET
         self.gl_widget: GLWidget
@@ -240,6 +241,16 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
         self.current_class_dropdown: QtWidgets.QComboBox
         self.next_class_title: QtWidgets.QLabel
         self.combo_next_class: QtWidgets.QComboBox
+
+        # right panel: frame / saving / activity card
+        self.frame_session: QtWidgets.QFrame
+        self.session_title: QtWidgets.QLabel
+        self.session_frame_label: QtWidgets.QLabel
+        self.session_save_label: QtWidgets.QLabel
+        self.session_recent_label: QtWidgets.QLabel
+        self.session_predict_label: QtWidgets.QLabel
+        self.button_show_activity_log: QtWidgets.QPushButton
+        self.button_prediction_settings: QtWidgets.QPushButton
         self.button_deselect_label: QtWidgets.QPushButton
         self.button_delete_label: QtWidgets.QPushButton
         self.button_assign_label: QtWidgets.QPushButton
@@ -308,6 +319,7 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
         self.controller.startup(self)
         self.populate_next_class_dropdown()
         self.connect_persistence_signals()
+        self.update_session_panel()
 
         # Start event cycle
         self.timer = QtCore.QTimer(self)
@@ -378,6 +390,10 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
             self.controller.bbox_controller.set_classname
         )
         self.combo_next_class.currentIndexChanged.connect(self.change_next_class)
+        self.button_show_activity_log.clicked.connect(
+            lambda: self.controller.cmd_show_save_log()
+        )
+        self.button_prediction_settings.clicked.connect(self.show_prediction_settings)
         self.button_deselect_label.clicked.connect(
             self.controller.bbox_controller.deselect_bbox
         )
@@ -476,6 +492,9 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
         self.status_manager.save_label.mousePressEvent = (
             lambda _event: self.controller.cmd_show_save_log()
         )
+        self.status_manager.load_label.mousePressEvent = (
+            lambda _event: self.controller.cmd_show_save_log()
+        )
 
         # ASSIST
         self.act_preannotate_frame.triggered.connect(
@@ -552,6 +571,63 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
         parameter = self.combo_step_parameter.currentData()
         if parameter:
             self.controller.step_parameter(parameter, direction)
+
+    # SESSION PANEL (frame / save state / recent activity / prediction)
+
+    def update_session_panel(self) -> None:
+        """Refresh the card in the right panel. Cheap: called often."""
+        controller = self.controller
+        pcd_path = getattr(controller.pcd_manager, "pcd_path", None)
+        if pcd_path is None:
+            self.session_frame_label.setText(self.tr("— no point cloud loaded"))
+        else:
+            total = len(getattr(controller.pcd_manager, "pcds", []) or [])
+            index = getattr(controller.pcd_manager, "current_id", 0) + 1
+            short = shorten_filename(pcd_path, keep=13)
+            self.session_frame_label.setText(
+                self.tr("Frame %s/%s · <b>%s</b>") % (index, total, short)
+            )
+            self.session_frame_label.setToolTip(str(pcd_path))
+
+        state = self.status_manager.current_save_state()
+        style = {
+            "saved": "color: #1a7f37;",
+            "dirty": "color: #c07000;",
+            "failed": "color: #c0392b;",
+            "unchanged": "color: #888;",
+        }.get(state, "color: #888;")
+        self.session_save_label.setStyleSheet(style)
+        # the panel already lists the times in "recent", so keep this line short
+        save_text = self.status_manager.save_label.text()
+        saved_state = self.status_manager.current_save_state()
+        if saved_state == "saved":
+            save_text = self.tr("✓ saved · %s") % shorten_filename(
+                getattr(controller, "_last_saved_path", ""), keep=13
+            )
+        self.session_save_label.setText(save_text)
+        self.session_save_label.setToolTip(self.status_manager.save_label.toolTip())
+
+        entries = list(getattr(controller, "activity_log", []))[-2:]
+        lines = []
+        for timestamp, kind, path, ok, _message in reversed(entries):
+            import datetime
+
+            when = datetime.datetime.fromtimestamp(timestamp).strftime("%H:%M")
+            name = shorten_filename(path, keep=13)
+            verb = self.tr("loaded") if kind == "load" else self.tr("saved")
+            lines.append(f"{when} {verb} {name}")
+        self.session_recent_label.setText(
+            self.tr("Recent:") + ("<br/>" + "<br/>".join(lines) if lines else " —")
+        )
+        if lines:
+            self.session_recent_label.setToolTip("\n".join(str(e[2]) for e in entries))
+
+        self.session_predict_label.setText(controller.prediction_summary())
+
+    def show_prediction_settings(self) -> None:
+        from .prediction_dialog import PredictionSettingsDialog
+
+        PredictionSettingsDialog(self, self.controller).exec_()
 
     def connect_persistence_signals(self) -> None:
         """Connect the option checkboxes once the controller is functional."""

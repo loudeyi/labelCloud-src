@@ -9,12 +9,20 @@ from PyQt5.QtCore import Qt as Keys
 
 from ..definitions import BBOX_SIDES, Colors, Context, LabelingMode
 from ..io.labels.config import LabelConfig
+from ..view.status_manager import shorten_filename
 from ..utils import oglhelper
 from ..view.gui import GUI
 from .alignmode import AlignMode
 from .bbox_controller import BoundingBoxController
 from .config_manager import config
 from .keymap import KeyMap
+from .prediction import (
+    DEFAULT_MIN_POINTS,
+    DEFAULT_RATIO,
+    DEFAULT_SENSITIVITY,
+    PointHistory,
+    decide,
+)
 from .undo import BBoxState
 from .drawing_manager import DrawingManager
 from .pcd_manager import PointCloudManger
@@ -77,6 +85,8 @@ class Controller:
         self.save_log = self.activity_log
         self.SAVE_LOG_LIMIT = 200
         self._last_save_state = "unknown"
+        self._last_saved_at = ""
+        self._last_saved_path = ""
 
         # Background pre-annotation (offline pole/wire tool)
         self.preannotate_worker = None
@@ -174,7 +184,8 @@ class Controller:
                 count = int(bbox.is_inside(pointcloud.points).sum())
             except Exception:  # noqa: BLE001 - prediction must never break loading
                 count = 0
-            sources.append((BBoxState.from_bbox(bbox), count))
+            state = BBoxState.from_bbox(bbox)
+            sources.append((state, count, PointHistory.from_bbox(bbox)))
         return sources
 
     def predict_into_current_frame(self, sources, previous_bboxes) -> int:
@@ -226,36 +237,75 @@ class Controller:
             return [], len(sources)
         points = pointcloud.points
 
-        min_points = config.getint("LABEL", "predict_min_points", fallback=5)
-        ratio = config.getfloat("LABEL", "predict_min_point_ratio", fallback=0.35)
+        sources = [
+            (entry[0], entry[1], entry[2]) if len(entry) == 3
+            else (entry[0], entry[1], PointHistory())
+            for entry in sources
+        ]
+        min_points = config.getint("LABEL", "predict_min_points", fallback=DEFAULT_MIN_POINTS)
+        ratio = config.getfloat("LABEL", "predict_min_point_ratio", fallback=DEFAULT_RATIO)
+        sensitivity = config.getfloat(
+            "LABEL", "predict_sensitivity", fallback=DEFAULT_SENSITIVITY
+        )
+        adaptive = config.getboolean("LABEL", "predict_adaptive", fallback=True)
         do_refit = config.getboolean("LABEL", "predict_refit", fallback=True)
         as_candidates = config.getboolean("LABEL", "predict_as_candidates", fallback=True)
 
         predicted, dropped = [], 0
-        for state, previous_count in sources:
+        for state, previous_count, history in sources:
             bbox = state.to_bbox()
             try:
                 count = int(bbox.is_inside(points).sum())
             except Exception:  # noqa: BLE001
                 count = 0
-            if count < min_points or count < ratio * max(previous_count, 1):
+            keep, mode = decide(
+                count, history, ratio, min_points, sensitivity, adaptive
+            )
+            if not keep:
                 logging.info(
-                    "Dropping the prediction of a %s box: %s points left (was %s).",
+                    "Dropping the prediction of a %s box: %s points left "
+                    "(previous frame %s, %s rule).",
                     bbox.get_classname(),
                     count,
                     previous_count,
+                    mode,
                 )
                 dropped += 1
                 continue
+            history.observe(count)
             if do_refit:
                 refitted = assist.refit_box(bbox, points)
                 if refitted is not None:
                     refitted.candidate = as_candidates
+                    history.attach_to(refitted)
                     predicted.append(refitted)
                     continue
             bbox.candidate = as_candidates
+            history.attach_to(bbox)
             predicted.append(bbox)
         return predicted, dropped
+
+    def prediction_summary(self) -> str:
+        """One line describing the prediction state, for the session panel."""
+        if not config.getboolean("LABEL", "predict_next_frame", fallback=False):
+            return QCoreApplication.translate("labelCloud", "Prediction: off")
+        ratio = int(
+            100 * config.getfloat("LABEL", "predict_min_point_ratio", fallback=DEFAULT_RATIO)
+        )
+        adaptive = config.getboolean("LABEL", "predict_adaptive", fallback=True)
+        mode = (
+            QCoreApplication.translate("labelCloud", "adaptive %s%%") % ratio
+            if adaptive
+            else QCoreApplication.translate("labelCloud", "fixed %s%%") % ratio
+        )
+        return QCoreApplication.translate("labelCloud", "Prediction: on · %s") % mode
+
+    def refresh_prediction_state(self) -> None:
+        """Update anything that shows the prediction state."""
+        view = getattr(self, "view", None)
+        if view is None:
+            return
+        view.update_session_panel()
 
     def toggle_predict_next_frame(self, enabled: Optional[bool] = None) -> bool:
         """Turn the next-frame prediction on or off and persist it."""
@@ -365,7 +415,7 @@ class Controller:
         import time as _time
 
         path = str(path)
-        name = path.replace("\\", "/").rsplit("/", 1)[-1]
+        name = shorten_filename(path)
         if kind == "load":
             self.activity_log.append((_time.time(), "load", path, True, ""))
             del self.activity_log[: max(0, len(self.activity_log) - self.SAVE_LOG_LIMIT)]
@@ -384,7 +434,9 @@ class Controller:
         short = name if path not in ("", "?") else path
         if ok:
             stamp = _time.strftime("%H:%M:%S")
+            self._last_saved_at = stamp
             self._last_saved_path = path
+            self._last_save_state = "saved"
             self.view.status_manager.set_save_state(
                 "saved", f"{stamp}  {short}", tooltip=path
             )
@@ -412,14 +464,19 @@ class Controller:
             exists = path.is_file()
         except OSError:
             exists = False
-        short = "/".join(path.parts[-2:])
+        short = shorten_filename(path, keep=18)
         if exists:
             if self._last_save_state != "saved":
-                self.view.status_manager.set_save_state("saved", short, tooltip=str(path))
+                detail = "  ".join(
+                    part for part in (getattr(self, "_last_saved_at", ""), short) if part
+                )
+                self.view.status_manager.set_save_state(
+                    "saved", detail, tooltip=str(path)
+                )
         elif self._last_save_state != "unchanged":
             self.view.status_manager.set_save_state(
                 "unchanged",
-                self.tr_short_path(short),
+                short,
                 tooltip=QCoreApplication.translate(
                     "labelCloud",
                     "This frame was not edited, so nothing is written to %s.",
@@ -427,10 +484,6 @@ class Controller:
                 % path,
             )
         self._last_save_state = "saved" if exists else "unchanged"
-
-    @staticmethod
-    def tr_short_path(short: str) -> str:
-        return short
 
     def cmd_toggle_predict_next_frame(self, factor: float = 1.0) -> None:
         self.toggle_predict_next_frame()
