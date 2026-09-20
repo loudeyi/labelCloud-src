@@ -771,6 +771,30 @@ out["jumped_to_candidate"] = control.get_active_bbox().candidate
 out["rejected"] = control.reject_all_candidates()
 out["boxes_after_reject"] = len(control.bboxes)
 
+# --- F-11b: group selection and group operations ---
+control.set_bboxes([])
+group = []
+for index in range(3):
+    member = BBox(float(index) * 10.0, 0.0, 0.0, 2.0, 3.0, 4.0)
+    member.set_classname("pole")
+    control.add_bbox(member)
+    group.append(member)
+control.set_active_bbox(0)
+control.toggle_selection(1)
+control.toggle_selection(2)
+out["selection_size"] = control.selection_size()
+out["group_ids"] = control.group_ids()
+control.apply_to_group(lambda: control.translate_along_x(1.0))
+out["group_centres"] = [round(b.center[0], 1) for b in control.bboxes]
+control.toggle_selection(2)
+out["after_deselect"] = control.selection_size()
+control.toggle_selection(2)
+out["group_deleted"] = control.delete_group()
+out["boxes_after_group_delete"] = len(control.bboxes)
+out["selection_cleared"] = control.selection_size()
+control.clear_selection()
+out["single_call_still_works"] = control.apply_to_group(lambda: control.translate_along_x(1.0))
+
 # --- F-11b/F-16b: 180 degree flip ---
 flip = BBox(0.0, 0.0, 0.0, 2.0, 3.0, 4.0)
 flip.set_classname("wire")
@@ -907,6 +931,15 @@ def test_editing_commands():
             and data["rejected"] == 1
             # the pre-existing box plus the one that was just confirmed
             and data["boxes_after_reject"] == 2
+            and data["selection_size"] == 3
+            and data["group_ids"] == [0, 1, 2]
+            and data["group_centres"] == [1.0, 11.0, 21.0]   # all three moved
+            and data["after_deselect"] == 2
+            # the third box is re-selected before the delete, so the group is all three
+            and data["group_deleted"] == 3
+            and data["boxes_after_group_delete"] == 0
+            and data["selection_cleared"] == 0
+            and data["single_call_still_works"] == 1
             and data["flip_180"] == 210.0
             and data["flip_back"] == 30.0
         )

@@ -108,6 +108,9 @@ class BoundingBoxController(object):
         self.undo_suppressed = False
         #: True while the current frame has edits that are not on disk yet.
         self.dirty = False
+        #: Boxes picked for a group operation (Shift+click adds/removes). The
+        #: active box is always part of the group.
+        self.selected_ids: set = set()
 
     # GETTERS
     def has_active_bbox(self) -> bool:
@@ -185,12 +188,14 @@ class BoundingBoxController(object):
 
     def set_bboxes(self, bboxes: List[BBox]) -> None:
         self.bboxes = bboxes
+        self.selected_ids.clear()
         self.dirty = False
         self.history.clear()  # never undo across a frame boundary
         self.deselect_bbox()
         self.update_label_list()
 
     def reset(self) -> None:
+        self.selected_ids.clear()
         self.deselect_bbox()
         self.set_bboxes([])
 
@@ -588,6 +593,85 @@ class BoundingBoxController(object):
             return
         self.bboxes[self.active_bbox_id] = bbox
         self.update_all()
+
+    # MULTI-SELECTION / GROUP OPERATIONS
+
+    def group_ids(self) -> List[int]:
+        """Indices every group operation applies to (selection + active box)."""
+        ids = {
+            bbox_id
+            for bbox_id in self.selected_ids
+            if 0 <= bbox_id < len(self.bboxes)
+        }
+        if self.has_active_bbox():
+            ids.add(self.active_bbox_id)
+        return sorted(ids)
+
+    def is_selected(self, bbox_id: int) -> bool:
+        return bbox_id in self.selected_ids
+
+    def toggle_selection(self, bbox_id: int) -> bool:
+        """Add or remove one box from the group selection.
+
+        The active box is deliberately left alone: it is already part of the group
+        (see :meth:`group_ids`), so moving it here would silently drop it from the
+        group the moment a second box is picked.
+        """
+        if not (0 <= bbox_id < len(self.bboxes)):
+            return False
+        if bbox_id in self.selected_ids:
+            self.selected_ids.discard(bbox_id)
+        else:
+            self.selected_ids.add(bbox_id)
+        self.update_label_list()
+        return True
+
+    def clear_selection(self) -> None:
+        self.selected_ids.clear()
+        self.update_label_list()
+
+    def selection_size(self) -> int:
+        return len(self.group_ids())
+
+    def apply_to_group(self, function) -> int:
+        """Run a box mutator on every selected box, keeping the active box.
+
+        The mutators all work on the *active* box, so the trick is to walk the
+        group, make each member active in turn and restore the original selection
+        afterwards. Undo entries coalesce, so one Ctrl+Z undoes the whole group.
+        """
+        ids = self.group_ids()
+        if len(ids) <= 1:
+            function()
+            return 1
+        previous_active = self.active_bbox_id
+        applied = 0
+        for bbox_id in ids:
+            self.active_bbox_id = bbox_id
+            function()
+            applied += 1
+        self.active_bbox_id = previous_active
+        self.update_all()
+        return applied
+
+    def delete_group(self) -> int:
+        """Delete every selected box (falls back to the active one)."""
+        ids = self.group_ids()
+        if not ids:
+            return 0
+        before = self.history_capture("Delete bounding boxes")
+        for bbox_id in sorted(ids, reverse=True):
+            if 0 <= bbox_id < len(self.bboxes):
+                del self.bboxes[bbox_id]
+        self.selected_ids.clear()
+        self.active_bbox_id = min(ids[0], len(self.bboxes) - 1) if self.bboxes else -1
+        if self.active_bbox_id < 0:
+            self.deselect_bbox()
+        else:
+            self.update_all()
+        self.dirty = True
+        self.history.record(before, "Delete bounding boxes")
+        return len(ids)
 
     # PRE-ANNOTATION CANDIDATES
 

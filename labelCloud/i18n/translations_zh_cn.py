@@ -313,6 +313,11 @@ TRANSLATIONS.update({
 })
 
 TRANSLATIONS.update({
+    # group selection (F-11b)
+    "Group selection: %s boxes.": "已选中 %s 个检测框（成组操作）。",
+    "Changed %s boxes.": "已同时修改 %s 个检测框。",
+    "Deleted %s boxes.": "已删除 %s 个检测框。",
+    "Cleared the group selection.": "已清空成组选择。",
     # assist menu + pre-annotation queue (phase 2)
     "Pre-annotate This Frame [Ctrl+Shift+G]": "自动预标注本帧 [Ctrl+Shift+G]",
     "Confirm Proposal [Enter]": "确认候选框 [Enter]",

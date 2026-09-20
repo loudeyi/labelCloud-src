@@ -295,6 +295,29 @@ class Controller:
                 self.view.gl_widget.get_world_coords(a0.x(), a0.y(), correction=False)
             )
 
+        elif (a0.buttons() & Keys.LeftButton) and (
+            a0.modifiers() & Keys.ShiftModifier
+        ):
+            # Shift+click builds a group: several boxes can be moved/rotated/
+            # deleted together instead of one at a time
+            hit = oglhelper.get_intersected_bboxes(
+                a0.x(),
+                a0.y(),
+                self.bbox_controller.bboxes,
+                self.view.gl_widget.modelview,
+                self.view.gl_widget.projection,
+            )
+            if hit is not None:
+                self.bbox_controller.toggle_selection(int(hit))
+                size = self.bbox_controller.selection_size()
+                self.view.status_manager.set_message(
+                    QCoreApplication.translate(
+                        "labelCloud", "Group selection: %s boxes."
+                    )
+                    % size
+                )
+                return
+
         elif a0.buttons() & Keys.MiddleButton:
             # middle drag rotates around z: the missing "grab the box" gesture
             if self.bbox_controller.has_active_bbox():
@@ -583,6 +606,14 @@ class Controller:
     def cmd_save(self, factor: float = 1.0) -> None:
         self.save()
 
+    def _group_call(self, function) -> None:
+        """Apply a box operation to the whole selection when there is one."""
+        applied = self.bbox_controller.apply_to_group(function)
+        if applied > 1:
+            self.view.status_manager.set_message(
+                QCoreApplication.translate("labelCloud", "Changed %s boxes.") % applied
+            )
+
     def _translation_step(self, factor: float) -> float:
         return config.getfloat("LABEL", "std_translation") * factor
 
@@ -593,22 +624,40 @@ class Controller:
         return config.getfloat("LABEL", "std_scaling") * factor
 
     def cmd_translate_backward(self, factor: float = 1.0) -> None:
-        self.bbox_controller.translate_along_y(self._translation_step(factor))
+        self._group_call(
+            lambda: self.bbox_controller.translate_along_y(self._translation_step(factor))
+        )
 
     def cmd_translate_forward(self, factor: float = 1.0) -> None:
-        self.bbox_controller.translate_along_y(self._translation_step(factor), forward=True)
+        self._group_call(
+            lambda: self.bbox_controller.translate_along_y(
+                self._translation_step(factor), forward=True
+            )
+        )
 
     def cmd_translate_left(self, factor: float = 1.0) -> None:
-        self.bbox_controller.translate_along_x(self._translation_step(factor), left=True)
+        self._group_call(
+            lambda: self.bbox_controller.translate_along_x(
+                self._translation_step(factor), left=True
+            )
+        )
 
     def cmd_translate_right(self, factor: float = 1.0) -> None:
-        self.bbox_controller.translate_along_x(self._translation_step(factor))
+        self._group_call(
+            lambda: self.bbox_controller.translate_along_x(self._translation_step(factor))
+        )
 
     def cmd_translate_up(self, factor: float = 1.0) -> None:
-        self.bbox_controller.translate_along_z(self._translation_step(factor))
+        self._group_call(
+            lambda: self.bbox_controller.translate_along_z(self._translation_step(factor))
+        )
 
     def cmd_translate_down(self, factor: float = 1.0) -> None:
-        self.bbox_controller.translate_along_z(self._translation_step(factor), down=True)
+        self._group_call(
+            lambda: self.bbox_controller.translate_along_z(
+                self._translation_step(factor), down=True
+            )
+        )
 
     def cmd_translate_local_x(self, factor: float = 1.0) -> None:
         self.bbox_controller.translate_local("x", factor=factor)
@@ -623,10 +672,16 @@ class Controller:
         self.bbox_controller.translate_local("y", negative=True, factor=factor)
 
     def cmd_rotate_z_ccw(self, factor: float = 1.0) -> None:
-        self.bbox_controller.rotate_around_z(self._rotation_step(factor))
+        self._group_call(
+            lambda: self.bbox_controller.rotate_around_z(self._rotation_step(factor))
+        )
 
     def cmd_rotate_z_cw(self, factor: float = 1.0) -> None:
-        self.bbox_controller.rotate_around_z(self._rotation_step(factor), clockwise=True)
+        self._group_call(
+            lambda: self.bbox_controller.rotate_around_z(
+                self._rotation_step(factor), clockwise=True
+            )
+        )
 
     def cmd_rotate_y_ccw(self, factor: float = 1.0) -> None:
         self.bbox_controller.rotate_around_y(self._rotation_step(factor))
@@ -665,16 +720,27 @@ class Controller:
         self.select_relative_bbox(1)
 
     def cmd_class_prev(self, factor: float = 1.0) -> None:
-        self.select_relative_class(-1)
+        self._group_call(lambda: self.select_relative_class(-1))
 
     def cmd_class_next(self, factor: float = 1.0) -> None:
-        self.select_relative_class(1)
+        self._group_call(lambda: self.select_relative_class(1))
 
     def cmd_delete_bbox(self, factor: float = 1.0) -> None:
-        self.bbox_controller.delete_current_bbox()
+        if self.bbox_controller.selection_size() > 1:
+            deleted = self.bbox_controller.delete_group()
+            self.view.status_manager.set_message(
+                QCoreApplication.translate("labelCloud", "Deleted %s boxes.") % deleted
+            )
+        else:
+            self.bbox_controller.delete_current_bbox()
 
     def cmd_escape(self, factor: float = 1.0) -> None:
-        if self.drawing_mode.is_active():
+        if self.bbox_controller.selected_ids:
+            self.bbox_controller.clear_selection()
+            self.view.status_manager.set_message(
+                QCoreApplication.translate("labelCloud", "Cleared the group selection.")
+            )
+        elif self.drawing_mode.is_active():
             self.drawing_mode.reset()
             logging.info("Resetted drawn points!")
         elif self.align_mode.is_active:
@@ -909,13 +975,17 @@ class Controller:
         self.bbox_controller.select_relative_candidate(-1)
 
     def cmd_flip_180(self, factor: float = 1.0) -> None:
-        """Flip the active box by 180 degrees (heading is often ambiguous)."""
-        bbox = self.bbox_controller.get_active_bbox()
-        if bbox is None:
-            return
-        self.bbox_controller.update_rotation(
-            "rot_z", (bbox.get_z_rotation() + 180.0) % 360.0
-        )
+        """Flip the box by 180 degrees (heading is often ambiguous)."""
+
+        def flip() -> None:
+            bbox = self.bbox_controller.get_active_bbox()
+            if bbox is None:
+                return
+            self.bbox_controller.update_rotation(
+                "rot_z", (bbox.get_z_rotation() + 180.0) % 360.0
+            )
+
+        self._group_call(flip)
         self.view.update_bbox_stats(self.bbox_controller.get_active_bbox())
 
     def cmd_show_statistics(self, factor: float = 1.0) -> None:

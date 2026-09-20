@@ -24,6 +24,7 @@ fork addresses each of them:
 | Boxes have to be corrected one at a time, with no way back | **Undo/redo**, **copy/paste/duplicate**, **local-axis nudging**, **mouse dragging**, a **± parameter stepper** |
 | Automatic pre-labels arrive as a whole directory, then have to be deleted one by one | **Proposal review queue**: pre-annotate the current frame (`Ctrl+Shift+G`), then `Enter` to confirm and `Ctrl+→` to jump to the next |
 | The same pole is re-labelled in every frame of a 5–10 Hz sequence | **Clipboard that survives frame changes**, box templates, and the groundwork for keyframe interpolation |
+| Several boxes often need the same correction | **Group editing**: `Shift`+click adds boxes to a group, then every move/rotate/scale/class/delete/flip applies to all of them at once (`Esc` clears the group) |
 
 The interface is available in **English and Simplified Chinese** (`Settings → Language`), switchable
 without restarting.
@@ -229,7 +230,10 @@ example `copy_box = Ctrl+Shift+C`. `F1` shows the same table inside the applicat
 <!-- END SHORTCUTS -->
 
 Mouse: drag the box body to move it, drag a hovered face to resize it, middle-drag to rotate
-around z, double-click a box to select it. `Ctrl` + mouse keeps the original labelCloud behaviour.
+around z, double-click a box to select it, **`Shift`+click to add or remove a box from the group
+selection** (the status bar shows the group size). With more than one box selected, every movement,
+rotation, scaling, class, delete and flip command acts on the whole group. `Ctrl` + mouse keeps the
+original labelCloud behaviour.
 
 ## Configuration
 
@@ -300,8 +304,9 @@ Adding a translatable string: wrap it in `self.tr(...)` (or
   a pole is wrapped in vegetation (where geometric recall drops) are the case a segmentation model
   would help with — point-wise segmentation is the natural next step.
 * In-app pre-annotation is CPU-only, one frame at a time.
-* Still missing compared to an ideal tool: multi-box marquee selection with group operations, and
-  keyframe interpolation across frames (both designed, not yet implemented).
+* Still missing compared to an ideal tool: rubber-band marquee selection (group editing itself is
+  implemented, via `Shift`+click) and keyframe interpolation across frames (designed, not yet
+  implemented).
 
 ## Credits and license
 
