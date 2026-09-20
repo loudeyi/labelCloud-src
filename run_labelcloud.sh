@@ -18,7 +18,8 @@ set -euo pipefail
 VENV=/home/tyy/DSH-WS/labelcloud-hzh
 PY="$VENV/bin/python"
 DATASETS_ROOT=/home/tyy/DSH-WS/datasets_y40
-WORKDIR=/home/tyy/DSH-WS/labelcloud-work
+# 工作目录（可用环境变量覆盖，测试时便于隔离）
+WORKDIR="${LABELCLOUD_WORKDIR:-/home/tyy/DSH-WS/labelcloud-work}"
 
 DEFAULT_DATASET="2026_04131(未标)"
 DEFAULT_LABELS="labels_lc"
@@ -99,11 +100,28 @@ JSON
   echo "已生成类别配置: $CLASSES"
 fi
 
-# 备份旧配置，然后写一份路径为绝对路径的新配置
-if [ -f config.ini ]; then
-  cp -f config.ini "config.ini.bak"
+# 只在"还没有配置"或"换数据集了"的时候重写 config.ini —— 否则每次启动都会把你
+# 改过的语言 / 快捷键 / 自动保存设置冲掉。要强制重写：FORCE_CONFIG=1
+NEED_CONFIG=0
+if [ ! -f config.ini ]; then
+  NEED_CONFIG=1
+elif ! grep -qF "pointcloud_folder = $PCD_DIR" config.ini; then
+  NEED_CONFIG=1
+elif ! grep -qF "label_folder = $LABEL_DIR" config.ini; then
+  NEED_CONFIG=1
 fi
-cat > config.ini <<INI
+if [ "${FORCE_CONFIG:-0}" = "1" ]; then
+  NEED_CONFIG=1
+fi
+
+if [ "$NEED_CONFIG" = "0" ]; then
+  echo "沿用已有 config.ini（数据集未变；要重写用 FORCE_CONFIG=1）"
+else
+  # 备份旧配置，然后写一份路径为绝对路径的新配置
+  if [ -f config.ini ]; then
+    cp -f config.ini "config.ini.bak"
+  fi
+  cat > config.ini <<INI
 [FILE]
 ; source of point clouds
 pointcloud_folder = $PCD_DIR
@@ -118,7 +136,8 @@ segmentation_folder = $WORKDIR/segmentation/
 ; 2d image folder [optional]
 image_folder = $PCD_DIR
 ; skip the startup dialog and use the class definition file as it is
-skip_startup_dialog = False
+; (set to False to get the class/format dialog back)
+skip_startup_dialog = True
 
 [POINTCLOUD]
 ; drawing size for points in point cloud
@@ -168,6 +187,8 @@ classes = pole,wire
 pole_profile = recall
 
 [USER_INTERFACE]
+; interface language: system (follow the OS locale), en, or zh_CN
+language = system
 ; only allow z-rotation of bounding boxes. set false to also label x- & y-rotation
 z_rotation_only = True
 ; visualizes the pointcloud floor (x-y-plane) as a grid
@@ -188,6 +209,7 @@ show_2d_image = False
 ; delete the bounding box after assigning the label to the points [optional]
 delete_box_after_assign = True
 INI
+fi
 
 echo "工作目录 : $WORKDIR"
 echo "点云目录 : $PCD_DIR"

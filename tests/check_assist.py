@@ -1265,6 +1265,53 @@ def test_readme_shortcuts_match_keymap():
     )
 
 
+def test_launcher_preserves_user_config():
+    """The launcher must not overwrite settings the user changed by hand.
+
+    It regenerates config.ini only when the file is missing or the dataset
+    changed; otherwise every start would reset the language, shortcuts and
+    autosave interval.
+    """
+    launcher = REPO / "run_labelcloud.sh"
+    if not launcher.is_file():
+        check("launcher preserves user config", False, "run_labelcloud.sh missing")
+        return
+    with tempfile.TemporaryDirectory() as tmp:
+        workdir = Path(tmp) / "work"
+        env = {**os.environ, "LABELCLOUD_WORKDIR": str(workdir), "DRY_RUN": "1"}
+        dataset = str(REPO.parent / "datasets_y40" / "2026_04131(未标)")
+        first = subprocess.run(
+            ["bash", str(launcher), dataset, "labels_lc"],
+            capture_output=True, text=True, env=env,
+        )
+        config = workdir / "config.ini"
+        config_written = config.is_file()
+        text = config.read_text() if config_written else ""
+        text = text.replace("language = system", "language = zh_CN")
+        text += "\n[SHORTCUTS]\ncopy_box = Ctrl+Shift+C\n"
+        config.write_text(text)
+
+        second = subprocess.run(
+            ["bash", str(launcher)], capture_output=True, text=True, env=env
+        )
+        after = config.read_text() if config.is_file() else ""
+        ok = (
+            first.returncode == 0
+            and config_written
+            and second.returncode == 0
+            and "language = zh_CN" in after
+            and "copy_box = Ctrl+Shift+C" in after
+            and "skip_startup_dialog = True" in after
+            and "pointcloud_folder" in after
+        )
+        check(
+            "launcher writes config once and then preserves manual edits",
+            ok,
+            f"rc={first.returncode}/{second.returncode} written={config_written} "
+            f"stderr={second.stderr.strip()[:120]}",
+        )
+
+
 if __name__ == "__main__":
     print(f"python: {PYTHON}")
     print(f"repo:   {REPO}\n")
@@ -1289,6 +1336,7 @@ if __name__ == "__main__":
     test_fit_refit_snap()
     test_proposals_and_statistics()
     test_readme_shortcuts_match_keymap()
+    test_launcher_preserves_user_config()
 
     failed = [name for name, ok, _ in RESULTS if not ok]
     print(f"\n{len(RESULTS) - len(failed)}/{len(RESULTS)} checks passed")
