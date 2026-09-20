@@ -10,13 +10,16 @@ dist/
 .venv/
 venv/
 
-# labelCloud runtime artefacts (created in whatever directory it is launched from)
-config.ini
-pointclouds/
-labels/
-calib/
-.labels/
-*.bak/
+# labelCloud runtime artefacts — only at the repository root, i.e. the directory
+# labelCloud is launched from. Anchoring with a leading slash keeps patterns like
+# `labels/` from also ignoring the source package `labelCloud/io/labels/`.
+/config.ini
+/pointclouds/
+/labels/
+/calib/
+/segmentation/
+/config.ini.bak
+/.bak/
 
 # Editors / OS
 .vscode/
