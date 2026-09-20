@@ -710,6 +710,47 @@ out["clipboard_survives"] = control.clipboard is not None
 out["paste_into_next_frame"] = control.paste_bbox()
 out["boxes_in_next_frame"] = len(control.bboxes)
 
+# --- a drag gesture collapses into a single undo entry ---
+control.begin_drag("Move bounding box")
+for step in range(5):
+    control.set_center(float(step), 0.0, 0.0)
+control.end_drag()
+out["center_after_drag"] = control.get_active_bbox().center[0]
+control.undo()
+out["center_after_drag_undo"] = control.get_active_bbox().center[0]
+out["boxes_still_one"] = len(control.bboxes) == 1
+
+# --- face dragging (and the wheel) respects the dimension lock ---
+locked_box = control.get_active_bbox()
+locked_box.locked = True
+dims_before = locked_box.get_dimensions()
+control.resize_side("right", 1.0)
+out["resize_blocked_when_locked"] = control.get_active_bbox().get_dimensions() == dims_before
+control.get_active_bbox().locked = False
+control.resize_side("right", 1.0)
+out["resize_works_when_unlocked"] = (
+    round(control.get_active_bbox().get_dimensions()[0], 3) == round(dims_before[0] + 1.0, 3)
+)
+
+# --- the ± stepper obeys the tilt permission and edits single parameters ---
+control.set_bboxes([])
+stepped = BBox(0.0, 0.0, 0.0, 1.0, 1.0, 1.0)
+stepped.set_classname("pole")
+control.add_bbox(stepped)
+control.nudge_rotation("rot_x", 5.0)               # pole: tilt not allowed
+out["nudge_rx_blocked_for_pole"] = control.get_active_bbox().get_x_rotation()
+control.nudge_position("pos_z", 2.0)
+out["nudge_pos_z"] = control.get_active_bbox().center[2]
+control.nudge_dimension("length", 0.5)
+out["nudge_length"] = round(control.get_active_bbox().get_dimensions()[0], 3)
+wire_box = BBox(0.0, 0.0, 0.0, 2.5, 12.0, 2.0)
+wire_box.set_classname("wire")
+control.add_bbox(wire_box)
+control.nudge_rotation("rot_x", 5.0)               # wire: tilt allowed
+out["nudge_rx_allowed_for_wire"] = control.get_active_bbox().get_x_rotation()
+control.undo()
+out["nudge_undo_removes_tilt"] = control.get_active_bbox().get_x_rotation()
+
 # --- local-axis movement follows the box, not the camera ---
 tilted = control.get_active_bbox()
 tilted.set_z_rotation(90.0)
@@ -817,9 +858,113 @@ def test_editing_commands():
             and data["paste_into_next_frame"] is True
             and data["boxes_in_next_frame"] == 1
             and data["local_y_at_90deg"] == [-1.0, 0.0, 0.0]
+            and data["center_after_drag"] == 4.0
+            # the whole gesture is one step: undo returns to the pre-drag centre
+            and data["center_after_drag_undo"] == 2.0
+            and data["boxes_still_one"] is True
+            and data["resize_blocked_when_locked"] is True
+            and data["resize_works_when_unlocked"] is True
+            and data["nudge_rx_blocked_for_pole"] == 0.0
+            and data["nudge_pos_z"] == 2.0
+            and data["nudge_length"] == 1.5
+            and data["nudge_rx_allowed_for_wire"] == 5.0
+            and data["nudge_undo_removes_tilt"] == 0.0
         )
         detail = json.dumps(data)
     check("F-10/11/12/13 undo, lock, template, paste, local axes", ok, detail)
+
+
+SAVE_FAILURE_SNIPPET = """
+import json
+from pathlib import Path
+from labelCloud.control.controller import Controller
+from labelCloud.model.bbox import BBox
+
+class FakeStatus:
+    def set_message(self, *a, **k): pass
+    def update_status(self, *a, **k): pass
+    def set_mode(self, *a, **k): pass
+
+class FakeWidget:
+    def blockSignals(self, *a): pass
+    def setValue(self, v): pass
+
+class FakeDropdown:
+    def setCurrentText(self, *a): pass
+
+class FakeList:
+    def blockSignals(self, *a): pass
+    def clear(self): pass
+    def addItem(self, *a): pass
+    def setCurrentRow(self, *a): pass
+    def currentItem(self): return None
+
+class FakeView:
+    def __init__(self):
+        self.status_manager = FakeStatus()
+        self.current_class_dropdown = FakeDropdown()
+        self.label_list = FakeList()
+        self.dial_bbox_z_rotation = FakeWidget()
+    def update_bbox_stats(self, bbox): pass
+
+class WorkingPcdManager:
+    pcd_path = Path("frame.pcd")
+    pointcloud = None
+    def __init__(self, fail):
+        self.fail = fail
+        self.saved = 0
+    def save_labels_into_file(self, bboxes):
+        if self.fail:
+            raise OSError("read-only file system")
+        self.saved += 1
+
+control = Controller()
+view = FakeView()
+control.view = view
+control.bbox_controller.set_view(view)
+
+box = BBox(0.0, 0.0, 0.0, 1.0, 1.0, 1.0)
+control.bbox_controller.add_bbox(box)
+out = {"dirty_after_edit": control.bbox_controller.dirty}
+
+control.pcd_manager = WorkingPcdManager(fail=True)
+out["failed_save_returns"] = control.save(quiet=True)
+out["dirty_after_failure"] = control.bbox_controller.dirty
+out["error_count"] = control.save_error_count
+
+control.pcd_manager = WorkingPcdManager(fail=False)
+out["ok_save_returns"] = control.save(quiet=True)
+out["dirty_after_success"] = control.bbox_controller.dirty
+out["writes"] = control.pcd_manager.saved
+out["autosave_without_changes"] = control.autosave()   # must not write again
+out["writes_after_autosave"] = control.pcd_manager.saved
+print(json.dumps(out))
+"""
+
+
+def test_save_safety():
+    """A failing save must not raise, must keep the frame dirty and must report."""
+    proc = run_snippet(
+        "save-failure",
+        SAVE_FAILURE_SNIPPET,
+        env={"QT_QPA_PLATFORM": "offscreen"},
+    )
+    ok = proc.returncode == 0
+    detail = proc.stderr.strip().splitlines()[-1] if not ok else ""
+    if ok:
+        data = json.loads(proc.stdout.strip().splitlines()[-1])
+        ok = (
+            data["dirty_after_edit"] is True
+            and data["failed_save_returns"] is False
+            and data["dirty_after_failure"] is True
+            and data["error_count"] == 1
+            and data["ok_save_returns"] is True
+            and data["dirty_after_success"] is False
+            and data["writes"] == 1
+            and data["writes_after_autosave"] == 1
+        )
+        detail = json.dumps(data)
+    check("F-18 failed save is reported, frame stays dirty, autosave is a no-op", ok, detail)
 
 
 if __name__ == "__main__":
@@ -842,6 +987,7 @@ if __name__ == "__main__":
     test_keymap_bindings()
     test_keymap_config_override()
     test_editing_commands()
+    test_save_safety()
 
     failed = [name for name, ok, _ in RESULTS if not ok]
     print(f"\n{len(RESULTS) - len(failed)}/{len(RESULTS)} checks passed")

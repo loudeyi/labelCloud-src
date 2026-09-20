@@ -153,6 +153,8 @@ std_scaling = 0.03
 min_boundingbox_dimension = 0.01
 ; propagate labels to next point cloud if it has no labels yet
 propagate_labels = False
+; save the current frame automatically every N seconds (0 disables it)
+autosave_interval_seconds = 60
 
 [USER_INTERFACE]
 ; only allow z-rotation of bounding boxes. set false to also label x- & y-rotation

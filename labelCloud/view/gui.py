@@ -205,6 +205,9 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
         self.progressbar_pcds: QtWidgets.QProgressBar
 
         # bbox control section
+        self.combo_step_parameter: QtWidgets.QComboBox
+        self.button_step_decrease: QtWidgets.QPushButton
+        self.button_step_increase: QtWidgets.QPushButton
         self.button_bbox_up: QtWidgets.QPushButton
         self.button_bbox_down: QtWidgets.QPushButton
         self.button_bbox_left: QtWidgets.QPushButton
@@ -300,6 +303,15 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
         self.timer.timeout.connect(self.controller.loop_gui)
         self.timer.start()
 
+        # Periodic autosave so a crash cannot cost the current frame's work
+        self.autosave_timer = QtCore.QTimer(self)
+        interval_seconds = config.getint("LABEL", "autosave_interval_seconds", fallback=0)
+        if interval_seconds > 0:
+            self.autosave_timer.setInterval(interval_seconds * 1000)
+            self.autosave_timer.timeout.connect(self.controller.autosave)
+            self.autosave_timer.start()
+            logging.info("Autosave every %s s.", interval_seconds)
+
     # Event connectors
     def connect_events(self) -> None:
         # POINTCLOUD CONTROL
@@ -334,6 +346,16 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
         )
         self.button_bbox_decrease_dimension.clicked.connect(
             lambda: self.controller.bbox_controller.scale(decrease=True)
+        )
+
+        # parameter stepper (±): no keyboard needed to fine-tune a value
+        for _value, _label in self.controller.STEP_PARAMETERS:
+            self.combo_step_parameter.addItem(self.tr(_label), _value)
+        self.button_step_decrease.pressed.connect(
+            lambda: self.step_selected_parameter(-1)
+        )
+        self.button_step_increase.pressed.connect(
+            lambda: self.step_selected_parameter(1)
         )
         self.button_bbox_increase_dimension.clicked.connect(
             lambda: self.controller.bbox_controller.scale()
@@ -438,6 +460,12 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
                 lambda _checked=False, s=setting: self.change_language(s)
             )
 
+    def step_selected_parameter(self, direction: int) -> None:
+        """Step the parameter chosen in the ± combo box."""
+        parameter = self.combo_step_parameter.currentData()
+        if parameter:
+            self.controller.step_parameter(parameter, direction)
+
     def set_checkbox_states(self) -> None:
         self.act_propagate_labels.setChecked(
             config.getboolean("LABEL", "propagate_labels")
@@ -519,6 +547,10 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
         ):
             self.controller.mouse_clicked(event)
             self.update_bbox_stats(self.controller.bbox_controller.get_active_bbox())
+        elif (event.type() == QEvent.MouseButtonRelease) and (
+            event_object == self.gl_widget
+        ):
+            self.controller.mouse_released(event)
         elif (event.type() == QEvent.MouseButtonPress) and (
             event_object != self.current_class_dropdown
         ):
@@ -529,6 +561,7 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
         logging.info("Closing window after saving ...")
         self.controller.save()
+        self.autosave_timer.stop()
         self.timer.stop()
         a0.accept()
 

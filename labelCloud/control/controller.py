@@ -45,9 +45,17 @@ class Controller:
         # Keyboard shortcuts (rebindable through the [SHORTCUTS] config section)
         self.keymap = KeyMap()
 
+        # Mouse dragging of the active box (no modifier needed)
+        self.bbox_drag_active = False
+        self.bbox_drag_offset = (0.0, 0.0, 0.0)
+        self.bbox_rotate_active = False
+
         # Focus view: shows only the points inside the active box
         self.focus_active = False
         self._focus_backup = None
+
+        # Save safety
+        self.save_error_count = 0
 
     def startup(self, view: "GUI") -> None:
         """Sets the view in all controllers and dependent modules; Loads labels from file."""
@@ -103,13 +111,59 @@ class Controller:
         self.bbox_controller.set_bboxes(self.pcd_manager.get_labels_from_file())
 
     # CONTROL METHODS
-    def save(self) -> None:
-        """Saves all bounding boxes and optionally segmentation labels in the label file."""
-        self.pcd_manager.save_labels_into_file(self.bbox_controller.bboxes)
+    def save(self, quiet: bool = False) -> bool:
+        """Save the current frame. Returns True on success.
 
-        if LabelConfig().type == LabelingMode.SEMANTIC_SEGMENTATION:
-            assert self.pcd_manager.pointcloud is not None
-            self.pcd_manager.pointcloud.save_segmentation_labels()
+        A failing save (read-only folder, full disk, another process holding the
+        file) used to raise out of the event loop and take the edits with it. It is
+        now reported loudly and the frame stays marked as unsaved.
+        """
+        try:
+            self.pcd_manager.save_labels_into_file(self.bbox_controller.bboxes)
+
+            if LabelConfig().type == LabelingMode.SEMANTIC_SEGMENTATION:
+                assert self.pcd_manager.pointcloud is not None
+                self.pcd_manager.pointcloud.save_segmentation_labels()
+        except Exception as error:  # noqa: BLE001 - must never kill the event loop
+            logging.error("Could not save the labels: %s", error, exc_info=True)
+            self.save_error_count += 1
+            self.view.status_manager.set_message(
+                QCoreApplication.translate(
+                    "labelCloud", "Saving failed - your edits are NOT on disk (see the log)."
+                )
+            )
+            # the modal dialog is only worth showing for a user-triggered save;
+            # a failing autosave reports through the status bar instead of
+            # interrupting the annotation with a popup every minute
+            if self.save_error_count == 1 and not quiet:
+                from PyQt5.QtWidgets import QMessageBox
+
+                QMessageBox.critical(
+                    self.view,
+                    QCoreApplication.translate("labelCloud", "Saving failed"),
+                    QCoreApplication.translate(
+                        "labelCloud",
+                        "The labels could not be written:\n\n%s\n\n"
+                        "The frame stays marked as unsaved; check the folder "
+                        "permissions and free space.",
+                    )
+                    % error,
+                )
+            return False
+
+        self.bbox_controller.dirty = False
+        if not quiet:
+            logging.info("Saved labels of %s.", self.pcd_manager.pcd_path)
+        return True
+
+    def autosave(self) -> None:
+        """Periodic save of unsaved edits (interval from LABEL/autosave_interval_seconds)."""
+        if not self.bbox_controller.dirty:
+            return
+        if self.save(quiet=True):
+            self.view.status_manager.set_message(
+                QCoreApplication.translate("labelCloud", "Autosaved.")
+            )
 
     def activate_focus(self) -> None:
         """Show only the points inside the active box (helps in dense clouds)."""
@@ -232,8 +286,53 @@ class Controller:
                 self.view.gl_widget.get_world_coords(a0.x(), a0.y(), correction=False)
             )
 
+        elif a0.buttons() & Keys.MiddleButton:
+            # middle drag rotates around z: the missing "grab the box" gesture
+            if self.bbox_controller.has_active_bbox():
+                self.bbox_rotate_active = True
+                self.bbox_controller.begin_drag("Rotate around z")
+
         elif self.selected_side:
             self.side_mode = True
+
+        elif (a0.buttons() & Keys.LeftButton) and (not self.ctrl_pressed):
+            # dragging the box body moves it; dragging anywhere else navigates
+            if self.start_bbox_drag(a0):
+                pass
+
+    def start_bbox_drag(self, a0: QtGui.QMouseEvent) -> bool:
+        """Begin moving the active box when the click landed on it."""
+        if not self.bbox_controller.has_active_bbox():
+            return False
+        active = self.bbox_controller.get_active_bbox()
+        if oglhelper.get_intersected_bboxes(
+            a0.x(),
+            a0.y(),
+            [active],  # type: ignore[list-item]
+            self.view.gl_widget.modelview,
+            self.view.gl_widget.projection,
+        ) is None:
+            return False
+
+        world = self.view.gl_widget.get_world_coords(a0.x(), a0.y(), correction=True)
+        center = active.get_center()  # type: ignore[union-attr]
+        self.bbox_drag_offset = (
+            center[0] - world[0],
+            center[1] - world[1],
+            center[2] - world[2],
+        )
+        self.bbox_drag_active = True
+        self.bbox_controller.begin_drag("Move bounding box")
+        return True
+
+    def mouse_released(self, a0: QtGui.QMouseEvent) -> None:
+        """End any drag gesture started on the bounding box."""
+        if self.bbox_drag_active or self.bbox_rotate_active:
+            self.bbox_controller.end_drag()
+        self.bbox_drag_active = False
+        self.bbox_rotate_active = False
+        self.side_mode = False
+        self.scroll_mode = False
 
     def mouse_double_clicked(self, a0: QtGui.QMouseEvent) -> None:
         """Triggers actions when the user double clicks the mouse."""
@@ -259,6 +358,33 @@ class Controller:
                 self.last_cursor_pos.x() - a0.x()
             ) / 5  # Calculate relative movement from last click position
             dy = (self.last_cursor_pos.y() - a0.y()) / 5
+
+            # --- dragging the active box (no modifier required) ----------------
+            if self.bbox_drag_active and (a0.buttons() & Keys.LeftButton):
+                world = self.view.gl_widget.get_world_coords(
+                    a0.x(), a0.y(), correction=True
+                )
+                self.bbox_controller.set_center(
+                    world[0] + self.bbox_drag_offset[0],
+                    world[1] + self.bbox_drag_offset[1],
+                    world[2] + self.bbox_drag_offset[2],
+                )
+                self.last_cursor_pos = a0.pos()
+                return
+            if self.bbox_rotate_active and (a0.buttons() & Keys.MiddleButton):
+                active = self.bbox_controller.get_active_bbox()
+                if active is not None:
+                    active.set_z_rotation(
+                        active.get_z_rotation() - dx * 5.0
+                    )
+                self.last_cursor_pos = a0.pos()
+                return
+            if self.side_mode and (a0.buttons() & Keys.LeftButton) and self.selected_side:
+                # dragging a hovered face resizes it (the wheel still works too)
+                self.bbox_controller.resize_side(self.selected_side, dy / 20.0)
+                self.last_cursor_pos = a0.pos()
+                return
+
 
             if (
                 self.ctrl_pressed
@@ -300,12 +426,45 @@ class Controller:
         ):
             self.drawing_mode.drawing_strategy.register_scrolling(a0.angleDelta().y())
         elif self.side_mode and self.bbox_controller.has_active_bbox():
-            self.bbox_controller.get_active_bbox().change_side(  # type: ignore
-                self.selected_side, -a0.angleDelta().y() / 4000  # type: ignore
-            )  # ToDo implement method
+            self.bbox_controller.resize_side(
+                self.selected_side, -a0.angleDelta().y() / 4000  # type: ignore[arg-type]
+            )
         else:
             self.pcd_manager.zoom_into(a0.angleDelta().y())
             self.scroll_mode = True
+
+    #: Parameters offered by the ± stepper next to the bounding box panel.
+    STEP_PARAMETERS = (
+        ("pos_x", "X position"),
+        ("pos_y", "Y position"),
+        ("pos_z", "Z position"),
+        ("length", "Length"),
+        ("width", "Width"),
+        ("height", "Height"),
+        ("rot_x", "Rotation X"),
+        ("rot_y", "Rotation Y"),
+        ("rot_z", "Rotation Z"),
+    )
+
+    def step_parameter(self, parameter: str, direction: int = 1, factor: float = 1.0) -> None:
+        """Nudge one bounding box parameter by one configured step."""
+        direction = 1 if direction >= 0 else -1
+        if parameter.startswith("pos_"):
+            self.bbox_controller.nudge_position(
+                parameter, self._translation_step(factor) * direction
+            )
+        elif parameter in ("length", "width", "height"):
+            self.bbox_controller.nudge_dimension(
+                parameter, self._scaling_step(factor) * direction
+            )
+        elif parameter.startswith("rot_"):
+            self.bbox_controller.nudge_rotation(
+                parameter, self._rotation_step(factor) * direction
+            )
+        else:
+            logging.warning("Unknown bounding box parameter '%s'.", parameter)
+            return
+        self.view.update_bbox_stats(self.bbox_controller.get_active_bbox())
 
     # KEY DISPATCH
 

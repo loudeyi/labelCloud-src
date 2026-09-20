@@ -52,10 +52,13 @@ def undoable(description: str, coalesce: Optional[str] = None):
     def decorator(func):
         @wraps(func)
         def wrapper(self, *args, **kwargs):
+            if self.undo_suppressed:
+                return func(self, *args, **kwargs)
             before = self.history_capture(description)
             result = func(self, *args, **kwargs)
             if not before.same_as(self.history_capture("")):
                 self.history.record(before, description, coalesce)
+                self.dirty = True
             return result
 
         return wrapper
@@ -100,6 +103,11 @@ class BoundingBoxController(object):
         #: Copied box, kept across frames on purpose: pasting a pole or wire into
         #: the next frame is the fastest way to label a sequence.
         self.clipboard: Optional[BBoxState] = None
+        #: Set while a mouse drag is running, so the whole drag collapses into a
+        #: single undo step instead of one per mouse-move event.
+        self.undo_suppressed = False
+        #: True while the current frame has edits that are not on disk yet.
+        self.dirty = False
 
     # GETTERS
     def has_active_bbox(self) -> bool:
@@ -177,6 +185,7 @@ class BoundingBoxController(object):
 
     def set_bboxes(self, bboxes: List[BBox]) -> None:
         self.bboxes = bboxes
+        self.dirty = False
         self.history.clear()  # never undo across a frame boundary
         self.deselect_bbox()
         self.update_label_list()
@@ -442,6 +451,7 @@ class BoundingBoxController(object):
         if target is None:
             return False
         self._restore(target)
+        self.dirty = True
         return True
 
     def redo(self) -> bool:
@@ -449,6 +459,7 @@ class BoundingBoxController(object):
         if target is None:
             return False
         self._restore(target)
+        self.dirty = True
         return True
 
     # COPY / PASTE / DUPLICATE
@@ -472,6 +483,7 @@ class BoundingBoxController(object):
         self.update_all()
         self.view.current_class_dropdown.setCurrentText(pasted.get_classname())
         self.history.record(before, "Paste bounding box")
+        self.dirty = True
         return True
 
     @has_active_bbox_decorator
@@ -567,6 +579,76 @@ class BoundingBoxController(object):
 
         bbox.set_x_translation(bbox.center[0] + distance * dx)  # type: ignore[union-attr]
         bbox.set_y_translation(bbox.center[1] + distance * dy)  # type: ignore[union-attr]
+
+    # RELATIVE NUDGES (numeric panel, ± buttons)
+
+    @undoable("Edit position", coalesce="nudge-position")
+    @has_active_bbox_decorator
+    def nudge_position(self, axis: str, delta: float) -> None:
+        bbox = self.get_active_bbox()
+        if axis == "pos_x":
+            bbox.set_x_translation(bbox.center[0] + delta)  # type: ignore[union-attr]
+        elif axis == "pos_y":
+            bbox.set_y_translation(bbox.center[1] + delta)  # type: ignore[union-attr]
+        elif axis == "pos_z":
+            bbox.set_z_translation(bbox.center[2] + delta)  # type: ignore[union-attr]
+
+    @undoable("Edit dimension", coalesce="nudge-dimension")
+    @has_active_bbox_decorator
+    def nudge_dimension(self, dimension: str, delta: float) -> None:
+        if self.is_active_locked():
+            self.warn_dimensions_locked()
+            return
+        current = dict(
+            zip(("length", "width", "height"), self.get_active_bbox().get_dimensions())  # type: ignore[union-attr]
+        )
+        value = current.get(dimension, 0.0) + delta
+        if value <= BBox.MIN_DIMENSION:
+            logging.warning("New dimension is too small.")
+            return
+        current[dimension] = value
+        self.get_active_bbox().set_dimensions(  # type: ignore[union-attr]
+            current["length"], current["width"], current["height"]
+        )
+
+    @undoable("Edit rotation", coalesce="nudge-rotation")
+    @has_active_bbox_decorator
+    def nudge_rotation(self, axis: str, delta: float) -> None:
+        bbox = self.get_active_bbox()
+        if axis == "rot_x":
+            if LabelConfig().is_z_rotation_only(bbox.get_classname()):  # type: ignore[union-attr]
+                logging.warning("Tilting is disabled for this class.")
+                return
+            bbox.set_x_rotation(bbox.get_x_rotation() + delta)  # type: ignore[union-attr]
+        elif axis == "rot_y":
+            if LabelConfig().is_z_rotation_only(bbox.get_classname()):  # type: ignore[union-attr]
+                logging.warning("Tilting is disabled for this class.")
+                return
+            bbox.set_y_rotation(bbox.get_y_rotation() + delta)  # type: ignore[union-attr]
+        elif axis == "rot_z":
+            bbox.set_z_rotation(bbox.get_z_rotation() + delta)  # type: ignore[union-attr]
+
+    # MOUSE DRAG SUPPORT
+
+    def begin_drag(self, description: str) -> None:
+        """Start a drag: one undo step for the whole gesture."""
+        self.history.record(self.history_capture(description), description)
+        self.dirty = True
+        self.undo_suppressed = True
+
+    def end_drag(self) -> None:
+        self.undo_suppressed = False
+
+    @undoable("Resize bounding box", coalesce="scale")
+    @has_active_bbox_decorator
+    def resize_side(self, side: str, amount: float) -> None:
+        """Grow/shrink one side of the active box (side scrolling and face dragging)."""
+        if self.is_active_locked():
+            self.warn_dimensions_locked()
+            return
+        if not side:
+            return
+        self.get_active_bbox().change_side(side, amount)  # type: ignore[union-attr]
 
     def warn_dimensions_locked(self) -> None:
         logging.warning("Dimensions are locked; press Ctrl+L to unlock them.")

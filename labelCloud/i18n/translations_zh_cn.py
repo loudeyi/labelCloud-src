@@ -312,6 +312,41 @@ TRANSLATIONS.update({
     ),
 })
 
+TRANSLATIONS.update({
+    "Saving failed - your edits are NOT on disk (see the log).": (
+        "保存失败——你的修改还没写进磁盘（详见日志）。"
+    ),
+    "Saving failed": "保存失败",
+    "The labels could not be written:\n\n%s\n\n"
+    "The frame stays marked as unsaved; check the folder "
+    "permissions and free space.": (
+        "标注文件写入失败：\n\n%s\n\n当前帧仍标记为未保存，请检查目录权限与磁盘空间。"
+    ),
+    "Autosaved.": "已自动保存。",
+})
+
+#: Parameter names of the ± stepper and the new menu entry.
+TRANSLATIONS.update({
+    "X position": "X 坐标",
+    "Y position": "Y 坐标",
+    "Z position": "Z 坐标",
+    "Length": "长度",
+    "Width": "宽度",
+    "Height": "高度",
+    "Rotation X": "X 轴旋转",
+    "Rotation Y": "Y 轴旋转",
+    "Rotation Z": "Z 轴旋转",
+    "Keyboard Shortcuts ...": "快捷键一览 …",
+    "Shows every keyboard shortcut. [F1]": "显示全部快捷键 [F1]",
+    # symbols are identical in both languages but must be listed so the
+    # "everything is translated" check stays meaningful
+    "−": "−",
+    "+": "+",
+    "Parameter changed by the - / + buttons below.": "下面 − / + 按钮所调整的参数。",
+    "Decrease the selected parameter by one step.": "把所选参数减小一个步长。",
+    "Increase the selected parameter by one step.": "把所选参数增大一个步长。",
+})
+
 #: Strings of the F1 dialog (context ``ShortcutDialog``).
 TRANSLATIONS.update({
     "Keyboard Shortcuts": "快捷键一览",
