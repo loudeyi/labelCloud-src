@@ -1,0 +1,67 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "labelCloud"
+description = "A lightweight tool for labeling 3D bounding boxes in point clouds, with pole/wire semi-automatic annotation assists."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "GPL-3.0-or-later" }
+authors = [{ name = "Christoph Sager" }]
+maintainers = [
+    { name = "hzh fork maintainers" },
+]
+keywords = [
+    "labelCloud",
+    "machine learning",
+    "computer vision",
+    "annotation tool",
+    "labeling",
+    "point clouds",
+    "bounding boxes",
+    "3d object detection",
+    "power line",
+    "pole",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Natural Language :: English",
+    "Natural Language :: Chinese (Simplified)",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Multimedia :: Graphics :: Viewers",
+]
+dependencies = [
+    "numpy<2.0.0,>1.20.0",
+    "open3d",
+    "PyOpenGL",
+    "PyOpenGL-accelerate",
+    "PyQt5>=5.15.7",
+    "scipy>=1.4",
+]
+
+[project.optional-dependencies]
+tests = ["pytest", "pytest-qt"]
+assist = ["scipy>=1.4"]
+
+[project.scripts]
+labelCloud = "labelCloud.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/ch-sa/labelCloud"
+Original = "https://github.com/ch-sa/labelCloud"
+
+[tool.setuptools.dynamic]
+version = { attr = "labelCloud.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["labelCloud*"]
+
+[tool.setuptools.package-data]
+"labelCloud.resources" = ["*.ini", "*.json", "*.pcd", "*.txt", "*.ico", "*.png"]
+"labelCloud.resources.icons" = ["*.svg", "*.txt", "*.ico", "*.png"]
+"labelCloud.resources.interfaces" = ["*.ui"]
+"labelCloud.resources.examples" = ["*.ply", "*.json"]

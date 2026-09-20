@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+
+# labelCloud runtime artefacts (created in whatever directory it is launched from)
+config.ini
+pointclouds/
+labels/
+calib/
+.labels/
+*.bak/
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
