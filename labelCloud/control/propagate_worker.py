@@ -21,6 +21,70 @@ from .prediction import PointHistory
 from .propagate import DEFAULT_MAX_FRAMES, PropagateOutcome, propagate_box
 
 
+class InterpolationWorker(QThread):
+    """Fill the frames between two keyframes in the background."""
+
+    progress = pyqtSignal(int, int, int)
+    finished_ok = pyqtSignal(object)
+    failed = pyqtSignal(str)
+
+    def __init__(self, anchor, target, frames, label_manager, parent=None) -> None:
+        super().__init__(parent)
+        self.anchor = anchor
+        self.target = target
+        self.frames = frames
+        self.label_manager = label_manager
+        self._cancelled = False
+
+    def cancel(self) -> None:
+        self._cancelled = True
+
+    def _read_points(self, path: Path):
+        if self._cancelled:
+            return None
+        try:
+            handler = BasePointCloudHandler.get_handler(path.suffix)
+            points, _colors = handler.read_point_cloud(path=path)
+            return points
+        except Exception as error:  # noqa: BLE001
+            logging.warning("Interpolation could not read %s: %s", path.name, error)
+            return None
+
+    def _read_boxes(self, path: Path) -> List[BBox]:
+        try:
+            return self.label_manager.import_labels(path)
+        except Exception as error:  # noqa: BLE001
+            logging.warning("Interpolation could not read the labels of %s: %s", path.name, error)
+            return []
+
+    def _write_boxes(self, path: Path, boxes: List[BBox]) -> None:
+        self.label_manager.export_labels(path, boxes)
+
+    def run(self) -> None:  # noqa: D102 - QThread entry point
+        from .interpolate import interpolate_between
+
+        try:
+            outcome = interpolate_between(
+                self.anchor,
+                self.target,
+                self.frames,
+                read_points=self._read_points,
+                read_boxes=self._read_boxes,
+                write_boxes=self._write_boxes,
+                refit=config.getboolean("LABEL", "propagate_refit", fallback=True),
+                min_points=config.getint("LABEL", "predict_min_points", fallback=5),
+                progress=lambda index, total, filled: self.progress.emit(
+                    index, total, filled
+                ),
+            )
+            if self._cancelled:
+                outcome.reason = "cancelled"
+            self.finished_ok.emit(outcome)
+        except Exception as error:  # noqa: BLE001
+            logging.error("Interpolation failed: %s", error, exc_info=True)
+            self.failed.emit(str(error))
+
+
 class PropagateWorker(QThread):
     """Follow one box through the frames after the current one."""
 

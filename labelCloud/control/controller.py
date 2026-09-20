@@ -94,6 +94,9 @@ class Controller:
         # Background forward propagation ("label this object to the end")
         self.propagate_worker = None
 
+        # Interpolation anchor: (frame index, box state) of the first keyframe
+        self.interpolation_anchor = None
+
         # Points of the previous frames, drawn dimmed as a viewing aid
         self.ghost_cloud = None
         self._ghost_source_id = None
@@ -1058,6 +1061,8 @@ class Controller:
         "snap_box": "cmd_snap_box",
         "refit_box_settings": "cmd_refit_with_settings",
         "propagate_to_end": "cmd_propagate_to_end",
+        "set_interpolation_anchor": "cmd_set_interpolation_anchor",
+        "interpolate_to_here": "cmd_interpolate_to_here",
         "preannotate_frame": "cmd_preannotate_frame",
         "accept_candidate": "cmd_accept_candidate",
         "next_candidate": "cmd_next_candidate",
@@ -1434,6 +1439,105 @@ class Controller:
     def cmd_refit_with_settings(self, factor: float = 1.0) -> None:
         """Refit without asking (Ctrl+Shift+R) — the settings live in the dialog."""
         self.refit_active_box_with_feedback()
+
+    # KEYFRAME INTERPOLATION
+
+    def cmd_set_interpolation_anchor(self, factor: float = 1.0) -> None:
+        """Remember the active box as the first keyframe."""
+        bbox = self.bbox_controller.get_active_bbox()
+        if bbox is None:
+            self.view.status_manager.set_message(
+                QCoreApplication.translate(
+                    "labelCloud", "Select a box first: it becomes the first keyframe."
+                )
+            )
+            return
+        self.interpolation_anchor = (
+            self.pcd_manager.current_id,
+            BBoxState.from_bbox(bbox),
+        )
+        self.view.status_manager.set_message(
+            QCoreApplication.translate(
+                "labelCloud", "Keyframe 1 set on frame %s (%s)."
+            )
+            % (self.pcd_manager.current_id + 1, bbox.get_classname())
+        )
+        self.view.update_session_panel()
+        logging.info("Interpolation anchor set on frame %s.", self.pcd_manager.current_id)
+
+    def cmd_interpolate_to_here(self, factor: float = 1.0) -> None:
+        """Fill the frames between the anchor keyframe and the current box."""
+        from .propagate_worker import InterpolationWorker
+
+        if self.interpolation_anchor is None:
+            self.view.status_manager.set_message(
+                QCoreApplication.translate(
+                    "labelCloud",
+                    "Set a keyframe first (Ctrl+Shift+I) in the earlier frame.",
+                )
+            )
+            return
+        if self.propagate_worker is not None and self.propagate_worker.isRunning():
+            self.view.status_manager.set_message(
+                QCoreApplication.translate("labelCloud", "A fill job is still running ...")
+            )
+            return
+
+        anchor_index, anchor_state = self.interpolation_anchor
+        target_index = self.pcd_manager.current_id
+        target = self.bbox_controller.get_active_bbox()
+        if target is None:
+            self.view.status_manager.set_message(
+                QCoreApplication.translate(
+                    "labelCloud", "Select the box of the second keyframe in this frame."
+                )
+            )
+            return
+        if target_index <= anchor_index:
+            self.view.status_manager.set_message(
+                QCoreApplication.translate(
+                    "labelCloud", "The second keyframe must be a later frame."
+                )
+            )
+            return
+
+        frames = list(self.pcd_manager.pcds[anchor_index + 1 : target_index])
+        if not frames:
+            self.view.status_manager.set_message(
+                QCoreApplication.translate(
+                    "labelCloud", "The two keyframes are adjacent: nothing to fill."
+                )
+            )
+            return
+
+        worker = InterpolationWorker(
+            anchor_state.to_bbox(),
+            BBoxState.from_bbox(target).to_bbox(),
+            frames,
+            self.pcd_manager.label_manager,
+            self.view,
+        )
+        worker.progress.connect(self.on_propagate_progress)
+        worker.finished_ok.connect(self.on_interpolation_done)
+        worker.failed.connect(self.on_propagate_failed)
+        self.propagate_worker = worker
+        self.view.status_manager.set_message(
+            QCoreApplication.translate(
+                "labelCloud", "Interpolating %s frames between the keyframes ..."
+            )
+            % len(frames)
+        )
+        worker.start()
+
+    def on_interpolation_done(self, outcome) -> None:
+        self.bbox_controller.dirty = True
+        message = QCoreApplication.translate(
+            "labelCloud", "Interpolation: %s"
+        ) % outcome.reason
+        self.view.status_manager.set_message(message)
+        logging.info("Interpolation finished: %s", message)
+        self.refresh_save_state()
+        self.view.update_session_panel()
 
     # PROPAGATE ONE BOX THROUGH THE FOLLOWING FRAMES
 

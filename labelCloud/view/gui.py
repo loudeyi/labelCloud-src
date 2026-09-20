@@ -524,6 +524,12 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
         self.act_propagate_to_end.triggered.connect(
             lambda: self.controller.cmd_propagate_to_end()
         )
+        self.act_set_anchor.triggered.connect(
+            lambda: self.controller.cmd_set_interpolation_anchor()
+        )
+        self.act_interpolate.triggered.connect(
+            lambda: self.controller.cmd_interpolate_to_here()
+        )
         self.act_flip_180.triggered.connect(lambda: self.controller.cmd_flip_180())
         self.act_show_statistics.triggered.connect(
             lambda: self.controller.cmd_show_statistics()
@@ -635,7 +641,17 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
         if lines:
             self.session_recent_label.setToolTip("\n".join(str(e[2]) for e in entries))
 
-        self.session_predict_label.setText(controller.prediction_summary())
+        anchor = getattr(controller, "interpolation_anchor", None)
+        if anchor is None:
+            anchor_text = self.tr("Keyframe: none (Ctrl+Shift+I sets one)")
+        else:
+            anchor_text = self.tr("Keyframe: frame %s · %s") % (
+                anchor[0] + 1,
+                anchor[1].classname,
+            )
+        self.session_predict_label.setText(
+            controller.prediction_summary() + "<br/>" + anchor_text
+        )
 
     def show_refit_settings(self) -> None:
         from .refit_dialog import RefitSettingsDialog

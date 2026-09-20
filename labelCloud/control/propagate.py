@@ -31,8 +31,11 @@ import numpy as np
 from ..model.bbox import BBox
 from .prediction import PointHistory, decide
 
-#: Stop after this many frames even if the object is still visible.
-DEFAULT_MAX_FRAMES = 200
+#: How many frames one "carry forward" press writes. Deliberately short: if the
+#: extrapolation is wrong, a long run would pile up dozens of misplaced boxes, and
+#: five frames is a couple of seconds of manual work to check. The pass still stops
+#: earlier when the object leaves the view.
+DEFAULT_MAX_FRAMES = 5
 #: A frame that already holds a box this close to the propagated one is left alone.
 DUPLICATE_DISTANCE = 0.75
 

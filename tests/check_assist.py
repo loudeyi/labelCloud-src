@@ -2054,6 +2054,128 @@ def test_propagate_to_end():
         detail = json.dumps(data)
     check("carry box forward: follows motion, stops when gone, no duplicates", ok, detail)
 
+INTERPOLATE_SNIPPET = """
+import json
+from pathlib import Path
+import numpy as np
+from labelCloud.control.interpolate import interpolate_between, lerp_box
+from labelCloud.model.bbox import BBox
+
+rng = np.random.default_rng(7)
+out = {}
+
+def blob(cx, cy, n=60, spread=0.6):
+    return np.column_stack([
+        cx + rng.uniform(-spread, spread, n),
+        cy + rng.uniform(-spread, spread, n),
+        rng.uniform(-1.0, 1.0, n),
+    ])
+
+# the object travels 6 m in +y over seven frames and turns from 350 deg to 10 deg,
+# i.e. the two headings straddle north and the short way round is through 0.
+frames = [Path(f"f{i}.pcd") for i in range(7)]
+centres = {i: (0.0, float(i)) for i in range(7)}
+clouds = {frames[i]: blob(0.0, centres[i][1]) for i in range(7)}
+clouds[frames[3]] = np.empty((0, 3))                  # a frame without points
+boxes = {frame: [] for frame in frames}
+
+anchor = BBox(0.0, 0.0, 0.0, 2.6, 4.0, 3.0)
+anchor.set_classname("pole")
+anchor.set_rotations(0.0, 0.0, 350.0)
+target = BBox(0.0, 6.0, 0.0, 2.6, 4.0, 3.0)
+target.set_classname("pole")
+target.set_rotations(0.0, 0.0, 10.0)
+
+# frame 4 already holds this object, so it must not be added twice
+existing = BBox(0.0, 4.0, 0.0, 2.6, 4.0, 3.0)
+existing.set_classname("pole")
+existing.set_rotations(0.0, 0.0, 0.0)
+boxes[frames[4]] = [existing]
+
+outcome = interpolate_between(
+    anchor, target, frames[1:6],
+    read_points=lambda path: clouds[path],
+    read_boxes=lambda path: boxes[path],
+    write_boxes=lambda path, value: boxes.__setitem__(path, value),
+    refit=False,
+    progress=lambda index, total, filled: out.__setitem__("progress_last", (index, total, filled)),
+)
+out["filled"] = outcome.frames_filled
+out["without_points"] = outcome.frames_without_points
+out["already_labelled"] = outcome.frames_already_labelled
+out["written_names"] = [path.name for path in outcome.written]
+out["reason_has_counts"] = "3 of 5" in outcome.reason
+out["positions"] = [round(boxes[frames[i]][0].get_center()[1], 3) for i in (1, 2, 5)]
+out["yaws"] = [round(boxes[frames[i]][0].get_center()[0] * 0 + boxes[frames[i]][0].get_z_rotation(), 2)
+               for i in (1, 2, 5)]
+out["shortest_arc"] = all(yaw % 360.0 < 20.0 or yaw % 360.0 > 340.0 for yaw in out["yaws"])
+out["frame3_empty"] = boxes[frames[3]] == []
+out["frame4_not_duplicated"] = len(boxes[frames[4]]) == 1
+out["class_kept"] = boxes[frames[1]][0].get_classname() == "pole"
+
+# adjacent keyframes and a wrong-direction pair are refused instead of writing junk
+out["adjacent"] = interpolate_between(
+    anchor, target, [],
+    read_points=lambda path: None, read_boxes=lambda path: [],
+    write_boxes=lambda path, value: None,
+).frames_filled
+out["half_way"] = [round(v, 3) for v in lerp_box(anchor, target, 0.5).get_center()]
+out["half_way_yaw"] = round(lerp_box(anchor, target, 0.5).get_z_rotation(), 2)
+
+print(json.dumps(out))
+"""
+
+
+def test_keyframe_interpolation():
+    """Filling the frames between two keyframes moves, turns and checks the points."""
+    classes = {
+        "classes": [
+            {
+                "name": "pole",
+                "id": 1,
+                "color": "#00ff7f",
+                "z_rotation_only": True,
+                "default_dimensions": {"length": 2.6, "width": 4.0, "height": None},
+            }
+        ],
+        "default": 1,
+        "type": "object_detection",
+        "format": "centroid_abs",
+    }
+    with tempfile.TemporaryDirectory() as tmp:
+        cwd = Path(tmp)
+        classes_path = cwd / "_classes.json"
+        classes_path.write_text(json.dumps(classes))
+        (cwd / "config.ini").write_text(BASE_CONFIG.format(cwd=cwd, classes=classes_path))
+        proc = subprocess.run(
+            [PYTHON, "-c", textwrap.dedent(INTERPOLATE_SNIPPET)],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+        )
+    ok = proc.returncode == 0
+    detail = proc.stderr.strip().splitlines()[-1] if not ok else ""
+    if ok:
+        data = json.loads(proc.stdout.strip().splitlines()[-1])
+        ok = (
+            data["filled"] == 3                  # frames 1, 2 and 5
+            and data["written_names"] == ["f1.pcd", "f2.pcd", "f5.pcd"]
+            and data["without_points"] == 1      # frame 3 holds no points
+            and data["already_labelled"] == 1    # frame 4 already had the object
+            and data["reason_has_counts"] is True
+            and data["positions"] == [1.0, 2.0, 5.0]
+            and data["shortest_arc"] is True     # 350 -> 10 turns through 0, not 180
+            and abs(data["half_way_yaw"] - 0.0) < 1e-6
+            and data["half_way"] == [0.0, 3.0, 0.0]
+            and data["frame3_empty"] is True
+            and data["frame4_not_duplicated"] is True
+            and data["class_kept"] is True
+            and data["adjacent"] == 0
+            and data["progress_last"] == [4, 5, 2]   # 5 frames, 2 filled so far
+        )
+        detail = json.dumps(data)
+    check("keyframe interpolation: lerp, shortest arc, skip empty, no duplicates", ok, detail)
+
 
 if __name__ == "__main__":
     print(f"python: {PYTHON}")
@@ -2084,6 +2206,7 @@ if __name__ == "__main__":
     test_next_frame_prediction()
     test_refit_tuning()
     test_propagate_to_end()
+    test_keyframe_interpolation()
 
     failed = [name for name, ok, _ in RESULTS if not ok]
     print(f"\n{len(RESULTS) - len(failed)}/{len(RESULTS)} checks passed")

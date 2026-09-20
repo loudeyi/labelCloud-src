@@ -25,6 +25,7 @@ from ..control.prediction import (
     DEFAULT_RATIO,
     DEFAULT_SENSITIVITY,
 )
+from ..control.propagate import DEFAULT_MAX_FRAMES
 
 SECTION = "LABEL"
 
@@ -120,6 +121,34 @@ class PredictionSettingsDialog(QtWidgets.QDialog):
         points_row.addWidget(self.spin_points)
         layout.addLayout(points_row)
 
+        self.check_over_existing = QtWidgets.QCheckBox(
+            self.tr("Predict even when the frame already has its own labels")
+        )
+        self.check_over_existing.setChecked(
+            config.getboolean(SECTION, "predict_over_existing", fallback=False)
+        )
+        layout.addWidget(self.check_over_existing)
+
+        self.check_motion = QtWidgets.QCheckBox(
+            self.tr("Follow the object's motion (extrapolate from the last frames)")
+        )
+        self.check_motion.setChecked(
+            config.getboolean(SECTION, "predict_use_motion", fallback=True)
+        )
+        layout.addWidget(self.check_motion)
+
+        propagate_row = QtWidgets.QHBoxLayout()
+        propagate_row.addWidget(
+            QtWidgets.QLabel(self.tr("Carry forward writes this many frames:"))
+        )
+        self.spin_propagate = QtWidgets.QSpinBox(self)
+        self.spin_propagate.setRange(1, 100)
+        self.spin_propagate.setValue(
+            config.getint(SECTION, "propagate_max_frames", fallback=DEFAULT_MAX_FRAMES)
+        )
+        propagate_row.addWidget(self.spin_propagate)
+        layout.addLayout(propagate_row)
+
         hint = QtWidgets.QLabel(
             self.tr(
                 "Example: with 50 %, a pole whose points halve between two frames is "
@@ -153,6 +182,11 @@ class PredictionSettingsDialog(QtWidgets.QDialog):
             SECTION, "predict_min_point_ratio", str(self.spin_ratio.value() / 100.0)
         )
         config.set(SECTION, "predict_min_points", str(self.spin_points.value()))
+        config.set(
+            SECTION, "predict_over_existing", str(self.check_over_existing.isChecked())
+        )
+        config.set(SECTION, "predict_use_motion", str(self.check_motion.isChecked()))
+        config.set(SECTION, "propagate_max_frames", str(self.spin_propagate.value()))
         config_manager.write_into_file()
         logging.info(
             "Prediction settings saved: enabled=%s adaptive=%s ratio=%.2f min_points=%s",

@@ -378,6 +378,11 @@ TRANSLATIONS.update({
     "✓ saved · %s": "✓ 已保存 · %s",
     "drop below %s%% of the previous count": "低于上一帧点数的 %s%% 就丢弃",
     "Next-Frame Prediction": "下一帧预测设置",
+    "Predict even when the frame already has its own labels": "下一帧已有标注框时也预测",
+    "Follow the object's motion (extrapolate from the last frames)": (
+        "跟随目标运动（按前几帧外推位置与朝向）"
+    ),
+    "Carry forward writes this many frames:": "一键向后带多少帧：",
     "Carry boxes into the next frame": "把本帧的检测框带到下一帧",
     "Show them as unconfirmed proposals (Enter confirms)": "先作为未确认候选（按 Enter 确认）",
     "Re-fit each prediction to the points inside it": "每个预测框按框内点重新拟合",
@@ -554,6 +559,32 @@ TRANSLATIONS.update({
     "Parameter changed by the - / + buttons below.": "下面 − / + 按钮所调整的参数。",
     "Decrease the selected parameter by one step.": "把所选参数减小一个步长。",
     "Increase the selected parameter by one step.": "把所选参数增大一个步长。",
+})
+
+#: Keyframe interpolation (feature: fill the frames between two keyframes).
+TRANSLATIONS.update({
+    "Keyframe: none (Ctrl+Shift+I sets one)": "关键帧：未设置（Ctrl+Shift+I 设置）",
+    "Keyframe: frame %s · %s": "关键帧：第 %s 帧 · %s",
+    "Set Keyframe Here [Ctrl+Shift+I]": "在此设置关键帧 [Ctrl+Shift+I]",
+    "Remembers the active box as the first keyframe of an interpolation.": (
+        "把当前检测框记为插值的第一个关键帧。"
+    ),
+    "Interpolate from the Keyframe to Here [Ctrl+Shift+K]": "从关键帧插值到这里 [Ctrl+Shift+K]",
+    "Fills the frames between the two keyframes, moving and rotating the box\n"
+    "across the gap and checking each frame for the object's points.": (
+        "填充两个关键帧之间的所有帧：让检测框在间隔中平移和旋转，\n"
+        "并在每一帧核对目标点云是否存在。"
+    ),
+    "Select a box first: it becomes the first keyframe.": "请先选中一个检测框，它将成为第一个关键帧。",
+    "Keyframe 1 set on frame %s (%s).": "已把第 %s 帧的 %s 设为关键帧 1。",
+    "A fill job is still running ...": "已有填充任务正在运行……",
+    "Select the box of the second keyframe in this frame.": "请在本帧选中第二个关键帧的检测框。",
+    "The second keyframe must be a later frame.": "第二个关键帧必须在更后面的帧上。",
+    "The two keyframes are adjacent: nothing to fill.": "两个关键帧相邻，中间没有需要填充的帧。",
+    "Interpolating %s frames between the keyframes ...": "正在插值两个关键帧之间的 %s 帧……",
+    "Interpolation: %s": "插值：%s",
+    "Set the first keyframe for interpolation": "设置插值的第一个关键帧",
+    "Fill the frames between the keyframe and here": "填充关键帧到当前帧之间的所有帧",
 })
 
 #: Strings of the F1 dialog (context ``ShortcutDialog``).

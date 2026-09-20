@@ -393,6 +393,8 @@ example `copy_box = Ctrl+Shift+C`. `F1` shows the same table inside the applicat
 | `Ctrl+Shift+Del` | Reject all proposals in this frame |
 | `Ctrl+U` | Flip the box by 180 degrees |
 | `Ctrl+E` | Snap the active box onto the ground |
+| `Ctrl+Shift+I` | Set the first keyframe for interpolation |
+| `Ctrl+Shift+K` | Fill the frames between the keyframe and here |
 | `Ctrl+Shift+E` | Carry the box forward through the next frames |
 | `Ctrl+Shift+R` | Refit again after changing the refit settings |
 

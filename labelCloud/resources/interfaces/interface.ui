@@ -1811,6 +1811,8 @@
     <addaction name="act_refit_box"/>
     <addaction name="act_snap_box"/>
     <addaction name="act_propagate_to_end"/>
+    <addaction name="act_set_anchor"/>
+    <addaction name="act_interpolate"/>
     <addaction name="act_flip_180"/>
     <addaction name="act_show_statistics"/>
    </widget>
@@ -2015,6 +2017,23 @@ if it does not have labels yet.</string>
    <property name="toolTip">
     <string>Follows the active box through the following frames, writing it where
 the object is still there, and stops when its points are gone.</string>
+   </property>
+  </action>
+  <action name="act_set_anchor">
+   <property name="text">
+    <string>Set Keyframe Here [Ctrl+Shift+I]</string>
+   </property>
+   <property name="toolTip">
+    <string>Remembers the active box as the first keyframe of an interpolation.</string>
+   </property>
+  </action>
+  <action name="act_interpolate">
+   <property name="text">
+    <string>Interpolate from the Keyframe to Here [Ctrl+Shift+K]</string>
+   </property>
+   <property name="toolTip">
+    <string>Fills the frames between the two keyframes, moving and rotating the box
+across the gap and checking each frame for the object's points.</string>
    </property>
   </action>
   <action name="act_flip_180">

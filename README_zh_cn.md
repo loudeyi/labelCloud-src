@@ -343,7 +343,9 @@ labelcloud-work/
 | `Ctrl+Shift+Del` | 拒绝本帧全部候选框 |
 | `Ctrl+U` | 把检测框翻转 180° |
 | `Ctrl+E` | 把当前检测框吸附到地面 |
-| `Ctrl+Shift+E` | Carry the box forward through the next frames |
+| `Ctrl+Shift+I` | Set the first keyframe for interpolation |
+| `Ctrl+Shift+K` | Fill the frames between the keyframe and here |
+| `Ctrl+Shift+E` | 把当前框带到后续帧 |
 | `Ctrl+Shift+R` | 用新的设置再拟合一次 |
 
 ### 帮助
