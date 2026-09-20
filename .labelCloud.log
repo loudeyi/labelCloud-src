@@ -1,1 +1,1 @@
-2026-09-20 10:20:06,519 - WARNING : No usable class definition found at labels/_classes.json. Falling back to a single 'cart' class with format 'centroid_abs'. Point the FILE/class_definitions setting at a valid _classes.json to fix this.
+2026-09-20 10:21:54,982 - WARNING : No usable class definition found at labels/_classes.json. Falling back to a single 'cart' class with format 'centroid_abs'. Point the FILE/class_definitions setting at a valid _classes.json to fix this.

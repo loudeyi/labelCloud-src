@@ -32,6 +32,10 @@ class ClassConfig:
     name: str
     id: int
     color: Color3f
+    #: ``None`` = follow the global USER_INTERFACE/z_rotation_only setting.
+    #: Poles are upright and only need yaw; wires sag and need roll/pitch too,
+    #: so the two classes want opposite answers.
+    z_rotation_only: Optional[bool] = None
 
     @classmethod
     def from_dict(cls, data: dict, fallback_id: int = 0) -> "ClassConfig":
@@ -42,18 +46,23 @@ class ClassConfig:
         """
         name = data["name"]
         color = data.get("color")
+        z_rotation_only = data.get("z_rotation_only")
         return cls(
             name=name,
             id=int(data.get("id", fallback_id)),
             color=hex_to_rgb(color) if color else LabelConfig.auto_color(fallback_id),
+            z_rotation_only=None if z_rotation_only is None else bool(z_rotation_only),
         )
 
     def to_dict(self) -> dict:
-        return {
+        data = {
             "name": self.name,
             "id": self.id,
             "color": rgb_to_hex(self.color),
         }
+        if self.z_rotation_only is not None:
+            data["z_rotation_only"] = self.z_rotation_only
+        return data
 
 
 class LabelConfig(object, metaclass=SingletonABCMeta):
@@ -218,6 +227,28 @@ class LabelConfig(object, metaclass=SingletonABCMeta):
         result_id = current_id + step
         result_id = result_id if result_id in ids else corner_case_id
         return id2name[result_id]
+
+    def is_z_rotation_only(self, class_name: Optional[str] = None) -> bool:
+        """Whether rotation is restricted to the z-axis for a class.
+
+        A per-class value in the class definition file wins over the global
+        ``USER_INTERFACE/z_rotation_only`` option, so poles can stay upright-only
+        while wires are free to tilt (a catenary is not ground-parallel).
+        """
+        if class_name:
+            class_config = self.get_classes().get(class_name)
+            if class_config is not None and class_config.z_rotation_only is not None:
+                return class_config.z_rotation_only
+        return config.getboolean("USER_INTERFACE", "z_rotation_only")
+
+    def set_z_rotation_only(self, class_name: str, value: bool) -> bool:
+        """Set the per-class tilt permission; returns False if it changed nothing."""
+        class_config = self.get_classes().get(class_name)
+        if class_config is None or class_config.z_rotation_only == value:
+            return False
+        class_config.z_rotation_only = value
+        self.save_config()
+        return True
 
     def get_class_color(self, class_name: str) -> Color3f:
         try:

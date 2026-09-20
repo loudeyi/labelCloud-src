@@ -485,6 +485,93 @@ def test_language_selection_is_persisted():
     check("F-04 language choice is written to config.ini", ok, detail)
 
 
+# --------------------------------------------------------------------------- #
+# F-07: per-class rotation freedom
+# --------------------------------------------------------------------------- #
+TILT_SNIPPET = """
+import json
+from pathlib import Path
+from labelCloud.io.labels.config import LabelConfig
+from labelCloud.control.config_manager import config
+from labelCloud.control.bbox_controller import only_zrotation_decorator
+
+class Stub:
+    def __init__(self, classname):
+        self.classname = classname
+        self.calls = 0
+    def has_active_bbox(self):
+        return self.classname is not None
+    def get_classname(self):
+        return self.classname
+
+@only_zrotation_decorator
+def rotate(self):
+    self.calls += 1
+
+label_config = LabelConfig()
+results = {}
+for name in ("pole", "wire", "other", None):
+    stub = Stub(name)
+    rotate(stub)
+    results[str(name)] = stub.calls
+
+results["pole_perm"] = label_config.is_z_rotation_only("pole")
+results["wire_perm"] = label_config.is_z_rotation_only("wire")
+results["global_perm"] = label_config.is_z_rotation_only()
+label_config.set_z_rotation_only("wire", True)
+results["wire_after_toggle"] = label_config.is_z_rotation_only("wire")
+saved = json.loads(config.getpath("FILE", "class_definitions").read_text())["classes"]
+results["persisted"] = [c.get("z_rotation_only") for c in saved]
+print(json.dumps(results))
+"""
+
+
+def test_per_class_tilt_permission():
+    """Poles stay upright-only, wires may tilt, unknown classes follow the global."""
+    classes = [
+        {"name": "pole", "id": 1, "color": "#00ff7f", "z_rotation_only": True},
+        {"name": "wire", "id": 2, "color": "#00aaff", "z_rotation_only": False},
+        {"name": "other", "id": 3, "color": "#ff0000"},
+    ]
+    with tempfile.TemporaryDirectory() as tmp:
+        cwd = Path(tmp)
+        classes_path = cwd / "_classes.json"
+        classes_path.write_text(
+            json.dumps(
+                {
+                    "classes": classes,
+                    "default": 1,
+                    "type": "object_detection",
+                    "format": "centroid_abs",
+                }
+            )
+        )
+        (cwd / "config.ini").write_text(BASE_CONFIG.format(cwd=cwd, classes=classes_path))
+        proc = subprocess.run(
+            [PYTHON, "-c", textwrap.dedent(TILT_SNIPPET)],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+        )
+    ok = proc.returncode == 0
+    detail = proc.stderr.strip().splitlines()[-1] if not ok else ""
+    if ok:
+        data = json.loads(proc.stdout.strip().splitlines()[-1])
+        ok = (
+            data["pole"] == 0  # blocked by the per-class flag
+            and data["wire"] == 1  # allowed
+            and data["other"] == 0  # falls back to the global (True)
+            and data["None"] == 0
+            and data["pole_perm"] is True
+            and data["wire_perm"] is False
+            and data["global_perm"] is True
+            and data["wire_after_toggle"] is True
+            and data["persisted"] == [True, True, None]
+        )
+        detail = json.dumps(data)
+    check("F-07 tilt allowed for wire, blocked for pole, persisted", ok, detail)
+
+
 if __name__ == "__main__":
     print(f"python: {PYTHON}")
     print(f"repo:   {REPO}\n")
@@ -501,6 +588,7 @@ if __name__ == "__main__":
     test_every_extracted_string_is_translated()
     test_language_switches_at_runtime()
     test_language_selection_is_persisted()
+    test_per_class_tilt_permission()
 
     failed = [name for name, ok, _ in RESULTS if not ok]
     print(f"\n{len(RESULTS) - len(failed)}/{len(RESULTS)} checks passed")

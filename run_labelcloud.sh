@@ -87,8 +87,8 @@ if [ ! -f "$CLASSES" ]; then
   cat > "$CLASSES" <<'JSON'
 {
     "classes": [
-        { "name": "pole", "id": 1, "color": "#00ff7f" },
-        { "name": "wire", "id": 2, "color": "#00aaff" }
+        { "name": "pole", "id": 1, "color": "#00ff7f", "z_rotation_only": true },
+        { "name": "wire", "id": 2, "color": "#00aaff", "z_rotation_only": false }
     ],
     "default": 1,
     "type": "object_detection",

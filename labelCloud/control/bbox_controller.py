@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, List, Optional
 import numpy as np
 
 from ..definitions import Mode
+from ..io.labels.config import LabelConfig
 from ..model.bbox import BBox
 from ..utils import oglhelper
 from .config_manager import config
@@ -40,16 +41,24 @@ def has_active_bbox_decorator(func):
 
 def only_zrotation_decorator(func):
     """
-    Only execute x- and y-rotation if z_rotation_only mode is not activated.
+    Only execute x- and y-rotation when the active box's class allows tilting.
+
+    The permission is looked up per class (``_classes.json``), falling back to the
+    global ``USER_INTERFACE/z_rotation_only`` option: a pole only ever needs yaw,
+    while a sagging wire has to be tilted out of the ground plane.
     """
 
-    def wrapper(*args, **kwargs):
-        if not config.getboolean("USER_INTERFACE", "z_rotation_only"):
-            return func(*args, **kwargs)
-        else:
-            logging.warning(
-                "Rotations around the x- or y-axis are not supported in this mode."
-            )
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        classname = self.get_classname() if self.has_active_bbox() else None
+        if not LabelConfig().is_z_rotation_only(classname):
+            return func(self, *args, **kwargs)
+        logging.warning(
+            "Rotations around the x- or y-axis are disabled for class '%s' "
+            "(z_rotation_only). Set \"z_rotation_only\": false for that class in "
+            "the class definition file to allow tilting.",
+            classname,
+        )
 
     return wrapper
 
