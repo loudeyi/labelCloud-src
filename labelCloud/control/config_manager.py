@@ -41,10 +41,14 @@ class ConfigManager(object):
         self.read_from_file()
 
     def read_from_file(self) -> None:
+        """Read the default config first, then overlay the user's config.
+
+        Reading the default first means new options added by an update never raise
+        KeyError on an older config.ini: they simply fall back to the default.
+        """
+        self.config.read(ConfigManager.PATH_TO_DEFAULT_CONFIG)
         if ConfigManager.PATH_TO_CONFIG.is_file():
             self.config.read(ConfigManager.PATH_TO_CONFIG)
-        else:
-            self.config.read(ConfigManager.PATH_TO_DEFAULT_CONFIG)
 
     def write_into_file(self) -> None:
         with ConfigManager.PATH_TO_CONFIG.open("w") as configfile:
