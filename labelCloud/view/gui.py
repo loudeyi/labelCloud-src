@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Optional, Set
 
 import pkg_resources
 from PyQt5 import QtCore, QtGui, QtWidgets, uic
-from PyQt5.QtCore import QEvent
+from PyQt5.QtCore import QCoreApplication, QEvent
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import (
     QAction,
@@ -22,6 +22,13 @@ from PyQt5.QtWidgets import (
 
 from ..control.config_manager import config
 from ..definitions import Color3f, LabelingMode
+from ..i18n import (
+    CHINESE,
+    ENGLISH,
+    SYSTEM,
+    current_setting,
+    set_language,
+)
 from ..io.labels.config import LabelConfig
 from ..io.pointclouds import BasePointCloudHandler
 from ..labeling_strategies import PickingStrategy, SpanningStrategy
@@ -114,17 +121,22 @@ STYLESHEET = """
 """
 
 
-class GUI(QtWidgets.QMainWindow):
+# The generated form class is kept around so the window can re-translate itself
+# when the user switches the interface language (see `GUI.changeEvent`).
+Ui_MainWindow, _QtBaseClass = uic.loadUiType(
+    pkg_resources.resource_filename("labelCloud.resources.interfaces", "interface.ui")
+)
+
+
+class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
     def __init__(self, control: "Controller") -> None:
-        super(GUI, self).__init__()
-        uic.loadUi(
-            pkg_resources.resource_filename(
-                "labelCloud.resources.interfaces", "interface.ui"
-            ),
-            self,
-        )
+        QtWidgets.QMainWindow.__init__(self)
+        # `setupUi` instead of `uic.loadUi` so that the generated
+        # `retranslateUi` stays reachable — that is what makes switching the
+        # interface language work without restarting the application.
+        self.setupUi(self)
         self.resize(1500, 900)
-        self.setWindowTitle("labelCloud")
+        self.setWindowTitle(self.tr("labelCloud"))
         self.setStyleSheet(
             STYLESHEET.format(
                 icons_dir=str(
@@ -156,6 +168,25 @@ class GUI(QtWidgets.QMainWindow):
         self.act_save_perspective: QtWidgets.QAction
         self.act_align_pcd: QtWidgets.QAction
         self.act_change_settings: QtWidgets.QAction
+
+        # Settings > Language
+        self.menuLanguage: QtWidgets.QMenu
+        self.act_language_system: QtWidgets.QAction
+        self.act_language_en: QtWidgets.QAction
+        self.act_language_zh_cn: QtWidgets.QAction
+        self.actiongroup_language = QActionGroup(self.menuLanguage)
+        for _action in (
+            self.act_language_system,
+            self.act_language_en,
+            self.act_language_zh_cn,
+        ):
+            _action.setActionGroup(self.actiongroup_language)
+        self.language_actions = {
+            SYSTEM: self.act_language_system,
+            ENGLISH: self.act_language_en,
+            CHINESE: self.act_language_zh_cn,
+        }
+        self.update_language_menu()
 
         # STATUS BAR
         self.status_bar: QtWidgets.QStatusBar
@@ -397,6 +428,12 @@ class GUI(QtWidgets.QMainWindow):
         self.act_align_pcd.toggled.connect(self.controller.align_mode.change_activation)
         self.act_change_settings.triggered.connect(self.show_settings_dialog)
 
+        # LANGUAGE
+        for setting, action in self.language_actions.items():
+            action.triggered.connect(
+                lambda _checked=False, s=setting: self.change_language(s)
+            )
+
     def set_checkbox_states(self) -> None:
         self.act_propagate_labels.setChecked(
             config.getboolean("LABEL", "propagate_labels")
@@ -413,6 +450,40 @@ class GUI(QtWidgets.QMainWindow):
         self.act_color_with_label.setChecked(
             config.getboolean("POINTCLOUD", "color_with_label")
         )
+
+    # LANGUAGE
+
+    def change_language(self, setting: str) -> None:
+        """Switch the interface language immediately (no restart)."""
+        language = set_language(setting, QtWidgets.QApplication.instance())
+        logging.info("Interface language switched to %s (%s).", setting, language)
+        self.update_language_menu()
+
+    def update_language_menu(self) -> None:
+        """Tick the menu entry matching the configured language."""
+        setting = current_setting()
+        for value, action in self.language_actions.items():
+            action.setChecked(value == setting)
+
+    def changeEvent(self, event) -> None:
+        """Re-translate the window when Qt tells us the language changed."""
+        if event.type() == QEvent.LanguageChange:
+            self.retranslateUi(self)
+            self.retranslate_custom_texts()
+            self.update_language_menu()
+        super().changeEvent(event)
+
+    def retranslate_custom_texts(self) -> None:
+        """Texts that are not part of the generated form.
+
+        Window titles we set ourselves, and the transient status message, which
+        would otherwise stay in the previous language until the next action.
+        """
+        self.setWindowTitle(self.tr("labelCloud"))
+        self.status_manager.retranslate()
+        pcd_path = getattr(self.controller.pcd_manager, "pcd_path", None)
+        if pcd_path is not None:
+            self.set_pcd_label(pcd_path.name)
 
     # Collect, filter and forward events to viewer
     def eventFilter(self, event_object, event) -> bool:
@@ -478,10 +549,13 @@ class GUI(QtWidgets.QMainWindow):
         except StopIteration:
             QMessageBox.information(
                 self,
-                "No 2D Image File",
+                self.tr("No 2D Image File"),
                 (
-                    f"Could not find a related image in the image folder ({image_folder}).\n"
-                    "Check your path to the folder or if an image for this point cloud exists."
+                    self.tr(
+                        "Could not find a related image in the image folder (%s).\n"
+                        "Check your path to the folder or if an image for this point cloud exists."
+                    )
+                    % image_folder
                 ),
                 QMessageBox.Ok,
             )
@@ -489,7 +563,7 @@ class GUI(QtWidgets.QMainWindow):
             image_path = image_folder.joinpath(image_name)
             image = QtGui.QImage(QtGui.QImageReader(str(image_path)).read())
             self.imageLabel = QLabel()
-            self.imageLabel.setWindowTitle(f"2D Image ({image_name})")
+            self.imageLabel.setWindowTitle(self.tr("2D Image (%s)") % image_name)
             self.imageLabel.setPixmap(QPixmap.fromImage(image))
             self.imageLabel.show()
 
@@ -499,21 +573,26 @@ class GUI(QtWidgets.QMainWindow):
         msg = QMessageBox(self)
         msg.setIcon(QMessageBox.Warning)
         msg.setText(
-            "<b>labelCloud could not find any valid point cloud files inside the "
-            "specified folder.</b>"
+            self.tr(
+                "<b>labelCloud could not find any valid point cloud files inside the "
+                "specified folder.</b>"
+            )
         )
         msg.setInformativeText(
-            f"Please copy all your point clouds into <code>{pcd_folder.resolve()}</code> or update "
-            "the point cloud folder location. labelCloud supports the following point "
-            f"cloud file formats:\n {', '.join(pcd_extensions)}."
+            self.tr(
+                "Please copy all your point clouds into <code>%s</code> or update "
+                "the point cloud folder location. labelCloud supports the following point "
+                "cloud file formats:\n %s."
+            )
+            % (pcd_folder.resolve(), ", ".join(pcd_extensions))
         )
-        msg.setWindowTitle("No Point Clouds Found")
+        msg.setWindowTitle(self.tr("No Point Clouds Found"))
         msg.exec_()
 
     # VISUALIZATION METHODS
 
     def set_pcd_label(self, pcd_name: str) -> None:
-        self.label_current_pcd.setText("Current: <em>%s</em>" % pcd_name)
+        self.label_current_pcd.setText(self.tr("Current: <em>%s</em>") % pcd_name)
 
     def init_progress(self, min_value, max_value):
         self.progressbar_pcds.setMinimum(min_value)
@@ -599,7 +678,7 @@ class GUI(QtWidgets.QMainWindow):
         path_to_folder = Path(
             QFileDialog.getExistingDirectory(
                 self,
-                "Change Point Cloud Folder",
+                self.tr("Change Point Cloud Folder"),
                 directory=config.get("FILE", "pointcloud_folder"),
             )
         )
@@ -615,7 +694,7 @@ class GUI(QtWidgets.QMainWindow):
         path_to_folder = Path(
             QFileDialog.getExistingDirectory(
                 self,
-                "Change Label Folder",
+                self.tr("Change Label Folder"),
                 directory=config.get("FILE", "label_folder"),
             )
         )
@@ -655,8 +734,8 @@ class GUI(QtWidgets.QMainWindow):
         input_d = QInputDialog(self)
         self.input_pcd = input_d
         input_d.setInputMode(QInputDialog.IntInput)
-        input_d.setWindowTitle("labelCloud")
-        input_d.setLabelText("Insert Point Cloud number: ()")
+        input_d.setWindowTitle(self.tr("labelCloud"))
+        input_d.setLabelText(self.tr("Insert Point Cloud number: ()"))
         input_d.setIntMaximum(len(self.controller.pcd_manager.pcds) - 1)
         input_d.intValueChanged.connect(lambda val: self.update_dialog_pcd(val))
         input_d.intValueSelected.connect(lambda val: self.controller.custom_pcd(val))
@@ -665,7 +744,9 @@ class GUI(QtWidgets.QMainWindow):
 
     def update_dialog_pcd(self, value: int) -> None:
         pcd_path = self.controller.pcd_manager.pcds[value]
-        self.input_pcd.setLabelText(f"Insert Point Cloud number: {pcd_path.name}")
+        self.input_pcd.setLabelText(
+            self.tr("Insert Point Cloud number: %s") % pcd_path.name
+        )
 
     def change_label_color(self):
         bbox = self.controller.bbox_controller.get_active_bbox()
@@ -677,9 +758,13 @@ class GUI(QtWidgets.QMainWindow):
     def save_point_cloud_as(pointcloud: PointCloud) -> None:
         extensions = BasePointCloudHandler.get_supported_extensions()
         make_filter = " ".join(["*" + extension for extension in extensions])
-        file_filter = f"Point Cloud File ({make_filter})"
+        file_filter = QCoreApplication.translate(
+            "labelCloud", "Point Cloud File (%s)"
+        ) % make_filter
         file_name, _ = QFileDialog.getSaveFileName(
-            caption="Select a file name to save the point cloud",
+            caption=QCoreApplication.translate(
+                "labelCloud", "Select a file name to save the point cloud"
+            ),
             directory=str(pointcloud.path.parent),
             filter=file_filter,
             initialFilter=file_filter,
@@ -694,7 +779,9 @@ class GUI(QtWidgets.QMainWindow):
             handler.write_point_cloud(path, pointcloud)
         except Exception as e:
             msg = QMessageBox()
-            msg.setWindowTitle("Failed to save a point cloud")
+            msg.setWindowTitle(
+                QCoreApplication.translate("labelCloud", "Failed to save a point cloud")
+            )
             msg.setText(e.__class__.__name__)
             msg.setInformativeText(traceback.format_exc())
             msg.setIcon(QMessageBox.Critical)

@@ -12,6 +12,7 @@ import numpy as np
 from ..definitions import Mode, Point3D
 from ..utils import oglhelper as ogl
 from .pcd_manager import PointCloudManger
+from PyQt5.QtCore import QCoreApplication
 
 if TYPE_CHECKING:
     from ..view.gui import GUI
@@ -46,7 +47,9 @@ class AlignMode(object):
 
         if self.is_active:
             self.view.status_manager.update_status(
-                "Select three points on the plane that should be the floor.",
+                QCoreApplication.translate(
+                    "labelCloud", "Select three points on the plane that should be the floor."
+                ),
                 Mode.ALIGNMENT,
             )
         self.view.act_align_pcd.setChecked(self.is_active)
@@ -67,7 +70,9 @@ class AlignMode(object):
         elif not self.plane2:
             self.plane2 = new_point
             self.view.status_manager.set_message(
-                "The triangle area should be part over and part under the floor points."
+                QCoreApplication.translate(
+                    "labelCloud", "The triangle area should be part over and part under the floor points."
+                )
             )
         elif not self.plane3:
             self.plane3 = new_point
@@ -137,7 +142,9 @@ class AlignMode(object):
         self.pcd_manager.rotate_pointcloud(rotation_axis, rotation_angle, self.plane1)
 
         self.view.status_manager.update_status(
-            "Aligned point cloud with the selected floor.", Mode.NAVIGATION
+            QCoreApplication.translate(
+                "labelCloud", "Aligned point cloud with the selected floor."
+            ), Mode.NAVIGATION
         )
         self.change_activation(force=False)
         self.reset()

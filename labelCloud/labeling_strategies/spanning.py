@@ -9,6 +9,7 @@ from ..definitions import Mode, Point3D
 from ..model import BBox
 from ..utils import math3d as math3d
 from ..utils import oglhelper as ogl
+from PyQt5.QtCore import QCoreApplication
 
 if TYPE_CHECKING:
     from ..view.gui import GUI
@@ -23,7 +24,9 @@ class SpanningStrategy(BaseLabelingStrategy):
         super().__init__(view)
         logging.info("Enabled spanning mode.")
         self.view.status_manager.update_status(
-            "Begin by selecting a vertex of the bounding box.", mode=Mode.DRAWING
+            QCoreApplication.translate(
+                "labelCloud", "Begin by selecting a vertex of the bounding box."
+            ), mode=Mode.DRAWING
         )
         self.preview_color = (1, 1, 0, 1)
         self.point_2: Optional[Point3D] = None  # second edge
@@ -52,17 +55,23 @@ class SpanningStrategy(BaseLabelingStrategy):
         if self.point_1 is None:
             self.point_1 = new_point
             self.view.status_manager.set_message(
-                "Select a point representing the length of the bounding box."
+                QCoreApplication.translate(
+                    "labelCloud", "Select a point representing the length of the bounding box."
+                )
             )
         elif not self.point_2:
             self.point_2 = new_point
             self.view.status_manager.set_message(
-                "Select any point for the depth of the bounding box."
+                QCoreApplication.translate(
+                    "labelCloud", "Select any point for the depth of the bounding box."
+                )
             )
         elif not self.point_3:
             self.point_3 = new_point
             self.view.status_manager.set_message(
-                "Select any point for the height of the bounding box."
+                QCoreApplication.translate(
+                    "labelCloud", "Select any point for the height of the bounding box."
+                )
             )
         elif not self.point_4:
             self.point_4 = new_point

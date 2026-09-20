@@ -16,6 +16,7 @@ from ..model.bbox import BBox
 from ..utils import oglhelper
 from .config_manager import config
 from .pcd_manager import PointCloudManger
+from PyQt5.QtCore import QCoreApplication
 
 if TYPE_CHECKING:
     from ..view.gui import GUI
@@ -89,7 +90,9 @@ class BoundingBoxController(object):
                 self.get_active_bbox().classname  # type: ignore
             )
             self.view.status_manager.update_status(
-                "Bounding Box added, it can now be corrected.", Mode.CORRECTION
+                QCoreApplication.translate(
+                    "labelCloud", "Bounding Box added, it can now be corrected."
+                ), Mode.CORRECTION
             )
 
     def update_bbox(self, bbox_id: int, bbox: BBox) -> None:
@@ -114,7 +117,9 @@ class BoundingBoxController(object):
             self.active_bbox_id = bbox_id
             self.update_all()
             self.view.status_manager.update_status(
-                "Bounding Box selected, it can now be corrected.", mode=Mode.CORRECTION
+                QCoreApplication.translate(
+                    "labelCloud", "Bounding Box selected, it can now be corrected."
+                ), mode=Mode.CORRECTION
             )
         else:
             self.deselect_bbox()

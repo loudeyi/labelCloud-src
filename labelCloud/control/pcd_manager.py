@@ -19,6 +19,7 @@ from ..model import BBox, Perspective, PointCloud
 from ..utils.logger import blue, green, print_column
 from .config_manager import config
 from .label_manager import LabelManager
+from PyQt5.QtCore import QCoreApplication
 
 if TYPE_CHECKING:
     from ..view.gui import GUI
@@ -70,7 +71,9 @@ class PointCloudManger(object):
 
         if self.pcds:
             self.view.status_manager.set_message(
-                f"Found {len(self.pcds)} point clouds in the point cloud folder."
+                QCoreApplication.translate(
+                    "labelCloud", "Found {count} point clouds in the point cloud folder."
+                ).format(count=len(self.pcds))
             )
             self.update_pcd_infos()
         else:
@@ -78,7 +81,9 @@ class PointCloudManger(object):
                 self.pcd_folder, PointCloudManger.PCD_EXTENSIONS
             )
             self.view.status_manager.set_message(
-                "Please set the point cloud folder to a location that contains point cloud files."
+                QCoreApplication.translate(
+                    "labelCloud", "Please set the point cloud folder to a location that contains point cloud files."
+                )
             )
             self.pointcloud = PointCloud.from_file(
                 Path(

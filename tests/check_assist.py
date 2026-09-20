@@ -12,6 +12,7 @@ Usage::
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -356,6 +357,134 @@ def test_rotation_unit_detection():
     check("F-05 rotation-unit detection only claims what it can prove", ok, detail)
 
 
+def run_snippet(name, snippet, classes_json=("pole", "wire"), extra_config="", env=None):
+    with tempfile.TemporaryDirectory() as tmp:
+        cwd = Path(tmp)
+        classes_path = cwd / "_classes.json"
+        classes_path.write_text(json.dumps(list(classes_json)))
+        (cwd / "config.ini").write_text(
+            BASE_CONFIG.format(cwd=cwd, classes=classes_path) + extra_config
+        )
+        environment = {**os.environ, **(env or {})}
+        return subprocess.run(
+            [PYTHON, "-c", textwrap.dedent(snippet)],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            env=environment,
+        )
+
+
+# --------------------------------------------------------------------------- #
+# F-04: interface language switching
+# --------------------------------------------------------------------------- #
+def test_every_extracted_string_is_translated():
+    """No extracted string may be left empty in the compiled translation."""
+    ts_file = REPO / "labelCloud" / "i18n" / "labelCloud_zh_CN.ts"
+    qm_file = REPO / "labelCloud" / "i18n" / "labelCloud_zh_CN.qm"
+    import xml.etree.ElementTree as ET
+
+    tree = ET.parse(ts_file)
+    unfinished = []
+    total = 0
+    for context in tree.getroot().findall("context"):
+        for message in context.findall("message"):
+            total += 1
+            translation = message.find("translation")
+            if translation is None or not (translation.text or "").strip():
+                unfinished.append(message.find("source").text)
+    ok = total >= 150 and not unfinished and qm_file.is_file()
+    check(
+        f"F-04 all {total} extracted strings translated and .qm built",
+        ok,
+        f"unfinished={unfinished[:5]} qm={qm_file.is_file()}",
+    )
+
+
+LANGUAGE_SWITCH_SNIPPET = """
+import json
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtCore import QCoreApplication
+
+app = QApplication([])
+from labelCloud.i18n import install_language, set_language, current_language
+
+def t(ctx, text):
+    return QCoreApplication.translate(ctx, text)
+
+# the fixture config sets language = zh_CN
+install_language(app)
+zh = t("StatusManager", "Navigation Mode")
+set_language("en", app)
+en = t("StatusManager", "Navigation Mode")
+set_language("zh_CN", app)
+zh_again = t("StatusManager", "Navigation Mode")
+print(json.dumps({"zh": zh, "en": en, "zh_again": zh_again,
+                  "current": current_language()}))
+"""
+
+LANGUAGE_PERSIST_SNIPPET = """
+import json
+from pathlib import Path
+from PyQt5.QtWidgets import QApplication
+
+app = QApplication([])
+from labelCloud.i18n import set_language, current_setting
+
+set_language("en", app)
+after_en = current_setting()
+text = Path("config.ini").read_text()
+set_language("zh_CN", app)
+print(json.dumps({
+    "after_en": after_en,
+    "written_en": "language = en" in text,
+    "after_zh": current_setting(),
+}))
+"""
+
+
+def test_language_switches_at_runtime():
+    """Switching the language must take effect without restarting."""
+    proc = run_snippet(
+        "language-switch",
+        LANGUAGE_SWITCH_SNIPPET,
+        extra_config="[USER_INTERFACE]\nlanguage = zh_CN\n",
+        env={"QT_QPA_PLATFORM": "offscreen"},
+    )
+    ok = proc.returncode == 0
+    detail = proc.stderr.strip().splitlines()[-1] if not ok else ""
+    if ok:
+        data = json.loads(proc.stdout.strip().splitlines()[-1])
+        ok = (
+            data["zh"] == "导航模式"
+            and data["en"] == "Navigation Mode"
+            and data["zh_again"] == "导航模式"
+            and data["current"] == "zh_CN"
+        )
+        detail = json.dumps(data, ensure_ascii=False)
+    check("F-04 language switches at runtime (zh -> en -> zh)", ok, detail)
+
+
+def test_language_selection_is_persisted():
+    proc = run_snippet(
+        "language-persist",
+        LANGUAGE_PERSIST_SNIPPET,
+        extra_config="[USER_INTERFACE]\nlanguage = system\n",
+        env={"QT_QPA_PLATFORM": "offscreen"},
+    )
+    ok = proc.returncode == 0
+    detail = proc.stderr.strip().splitlines()[-1] if not ok else ""
+    if ok:
+        data = json.loads(proc.stdout.strip().splitlines()[-1])
+        ok = (
+            data["after_en"] == "en"
+            and data["written_en"] is True
+            and data["after_zh"] == "zh_CN"
+        )
+        detail = json.dumps(data)
+    check("F-04 language choice is written to config.ini", ok, detail)
+
+
 if __name__ == "__main__":
     print(f"python: {PYTHON}")
     print(f"repo:   {REPO}\n")
@@ -369,6 +498,9 @@ if __name__ == "__main__":
     test_vertices_file_is_never_overwritten()
     test_centroid_file_is_backed_up_before_rewrite()
     test_rotation_unit_detection()
+    test_every_extracted_string_is_translated()
+    test_language_switches_at_runtime()
+    test_language_selection_is_persisted()
 
     failed = [name for name, ok, _ in RESULTS if not ok]
     print(f"\n{len(RESULTS) - len(failed)}/{len(RESULTS)} checks passed")

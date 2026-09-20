@@ -9,6 +9,7 @@ from ..definitions import Mode, Point3D
 from ..definitions.types import Point3D
 from ..model import BBox
 from ..utils import oglhelper as ogl
+from PyQt5.QtCore import QCoreApplication
 
 if TYPE_CHECKING:
     from ..view.gui import GUI
@@ -22,7 +23,9 @@ class PickingStrategy(BaseLabelingStrategy):
         super().__init__(view)
         logging.info("Enabled drawing mode.")
         self.view.status_manager.update_status(
-            "Please pick the location for the bounding box front center.",
+            QCoreApplication.translate(
+                "labelCloud", "Please pick the location for the bounding box front center."
+            ),
             mode=Mode.DRAWING,
         )
         self.tmp_p1: Optional[Point3D] = None

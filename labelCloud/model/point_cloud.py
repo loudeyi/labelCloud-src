@@ -17,6 +17,7 @@ from ..io.segmentations import BaseSegmentationHandler
 from ..utils.color import colorize_points_with_height
 from ..utils.logger import end_section, green, print_column, red, start_section, yellow
 from . import Perspective
+from PyQt5.QtCore import QCoreApplication
 
 # Get size of float (4 bytes) for VBOs
 SIZE_OF_FLOAT = ctypes.sizeof(ctypes.c_float)
@@ -190,7 +191,7 @@ class PointCloud(object):
         unique_class_ids = set(c.id for c in LabelConfig().classes)
         if not unique_class_ids.issuperset(unique_label_ids):
             msg = QMessageBox()
-            msg.setWindowTitle("Invalid segmentation label")
+            msg.setWindowTitle(QCoreApplication.translate("labelCloud", "Invalid segmentation label"))
             msg.setText(
                 f"Segmentation labels {unique_label_ids} of `{self.path}` don't match with the label config {unique_class_ids}."
             )

@@ -1,16 +1,26 @@
 from typing import Optional
 
 from PyQt5 import QtCore, QtWidgets
+from PyQt5.QtCore import QCoreApplication
 
 from ..definitions import Context, Mode
 
 
 class StatusManager:
+    """The status bar: a persistent mode label plus a transient hint message.
+
+    Mode labels are translated through :meth:`_mode_text` so that switching the
+    interface language updates them immediately. Transient messages are set by the
+    caller (already translated with its own ``tr()``); they are cleared on a
+    language change because Qt cannot re-translate a string after the fact — the
+    next user action re-sets them in the new language.
+    """
+
     def __init__(self, status_bar: QtWidgets.QStatusBar) -> None:
         self.status_bar = status_bar
 
         # Add permanent status label
-        self.mode_label = QtWidgets.QLabel("Navigation Mode")
+        self.mode_label = QtWidgets.QLabel()
         self.mode_label.setStyleSheet(
             "font-weight: bold; font-size: 14px; min-width: 275px;"
         )
@@ -24,9 +34,22 @@ class StatusManager:
         self.status_bar.addWidget(self.message_label, stretch=1)
 
         self.msg_context = Context.DEFAULT
+        self.mode = Mode.NAVIGATION
+        self.set_mode(Mode.NAVIGATION)
+
+    @staticmethod
+    def _mode_text(mode: Mode) -> str:
+        if mode == Mode.ALIGNMENT:
+            return QCoreApplication.translate("StatusManager", "Alignment Mode")
+        if mode == Mode.CORRECTION:
+            return QCoreApplication.translate("StatusManager", "Correction Mode")
+        if mode == Mode.DRAWING:
+            return QCoreApplication.translate("StatusManager", "Drawing Mode")
+        return QCoreApplication.translate("StatusManager", "Navigation Mode")
 
     def set_mode(self, mode: Mode) -> None:
-        self.mode_label.setText(mode.value)
+        self.mode = mode
+        self.mode_label.setText(self._mode_text(mode))
 
     def set_message(self, message: str, context: Context = Context.DEFAULT) -> None:
         if context >= self.msg_context:
@@ -37,6 +60,11 @@ class StatusManager:
         if context == None or context == self.msg_context:
             self.msg_context = Context.DEFAULT
             self.set_message("")
+
+    def retranslate(self) -> None:
+        """Re-render everything that can be re-rendered (see class docstring)."""
+        self.set_mode(self.mode)
+        self.clear_message()
 
     def update_status(
         self,

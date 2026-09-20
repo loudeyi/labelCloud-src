@@ -80,9 +80,14 @@ def start_gui():
     from PyQt5.QtWidgets import QApplication, QDesktopWidget
 
     from labelCloud.control.controller import Controller
+    from labelCloud.i18n import install_language
     from labelCloud.view.gui import GUI
 
     app = QApplication(sys.argv)
+
+    # Translate before the first widget is built so the startup dialog is
+    # already localised; later switches re-translate via QEvent.LanguageChange.
+    install_language(app)
 
     # Setup Model-View-Control structure
     control = Controller()

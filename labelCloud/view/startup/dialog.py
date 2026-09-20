@@ -33,7 +33,7 @@ class StartupDialog(QDialog):
         super().__init__(parent)
         self.parent_gui = parent
 
-        self.setWindowTitle("Welcome to labelCloud")
+        self.setWindowTitle(self.tr("Welcome to labelCloud"))
         screen_size = QDesktopWidget().availableGeometry(self).size()
         self.resize(screen_size * 0.5)
         self.setWindowIcon(
@@ -77,7 +77,7 @@ class StartupDialog(QDialog):
 
          - the selected mode influences the available label export formats
         """
-        parent_layout.addWidget(QLabel("Select labeling mode:"))
+        parent_layout.addWidget(QLabel(self.tr("Select labeling mode:")))
 
         self.select_labeling_mode = SelectLabelingMode()
         self.select_labeling_mode.changed.connect(self._update_label_formats)
@@ -95,7 +95,7 @@ class StartupDialog(QDialog):
         """
         row = QHBoxLayout()
 
-        row.addWidget(QLabel("Default class:"))
+        row.addWidget(QLabel(self.tr("Default class:")))
 
         self.default_label = QComboBox()
         self.default_label.addItems(
@@ -106,7 +106,7 @@ class StartupDialog(QDialog):
 
         row.addSpacing(100)
 
-        row.addWidget(QLabel("Label export format:"))
+        row.addWidget(QLabel(self.tr("Label export format:")))
 
         self.label_export_format = QComboBox()
         self._update_label_formats()
@@ -136,7 +136,7 @@ class StartupDialog(QDialog):
 
         self.label_list.changed.connect(self._on_class_list_changed)
 
-        parent_layout.addWidget(QLabel("Change class labels:"))
+        parent_layout.addWidget(QLabel(self.tr("Change class labels:")))
 
         scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         scroll_area.setWidgetResizable(True)
@@ -145,7 +145,7 @@ class StartupDialog(QDialog):
 
         parent_layout.addWidget(scroll_area)
 
-        button_add_label = QPushButton(text="Add new label")
+        button_add_label = QPushButton(text=self.tr("Add new label"))
         button_add_label.clicked.connect(lambda: self.label_list.add_label())
         parent_layout.addWidget(button_add_label)
 
@@ -168,7 +168,7 @@ class StartupDialog(QDialog):
     def save(self):
         self._populate_label_config()
 
-        title = "Something went wrong"
+        title = self.tr("Something went wrong")
         text = ""
         informative_text = ""
         icon = QMessageBox.Critical
@@ -182,10 +182,9 @@ class StartupDialog(QDialog):
 
         except DefaultIdMismatchException as e:
             text = e.__class__.__name__
-            informative_text = (
-                str(e)
-                + f" Do you want to overwrite the default to the first label `{LabelConfig().classes[0].id}`?"
-            )
+            informative_text = str(e) + self.tr(
+                " Do you want to overwrite the default to the first label `%s`?"
+            ) % LabelConfig().classes[0].id
             icon = QMessageBox.Question
             buttons |= QMessageBox.Ok
             msg.accepted.connect(LabelConfig().set_first_as_default)

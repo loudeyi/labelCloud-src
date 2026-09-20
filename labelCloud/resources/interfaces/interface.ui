@@ -1575,6 +1575,14 @@
     <property name="toolTipsVisible">
      <bool>true</bool>
     </property>
+    <widget class="QMenu" name="menuLanguage">
+     <property name="title">
+      <string>Language</string>
+     </property>
+     <addaction name="act_language_system"/>
+     <addaction name="act_language_en"/>
+     <addaction name="act_language_zh_cn"/>
+    </widget>
     <addaction name="act_z_rotation_only"/>
     <addaction name="act_show_floor"/>
     <addaction name="act_show_orientation"/>
@@ -1582,6 +1590,7 @@
     <addaction name="act_align_pcd"/>
     <addaction name="act_color_with_label"/>
     <addaction name="act_change_settings"/>
+    <addaction name="menuLanguage"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuLabels"/>
@@ -1719,6 +1728,30 @@ when opening that point cloud again.</string>
    <property name="toolTip">
     <string>Propagate Labels to the next Point Cloud
 if it does not have labels yet.</string>
+   </property>
+  </action>
+  <action name="act_language_system">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Follow System Language</string>
+   </property>
+  </action>
+  <action name="act_language_en">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>English</string>
+   </property>
+  </action>
+  <action name="act_language_zh_cn">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>中文（简体）</string>
    </property>
   </action>
  </widget>

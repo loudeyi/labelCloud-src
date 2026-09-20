@@ -15,6 +15,7 @@ from .bbox_controller import BoundingBoxController
 from .config_manager import config
 from .drawing_manager import DrawingManager
 from .pcd_manager import PointCloudManger
+from PyQt5.QtCore import QCoreApplication
 
 
 class Controller:
@@ -144,7 +145,9 @@ class Controller:
                 BBOX_SIDES[self.selected_side]
             ]
             self.view.status_manager.set_message(
-                "Scroll to change the bounding box dimension.",
+                QCoreApplication.translate(
+                    "labelCloud", "Scroll to change the bounding box dimension."
+                ),
                 context=Context.SIDE_HOVERED,
             )
         else:
@@ -250,8 +253,10 @@ class Controller:
         if a0.key() == Keys.Key_Control:
             self.ctrl_pressed = True
             self.view.status_manager.set_message(
-                "Hold right mouse button to translate or left mouse button to rotate "
-                "the bounding box.",
+                QCoreApplication.translate(
+                    "labelCloud", "Hold right mouse button to translate or left mouse button to rotate "
+                    "the bounding box."
+                ),
                 context=Context.CONTROL_PRESSED,
             )
         # Reset point cloud pose to intial rotation and translation
