@@ -40,8 +40,10 @@ The label file format is unchanged: `folder` / `filename` / `path` /
   labels receives the previous frame's boxes. Size and heading are carried over, the
   position is re-fitted to the points inside, and a box whose points are gone is
   dropped (`predict_min_points`, `predict_min_point_ratio`). Predictions arrive as
-  unconfirmed proposals unless `predict_as_candidates = False`, and they are marked
-  as edited content so they are actually written to disk.
+  unconfirmed proposals unless `predict_as_candidates = False`. Unconfirmed
+  proposals are **not written**, so browsing a dataset cannot replace hand labels
+  with re-fitted predictions; confirming one (`Enter`) makes it content that is
+  saved.
 * Upstream's `propagate_labels` still works and is now really saved: it copied the
   previous frame's boxes without marking the frame as edited, so they were shown but
   never written. Both options persist to `config.ini`.
@@ -139,6 +141,9 @@ The label file format is unchanged: `folder` / `filename` / `path` /
 * Bilingual `README.md` / `README_zh_cn.md`.
 
 ### Fixed
+
+* Confirming a proposal did not mark the frame as edited, because the candidate flag
+  was missing from the undo snapshot — the confirmed box was never written.
 
 * `Ctrl+V`/`Ctrl+Z` used to fall through to the single-key commands and rotated the
   box; modifiers are now matched exactly.

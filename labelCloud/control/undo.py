@@ -42,6 +42,10 @@ class BBoxState:
     rotations: Tuple[float, float, float]
     classname: str
     locked: bool
+    #: Unconfirmed proposal flag. Part of the snapshot because confirming a
+    #: proposal is an edit: without it the frame stayed "unchanged" and the
+    #: confirmed box was never written to disk.
+    candidate: bool = False
 
     @classmethod
     def from_bbox(cls, bbox: BBox) -> "BBoxState":
@@ -51,6 +55,7 @@ class BBoxState:
             rotations=tuple(bbox.get_rotations()),  # type: ignore[arg-type]
             classname=bbox.get_classname(),
             locked=bool(getattr(bbox, "locked", False)),
+            candidate=bool(getattr(bbox, "candidate", False)),
         )
 
     def to_bbox(self) -> BBox:
@@ -58,6 +63,7 @@ class BBoxState:
         bbox.set_rotations(*self.rotations)
         bbox.set_classname(self.classname)
         bbox.locked = self.locked
+        bbox.candidate = self.candidate
         return bbox
 
 

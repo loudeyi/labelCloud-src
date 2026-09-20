@@ -86,9 +86,12 @@ predict_min_points = 5        ; drop below this absolute count
 predict_min_point_ratio = 0.35 ; ... or below this share of the previous count
 ```
 
-Predictions count as edited content, so they are written to the label folder when
-you move on. A frame that already has its own labels is never overwritten with
-predictions. The older `propagate_labels` option still works and now really is
+Predictions arrive as **unconfirmed proposals** and are therefore **not written**:
+nothing was decided about them yet, so flipping through a dataset cannot replace
+hand labels with re-fitted predictions. Pressing `Enter` confirms one, and a
+confirmed box counts as edited content and is saved. Set
+`predict_as_candidates = False` to use predictions as finished boxes directly. A
+frame that already has its own labels is never overwritten with predictions. The older `propagate_labels` option still works and now really is
 saved (upstream copied the boxes without marking the frame as edited).
 
 ## Bounding-box conventions

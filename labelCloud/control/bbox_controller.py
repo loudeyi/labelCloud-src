@@ -673,18 +673,24 @@ class BoundingBoxController(object):
         self.history.record(before, "Delete bounding boxes")
         return len(ids)
 
-    def add_predicted(self, boxes: List[BBox]) -> int:
+    def add_predicted(self, boxes: List[BBox], confirmed: bool = False) -> int:
         """Insert boxes predicted from the previous frame.
 
-        Marked dirty on purpose: a prediction is new content for this frame, so it
-        has to be written when the user moves on. (Upstream's `propagate_labels`
-        copied boxes without that, which is why they appeared but were never saved.)
+        Whether this counts as "edited content" (and therefore gets written when the
+        user moves on) depends on ``confirmed``:
+
+        * predictions left as **unconfirmed proposals** are not written — nothing was
+          decided about them yet, and silently replacing hand labels with re-fitted
+          predictions is exactly the surprise this avoids;
+        * predictions used as finished boxes, and any proposal the user confirms with
+          Enter, count as content and are saved.
         """
         if not boxes:
             return 0
         before = self.history_capture("Predict boxes")
         self.bboxes.extend(boxes)
-        self.dirty = True
+        if confirmed:
+            self.dirty = True
         self.history.record(before, "Predict boxes")
         self.set_active_bbox(0)
         return len(boxes)

@@ -1742,6 +1742,10 @@ control.bbox_controller.set_bboxes([])
 added = control.predict_into_current_frame(sources, [])
 out["added_to_frame"] = added
 out["dirty_after_prediction"] = control.bbox_controller.dirty
+# confirming one turns it into content that must be written
+control.bbox_controller.set_active_bbox(0)
+out["confirm_candidate"] = control.bbox_controller.accept_candidate()
+out["dirty_after_confirm"] = control.bbox_controller.dirty
 out["save_result"] = control.save(quiet=True)
 out["label_file_written"] = (labels / "frame.json").is_file()
 doc = json.loads((labels / "frame.json").read_text())
@@ -1781,7 +1785,11 @@ def test_next_frame_prediction():
             and data["predicted_when_scarce"] == 0       # too few points left
             and data["dropped_when_scarce"] == 2
             and data["added_to_frame"] == 1
-            and data["dirty_after_prediction"] is True   # so it will be written
+            # unconfirmed proposals are NOT written ...
+            and data["dirty_after_prediction"] is False
+            # ... but confirming one makes it content
+            and data["confirm_candidate"] is True
+            and data["dirty_after_confirm"] is True
             and data["save_result"] is True
             and data["label_file_written"] is True
             and data["written_objects"] == ["pole"]

@@ -185,7 +185,9 @@ class Controller:
         if sources:
             predicted, dropped = self.predict_from(sources)
             if predicted:
-                added = self.bbox_controller.add_predicted(predicted)
+                # proposals stay unconfirmed (and unwritten) until Enter
+                confirmed = not any(box.candidate for box in predicted)
+                added = self.bbox_controller.add_predicted(predicted, confirmed=confirmed)
                 self.view.status_manager.set_message(
                     QCoreApplication.translate(
                         "labelCloud", "Predicted %s boxes from the previous frame (%s dropped)."
@@ -204,7 +206,8 @@ class Controller:
         # legacy upstream behaviour, kept working (and now actually saved)
         if previous_bboxes and config.getboolean("LABEL", "propagate_labels", fallback=False):
             copies = [BBoxState.from_bbox(bbox).to_bbox() for bbox in previous_bboxes]
-            self.bbox_controller.add_predicted(copies)
+            # propagate_labels means "these are the labels of this frame"
+            self.bbox_controller.add_predicted(copies, confirmed=True)
             return len(copies)
         return 0
 
