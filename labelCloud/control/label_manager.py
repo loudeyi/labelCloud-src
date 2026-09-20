@@ -4,6 +4,7 @@ from typing import List, Optional
 
 from ..io.labels import BaseLabelFormat, CentroidFormat, KittiFormat, VerticesFormat
 from ..io.labels.config import LabelConfig
+from ..io.labels.detection import FormatGuard, describe_label_file
 from ..model import BBox
 from .config_manager import config
 
@@ -51,8 +52,29 @@ class LabelManager(object):
             self.label_folder.mkdir(parents=True)
 
         self.label_strategy = get_label_strategy(strategy, self.label_folder)
+        #: Keeps label files whose encoding differs from what we write from being
+        #: silently rewritten (see io/labels/detection.py).
+        self.format_guard = FormatGuard(self.label_folder)
 
     def import_labels(self, pcd_path: Path) -> List[BBox]:
+        label_path = self.label_folder.joinpath(
+            pcd_path.stem + self.label_strategy.FILE_ENDING
+        )
+        info = describe_label_file(label_path)
+        self.format_guard.note_read(label_path, str(info["encoding"]))
+
+        if info["exists"] and info["encoding"] != self.label_strategy.ENCODING:
+            logging.error(
+                "Label file %s is stored as '%s' but this session reads '%s'. "
+                "The frame is shown without boxes and will NOT be overwritten; "
+                "point FILE/class_definitions at a matching class config (or use "
+                "the matching label folder) to edit these labels.",
+                label_path.name,
+                info["encoding"],
+                self.label_strategy.ENCODING,
+            )
+            return []
+
         try:
             return self.label_strategy.import_labels(pcd_path)
         except KeyError as key_error:
@@ -71,4 +93,25 @@ class LabelManager(object):
             return []
 
     def export_labels(self, pcd_path: Path, bboxes: List[BBox]) -> None:
+        label_path = self.label_folder.joinpath(
+            pcd_path.stem + self.label_strategy.FILE_ENDING
+        )
+        other_encoding = self.format_guard.expected_encoding(
+            pcd_path.stem, self.label_strategy.ENCODING
+        )
+        if other_encoding is not None:
+            logging.error(
+                "Refusing to overwrite %s: it holds '%s' labels while this session "
+                "writes '%s'. Re-open it with a matching class config, or convert "
+                "the folder first. Nothing was written.",
+                label_path.name,
+                other_encoding,
+                self.label_strategy.ENCODING,
+            )
+            return
+
+        backup = self.format_guard.backup(label_path)
+        if backup is not None:
+            logging.info("Backed up %s to %s before overwriting.", label_path.name, backup)
+
         self.label_strategy.export_labels(bboxes, pcd_path)
