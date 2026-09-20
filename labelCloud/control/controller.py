@@ -946,6 +946,7 @@ class Controller:
         "fit_box_at_cursor": "cmd_fit_box_at_cursor",
         "refit_box": "cmd_refit_box",
         "snap_box": "cmd_snap_box",
+        "refit_box_settings": "cmd_refit_with_settings",
         "preannotate_frame": "cmd_preannotate_frame",
         "accept_candidate": "cmd_accept_candidate",
         "next_candidate": "cmd_next_candidate",
@@ -1278,21 +1279,28 @@ class Controller:
         )
 
     def cmd_refit_box(self, factor: float = 1.0) -> None:
-        """Refit the active box to the points inside it (F-21)."""
-        from . import assist
-
-        pointcloud = self.pcd_manager.pointcloud
-        bbox = self.bbox_controller.get_active_bbox()
-        if pointcloud is None or bbox is None:
+        """Refit the active box to its object (Ctrl+R)."""
+        if self.bbox_controller.get_active_bbox() is None:
             self.view.status_manager.set_message(
                 QCoreApplication.translate(
                     "labelCloud", "Select a box first, then refit it."
                 )
             )
             return
+        self.refit_active_box_with_feedback()
+
+    def refit_active_box_with_feedback(self) -> bool:
+        """Refit the active box and report what changed (used by settings + key)."""
+        from . import assist
+
+        pointcloud = self.pcd_manager.pointcloud
+        bbox = self.bbox_controller.get_active_bbox()
+        if pointcloud is None or bbox is None:
+            return False
         if self.bbox_controller.is_active_locked():
             self.bbox_controller.warn_dimensions_locked()
-            return
+            return False
+        before = bbox.get_dimensions()
         refitted = assist.refit_box(bbox, pointcloud.points)
         if refitted is None:
             self.view.status_manager.set_message(
@@ -1300,11 +1308,21 @@ class Controller:
                     "labelCloud", "Not enough points inside the box to refit it."
                 )
             )
-            return
+            return False
         self.bbox_controller.replace_active_bbox(refitted, "Refit bounding box")
+        after = refitted.get_dimensions()
+        self.view.update_bbox_stats(refitted)
         self.view.status_manager.set_message(
-            QCoreApplication.translate("labelCloud", "Refit the box to the points inside it.")
+            QCoreApplication.translate(
+                "labelCloud", "Refit: length %.2f -> %.2f, height %.2f -> %.2f m."
+            )
+            % (before[0], after[0], before[2], after[2])
         )
+        return True
+
+    def cmd_refit_with_settings(self, factor: float = 1.0) -> None:
+        """Refit without asking (Ctrl+Shift+R) — the settings live in the dialog."""
+        self.refit_active_box_with_feedback()
 
     def cmd_snap_box(self, factor: float = 1.0) -> None:
         """Snap the active box onto the local ground (F-22)."""

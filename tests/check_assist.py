@@ -1824,6 +1824,122 @@ def test_next_frame_prediction():
     check("next-frame prediction: carry over, guard, persist", ok, detail)
 
 
+REFIT_TUNING_SNIPPET = """
+import json
+import math
+import numpy as np
+from labelCloud.control import assist
+from labelCloud.control.assist import RefitParams
+from labelCloud.model.bbox import BBox
+
+rng = np.random.default_rng(11)
+out = {}
+
+def pole_points(cx, cy, z0, z1, n=1200, radius=0.12):
+    a = rng.uniform(0, 2 * np.pi, n)
+    z = rng.uniform(z0, z1, n)
+    return np.column_stack([cx + radius * np.cos(a), cy + radius * np.sin(a), z])
+
+def ground():
+    return np.column_stack([
+        rng.uniform(-15, 20, 4000), rng.uniform(-10, 10, 4000), rng.normal(0, 0.03, 4000)
+    ])
+
+# --- the "missing points" case: a box that is far too short ---------------
+points = np.vstack([ground(), pole_points(5.0, 2.0, 0.0, 10.0)]).astype(np.float32)
+small = BBox(5.0, 2.0, 4.0, 2.6, 4.0, 3.0)       # covers only z = 2.5 .. 5.5
+small.set_classname("pole")
+out["small_height_before"] = round(small.get_dimensions()[2], 2)
+refitted = assist.refit_box(small, points)
+out["grown_height"] = round(refitted.get_dimensions()[2], 2)
+out["grown_bottom"] = round(refitted.get_center()[2] - refitted.get_dimensions()[2] / 2, 2)
+
+# --- the "empty stretch" case: stray points far above the pole ------------
+with_stray = np.vstack([points, pole_points(5.0, 2.0, 18.0, 19.0, n=40)]).astype(np.float32)
+box = BBox(5.0, 2.0, 5.0, 2.6, 4.0, 10.0)
+box.set_classname("pole")
+trimmed = assist.refit_box(box, with_stray)
+out["trimmed_height"] = round(trimmed.get_dimensions()[2], 2)   # stays ~10, not ~19
+
+# max_link_distance decides what still counts as "the same object": tightened to
+# 5 mm the pole falls apart into tiny clusters, so the refit stays with the box
+# interior instead of growing (this is the "unless the point is too far" knob).
+tight = assist.refit_box(small, points, RefitParams(max_link_distance=0.005))
+out["tight_link_height"] = round(tight.get_dimensions()[2], 2)
+
+# --- a wire whose tail is a detached cluster: trim it ---------------------
+yaw = math.radians(25)
+direction = np.array([math.cos(yaw), math.sin(yaw)])
+t_main = rng.uniform(0, 12, 800)
+main = np.column_stack([t_main * direction[0], t_main * direction[1], 4.0 + 0.01 * t_main])
+t_tail = rng.uniform(20, 24, 200)                 # 8 m gap, then more cable
+tail = np.column_stack([t_tail * direction[0], t_tail * direction[1], 4.0 + 0.01 * t_tail])
+wire_points = np.vstack([ground(), main, tail]).astype(np.float32)
+wire_box = BBox(6.0 * direction[0], 6.0 * direction[1], 4.0, 2.5, 24.0, 2.0)
+wire_box.set_classname("wire")
+wire_box.set_z_rotation(math.degrees(yaw) - 90.0)
+refit_wire = assist.refit_box(wire_box, wire_points)
+out["wire_width_trimmed"] = round(refit_wire.get_dimensions()[1], 1)   # ~12, not ~24
+
+print(json.dumps(out))
+"""
+
+
+def test_refit_tuning():
+    """Refit must not miss the object, and must not cover empty stretches."""
+    classes = {
+        "classes": [
+            {
+                "name": "pole",
+                "id": 1,
+                "color": "#00ff7f",
+                "z_rotation_only": True,
+                "default_dimensions": {"length": 2.6, "width": 4.0, "height": None},
+            },
+            {
+                "name": "wire",
+                "id": 2,
+                "color": "#00aaff",
+                "z_rotation_only": False,
+                "default_dimensions": {"length": 2.5, "width": None, "height": 2.0},
+            },
+        ],
+        "default": 1,
+        "type": "object_detection",
+        "format": "centroid_abs",
+    }
+    with tempfile.TemporaryDirectory() as tmp:
+        cwd = Path(tmp)
+        classes_path = cwd / "_classes.json"
+        classes_path.write_text(json.dumps(classes))
+        (cwd / "config.ini").write_text(BASE_CONFIG.format(cwd=cwd, classes=classes_path))
+        proc = subprocess.run(
+            [PYTHON, "-c", textwrap.dedent(REFIT_TUNING_SNIPPET)],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+        )
+    ok = proc.returncode == 0
+    detail = proc.stderr.strip().splitlines()[-1] if not ok else ""
+    if ok:
+        data = json.loads(proc.stdout.strip().splitlines()[-1])
+        ok = (
+            data["small_height_before"] == 3.0
+            # a too-short box grows onto the whole pole ...
+            and 9.5 <= data["grown_height"] <= 11.5
+            and -0.6 <= data["grown_bottom"] <= 0.3
+            # ... but stray points far above are trimmed, not covered
+            and 9.5 <= data["trimmed_height"] <= 11.5
+            # a tiny link distance keeps the refit near the box it started from
+            # instead of growing onto the whole object
+            and data["tight_link_height"] <= 6.0
+            # a detached tail of a cable is cut off
+            and 9.0 <= data["wire_width_trimmed"] <= 14.0
+        )
+        detail = json.dumps(data)
+    check("Ctrl+R refit: grows onto the object, trims empty stretches", ok, detail)
+
+
 if __name__ == "__main__":
     print(f"python: {PYTHON}")
     print(f"repo:   {REPO}\n")
@@ -1851,6 +1967,7 @@ if __name__ == "__main__":
     test_launcher_preserves_user_config()
     test_mouse_modes_and_save_indicator()
     test_next_frame_prediction()
+    test_refit_tuning()
 
     failed = [name for name, ok, _ in RESULTS if not ok]
     print(f"\n{len(RESULTS) - len(failed)}/{len(RESULTS)} checks passed")

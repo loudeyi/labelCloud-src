@@ -251,6 +251,7 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
         self.session_predict_label: QtWidgets.QLabel
         self.button_show_activity_log: QtWidgets.QPushButton
         self.button_prediction_settings: QtWidgets.QPushButton
+        self.button_refit_settings: QtWidgets.QPushButton
         self.button_deselect_label: QtWidgets.QPushButton
         self.button_delete_label: QtWidgets.QPushButton
         self.button_assign_label: QtWidgets.QPushButton
@@ -394,6 +395,7 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
             lambda: self.controller.cmd_show_save_log()
         )
         self.button_prediction_settings.clicked.connect(self.show_prediction_settings)
+        self.button_refit_settings.clicked.connect(self.show_refit_settings)
         self.button_deselect_label.clicked.connect(
             self.controller.bbox_controller.deselect_bbox
         )
@@ -623,6 +625,11 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
             self.session_recent_label.setToolTip("\n".join(str(e[2]) for e in entries))
 
         self.session_predict_label.setText(controller.prediction_summary())
+
+    def show_refit_settings(self) -> None:
+        from .refit_dialog import RefitSettingsDialog
+
+        RefitSettingsDialog(self, self.controller).exec_()
 
     def show_prediction_settings(self) -> None:
         from .prediction_dialog import PredictionSettingsDialog

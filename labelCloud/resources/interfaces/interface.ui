@@ -999,102 +999,7 @@
                </property>
               </widget>
              </item>
-         <item>
-          <widget class="QFrame" name="frame_session">
-           <property name="styleSheet">
-            <string notr="true">QFrame#frame_session { border: 1px solid #d0d0d0; border-radius: 3px; background: #fafafa; }</string>
-           </property>
-           <property name="frameShape">
-            <enum>QFrame::NoFrame</enum>
-           </property>
-           <layout class="QVBoxLayout" name="session_layout">
-            <property name="leftMargin">
-             <number>8</number>
-            </property>
-            <property name="topMargin">
-             <number>6</number>
-            </property>
-            <property name="rightMargin">
-             <number>8</number>
-            </property>
-            <property name="bottomMargin">
-             <number>6</number>
-            </property>
-            <item>
-             <widget class="QLabel" name="session_title">
-              <property name="font">
-               <font>
-                <family>DejaVu Sans,Arial</family>
-                <weight>75</weight>
-                <bold>true</bold>
-               </font>
-              </property>
-              <property name="text">
-               <string>Frame and saving</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLabel" name="session_frame_label">
-              <property name="text">
-               <string>—</string>
-              </property>
-              <property name="wordWrap">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLabel" name="session_save_label">
-              <property name="text">
-               <string>—</string>
-              </property>
-              <property name="wordWrap">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLabel" name="session_recent_label">
-              <property name="text">
-               <string>—</string>
-              </property>
-              <property name="wordWrap">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLabel" name="session_predict_label">
-              <property name="text">
-               <string>—</string>
-              </property>
-              <property name="wordWrap">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <layout class="QHBoxLayout" name="session_buttons">
-              <item>
-               <widget class="QPushButton" name="button_show_activity_log">
-                <property name="text">
-                 <string>Activity log</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="button_prediction_settings">
-                <property name="text">
-                 <string>Prediction ...</string>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </item>
-           </layout>
-          </widget>
-         </item>
+
          <item>
           <widget class="QLabel" name="current_bbox_title">
            <property name="sizePolicy">
@@ -1625,6 +1530,113 @@
           </property>
          </widget>
         </item>
+         <item>
+          <widget class="QFrame" name="frame_session">
+           <property name="styleSheet">
+            <string notr="true">QFrame#frame_session { border: 1px solid #d0d0d0; border-radius: 3px; background: #fafafa; }</string>
+           </property>
+           <property name="frameShape">
+            <enum>QFrame::NoFrame</enum>
+           </property>
+           <layout class="QVBoxLayout" name="session_layout">
+            <property name="leftMargin">
+             <number>8</number>
+            </property>
+            <property name="topMargin">
+             <number>6</number>
+            </property>
+            <property name="rightMargin">
+             <number>8</number>
+            </property>
+            <property name="bottomMargin">
+             <number>6</number>
+            </property>
+            <item>
+             <widget class="QLabel" name="session_title">
+              <property name="font">
+               <font>
+                <family>DejaVu Sans,Arial</family>
+                <weight>75</weight>
+                <bold>true</bold>
+               </font>
+              </property>
+              <property name="text">
+               <string>Frame and saving</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="session_frame_label">
+              <property name="text">
+               <string>—</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="session_save_label">
+              <property name="text">
+               <string>—</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="session_recent_label">
+              <property name="text">
+               <string>—</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="session_predict_label">
+              <property name="text">
+               <string>—</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <layout class="QHBoxLayout" name="session_buttons">
+              <item>
+               <widget class="QPushButton" name="button_show_activity_log">
+                <property name="text">
+                 <string>Activity log</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QPushButton" name="button_refit_settings">
+                <property name="text">
+                 <string>Refit ...</string>
+                </property>
+                <property name="toolTip">
+                 <string>How far Ctrl+R looks for points, and when it trims empty stretches.</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QPushButton" name="button_prediction_settings">
+                <property name="text">
+                 <string>Prediction ...</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+           </layout>
+          </widget>
+         </item>
+
         <item>
         <widget class="QPushButton" name="button_assign_label">
           <property name="sizePolicy">

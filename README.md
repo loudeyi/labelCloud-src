@@ -63,6 +63,88 @@ single keystroke; rejecting is one keystroke for the whole batch.
 | **Undo/redo** | `Ctrl+Z` / `Ctrl+Shift+Z` | One step per gesture: a whole drag, or a burst of key presses, undoes as a single action |
 | **Dimension lock + templates** | `Ctrl+L` / `Ctrl+T` | Protects a fitted size; templates fix the pole cross-section and the wire section |
 
+## How to use it
+
+A practical walk-through of the features that are not obvious from the shortcut
+list. Everything below is in the application, no file editing required.
+
+### Fitting a box to an object (`Ctrl+R` refit)
+
+1. Put a box roughly on the object — it may be too small, too long or slightly off;
+   it does not have to be right.
+2. Press **`Ctrl+R`**. The refit
+   * looks **beyond** the box so points it only just misses are included
+     (`Look this far beyond the box`),
+   * walks along the object and keeps only what is **connected** to it
+     (`A point further than this is not part of the object`),
+   * **trims stretches without points** so the box cannot cover an empty section
+     (`Trim empty stretches longer than`),
+   * repeats until the result stops changing, so even a box that is far too short
+     grows onto the whole pole,
+   * keeps the cross-section you set unless you tick
+     `Also re-fit the cross-section`.
+3. The status line reports what changed: `Refit: length 2.60 -> 2.64, height 3.00 -> 10.63 m`.
+4. Tune it in **Refit …** (bottom-right panel). Practical hints:
+
+   | Symptom | Change |
+   | --- | --- |
+   | the refit leaves points out | raise *look beyond the box* and *not part of the object* |
+   | a point far away is pulled in | lower *not part of the object* |
+   | the box covers a section with no points | lower *trim empty stretches* |
+   | small specks extend the box | raise *ignore clusters smaller than* |
+
+   **`Ctrl+Shift+R`** applies the current settings to the active box again, so you
+   can try a value and immediately see the effect.
+
+### Predicting the next frame (`Ctrl+Shift+P`)
+
+1. Enable it in the **Labels** menu or with `Ctrl+Shift+P`. The bottom-right panel
+   shows `Prediction: on · adaptive 50%`.
+2. Label one frame, then move on. A frame **without its own labels** receives the
+   previous frame's boxes as **dashed orange proposals**; the status line says
+   `Predicted N boxes from the previous frame (M dropped)`.
+3. `Enter` confirms the proposal under review and jumps to the next, `Ctrl+→` /
+   `Ctrl+←` walk them, `Ctrl+Shift+Del` rejects the rest.
+   Unconfirmed proposals are **not written**, so browsing cannot replace your labels.
+4. A box is dropped when the object is gone: fewer points than
+   `always below this absolute count`, or fewer than the adaptive/fixed share of its
+   own recent point count. See **Prediction …**:
+
+   | Setting | Meaning |
+   | --- | --- |
+   | *Adaptive threshold* | compare with the object's own history (mean − k × deviation); follows a pole that is slowly occluded |
+   | *Adaptive sensitivity* | k — higher keeps boxes longer |
+   | *Drop when fewer than this share* | for example 50 %: the points halved, so the object is leaving |
+   | *... and always below this absolute count* | a floor, so two stray points never predict a box |
+
+5. `predict_as_candidates = False` (dialog checkbox) makes predictions count as
+   finished boxes, which are then saved like your own.
+
+### Knowing what was saved (bottom-right panel)
+
+The card at the bottom-right of the window and the status bar show the same thing:
+
+* `Frame 2/1292 · …083316023.pcd` — which frame is on screen,
+* `✓ saved · …83377525.json` (green), `● unsaved changes` (orange),
+  `— unchanged, nothing to write` (grey) or `✗ save FAILED` (red),
+* the last two events with their times,
+* **Activity log** opens the full list (also `Ctrl+Shift+S`): every frame loaded and
+  every write, with time, result and the complete path. Hovering the status bar
+  entries shows the full path too.
+
+### Quick wins worth remembering
+
+* **Pointer mode** (first button on the left, or `Esc`) leaves every drawing mode so
+  the mouse only navigates; dragging never creates a box, a fit needs a real click.
+* **Next-frame class** (right panel) pins what new boxes get, so one pass can label
+  poles and the next pass wires.
+* **`Ctrl+T`** applies the class template (pole cross-section, wire section) and
+  straightens the box; **`Ctrl+L`** locks the size against accidental edits.
+* **`Ctrl+C` / `Ctrl+V`** carry a box into the next frame; **`Shift`+click** builds a
+  group so one command moves/rotates/deletes several boxes at once.
+* **`Ctrl+F`** shows only the points inside the active box — the fastest way to see
+  whether a box really covers its object.
+
 ## Next-frame prediction
 
 Poles and wires are static, so the boxes of one frame are almost right in the next
@@ -270,6 +352,7 @@ example `copy_box = Ctrl+Shift+C`. `F1` shows the same table inside the applicat
 | `Ctrl+Shift+Del` | Reject all proposals in this frame |
 | `Ctrl+U` | Flip the box by 180 degrees |
 | `Ctrl+E` | Snap the active box onto the ground |
+| `Ctrl+Shift+R` | Refit again after changing the refit settings |
 
 ### Help
 
@@ -317,6 +400,15 @@ autosave_interval_seconds = 60
 [USER_INTERFACE]
 ; system (follow the OS locale), en, or zh_CN
 language = system
+
+[REFIT]
+; Ctrl+R: how far to look beyond the box, what still counts as the same object,
+; and when an empty stretch is trimmed off (all editable in the "Refit ..." dialog)
+grow_margin = 0.6
+max_link_distance = 1.2
+max_empty_gap = 1.5
+min_cluster_points = 3
+refit_cross_section = False
 
 [ASSIST]
 ; folder of the offline pole/wire pre-annotation tool; leave empty to disable it

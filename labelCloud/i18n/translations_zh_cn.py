@@ -313,6 +313,32 @@ TRANSLATIONS.update({
 })
 
 TRANSLATIONS.update({
+    # refit settings
+    "Refit ...": "重拟合设置 …",
+    "How far Ctrl+R looks for points, and when it trims empty stretches.": (
+        "Ctrl+R 往外找多远、以及什么时候把没有点的空段剪掉。"
+    ),
+    "Refit Settings": "重拟合设置",
+    "Look this far beyond the box:": "在框外再多找：",
+    "A point further than this is not part of the object:": "离目标超过这个距离的点就不算它的一部分：",
+    "Trim empty stretches longer than:": "剪掉超过这个长度的空段：",
+    "Ignore clusters smaller than:": "忽略小于这个点数的碎块：",
+    " points": " 个点",
+    "Also re-fit the cross-section (off keeps the size you set)": (
+        "同时重新拟合截面尺寸（关闭则保留你设定的尺寸）"
+    ),
+    "Raise \"look beyond the box\" and \"not part of the object\" when the "
+    "refit leaves points out; lower \"trim empty stretches\" when the box "
+    "covers a section without points. Ctrl+Shift+R applies the settings to "
+    "the active box.": (
+        "拟合漏点时，把「在框外再多找」和「不算它的一部分」两个值调大；框住空段时，"
+    "把「剪掉空段」调小。Ctrl+Shift+R 用当前设置再拟合一次。"
+    ),
+    "Restore defaults": "恢复默认",
+    "Refit: length %.2f -> %.2f, height %.2f -> %.2f m.": (
+        "重拟合：长度 %.2f → %.2f，高度 %.2f → %.2f 米。"
+    ),
+    "Refit again after changing the refit settings": "用新的设置再拟合一次",
     # session panel + prediction settings (right panel)
     "Frame and saving": "本帧与保存",
     "Activity log": "活动日志",

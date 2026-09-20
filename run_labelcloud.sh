@@ -194,6 +194,20 @@ predict_sensitivity = 1.5
 ; save the current frame automatically every N seconds (0 disables it)
 autosave_interval_seconds = 60
 
+[REFIT]
+; Ctrl+R refit. Two knobs answer two complaints: it used to miss points sitting
+; just outside the box, and it used to cover stretches that hold no points.
+; how far outside the box to look for the object's points (m)
+grow_margin = 0.6
+; points further than this from the object are not part of it (m)
+max_link_distance = 1.2
+; an empty stretch longer than this is trimmed off the box (m)
+max_empty_gap = 1.5
+; a cluster smaller than this is treated as noise (points)
+min_cluster_points = 3
+; re-fit the cross-section too (false keeps the size you set)
+refit_cross_section = False
+
 [ASSIST]
 ; folder of the offline pole/wire pre-annotation tool (tools/pole_wire_autolabel);
 ; leave empty to disable the "pre-annotate this frame" command

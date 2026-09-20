@@ -34,6 +34,27 @@ The label file format is unchanged: `folder` / `filename` / `path` /
 * **Dataset statistics** (`Ctrl+I`): frames with boxes / confirmed empty / not yet
   labelled / unreadable, plus boxes per class.
 
+### Refit (Ctrl+R) tuning
+
+* The refit **grows onto the object** instead of only fitting what is already
+  inside the box: it looks beyond the box (`grow_margin`), keeps what is connected
+  to the object (`max_link_distance`), and repeats until the result stops changing,
+  so even a box that is far too short ends up covering the whole pole.
+* It **stops covering empty stretches**: the extent follows the longest contiguous
+  run of points (`max_empty_gap`), so stray points above a pole or a detached tail
+  of a cable no longer stretch the box; a box whose points simply start above the
+  ground is trimmed to them as well.
+* All of it is editable in the **Refit …** dialog (bottom-right panel) and stored in
+  the new `[REFIT]` config section; `Ctrl+Shift+R` re-applies the settings to the
+  active box, and the status line reports what changed.
+
+### Interface
+
+* The frame/saving card moved to the **bottom-right corner** of the window; the class
+  selectors stay where they were, so the layout is unchanged.
+* File names are elided from the front (`…083316023.pcd`) because every frame shares
+  the same timestamp prefix.
+
 ### Next-frame prediction
 
 * **`predict_next_frame`** (`Ctrl+Shift+P`, *Labels* menu): a frame without its own
