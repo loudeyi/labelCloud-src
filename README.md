@@ -9,7 +9,7 @@
 ![Python](https://img.shields.io/badge/python-3.8-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-linux-lightgrey.svg)
 
-**English** · [简体中文](README_zh_cn.md)
+**English** · [简体中文](README_zh_cn.md) · [Changelog](CHANGELOG.md)
 
 ---
 
@@ -46,6 +46,19 @@ without restarting.
 
 Proposals are drawn **dashed in orange** and never look like confirmed labels. Accepting one is a
 single keystroke; rejecting is one keystroke for the whole batch.
+
+## Workflow and safety features
+
+| Feature | Where | What it does |
+| --- | --- | --- |
+| **Pointer mode** | button next to *Pick/Span/Fit*, or `Esc` | Leaves every drawing mode so the mouse only navigates the cloud again. The drawing buttons also toggle off when clicked twice, and **dragging never creates a box** — a fit only happens on a real click (≤ 5 px of movement) |
+| **Next-frame class** | "New boxes in next frames" combo | Pins the class every new box gets, frame after frame: one pass can label poles, the next pass wires, without re-picking the class in each frame |
+| **Save indicator** | right of the status bar | `✓ saved 13:38:09  labels_lc/frame.json`, `● unsaved changes`, or a red `✗ save FAILED`. The tooltip shows the full path |
+| **Save log** | click the indicator, `Ctrl+Shift+S`, or *File → Save Log* | Lists the recent writes with time, result and exact path |
+| **Autosave** | every 60 s (`LABEL/autosave_interval_seconds`) | Writes only when something was actually edited. A frame you merely browsed past is **not written at all** — press `Ctrl+S` to record it as "checked, and it is empty" |
+| **Group editing** | `Shift`+click boxes | Move/rotate/scale/class/delete/flip act on the whole group |
+| **Undo/redo** | `Ctrl+Z` / `Ctrl+Shift+Z` | One step per gesture: a whole drag, or a burst of key presses, undoes as a single action |
+| **Dimension lock + templates** | `Ctrl+L` / `Ctrl+T` | Protects a fitted size; templates fix the pole cross-section and the wire section |
 
 ## Bounding-box conventions
 
@@ -137,6 +150,8 @@ then overwrite them on the next auto-save.
                     (Ctrl+Z undo, Ctrl+C/Ctrl+V to reuse a box)
 ```
 
+0. Stay in **Pointer mode** while you look around; arm *Fit Box* only while you are fitting, and
+   leave it with `Esc` or the pointer button.
 1. **Pre-annotate** the frame and work through the proposals with `Enter`.
 2. For anything missed, **click it** (`Ctrl+G`) — the box is fitted to the points, not dropped at a
    fixed size.
@@ -151,6 +166,7 @@ scaling keys). Every binding can be changed in the `[SHORTCUTS]` section of `con
 example `copy_box = Ctrl+Shift+C`. `F1` shows the same table inside the application, translated.
 
 <!-- BEGIN SHORTCUTS -->
+
 ### Point Cloud
 
 | Keys | Action |
@@ -219,13 +235,19 @@ example `copy_box = Ctrl+Shift+C`. `F1` shows the same table inside the applicat
 | `Ctrl+U` | Flip the box by 180 degrees |
 | `Ctrl+E` | Snap the active box onto the ground |
 
-### View and Help
+### Help
+
+| Keys | Action |
+| --- | --- |
+| `Ctrl+I` | Show dataset statistics |
+| `Ctrl+Shift+S` | Show the save log |
+| `F1` | Show this shortcut list |
+
+### View
 
 | Keys | Action |
 | --- | --- |
 | `Ctrl+F` | Show only the points inside the active box |
-| `Ctrl+I` | Show dataset statistics |
-| `F1` | Show this shortcut list |
 
 <!-- END SHORTCUTS -->
 
@@ -304,6 +326,8 @@ Adding a translatable string: wrap it in `self.tr(...)` (or
   a pole is wrapped in vegetation (where geometric recall drops) are the case a segmentation model
   would help with — point-wise segmentation is the natural next step.
 * In-app pre-annotation is CPU-only, one frame at a time.
+* Fit quality is guarded: a click that lands on a hedge, kerb or wall is **refused** instead of
+  producing an oversized box, and a wire longer than 35 m is treated as a leaked region.
 * Still missing compared to an ideal tool: rubber-band marquee selection (group editing itself is
   implemented, via `Shift`+click) and keyframe interpolation across frames (designed, not yet
   implemented).

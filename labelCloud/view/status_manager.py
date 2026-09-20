@@ -32,12 +32,26 @@ class StatusManager:
         self.position_label.setStyleSheet("font-size: 13px; color: #555;")
         self.status_bar.addPermanentWidget(self.position_label, stretch=0)
 
+        # Save state: green = written to disk, orange = unsaved edits, red = failed.
+        # Clicking it opens the save log (wired up by the GUI).
+        self.save_label = QtWidgets.QLabel()
+        self.save_label.setStyleSheet("font-size: 13px; color: #777;")
+        self.save_label.setToolTip(
+            QCoreApplication.translate(
+                "labelCloud", "Click to see where the labels were saved."
+            )
+        )
+        self.save_label.setCursor(QtCore.Qt.PointingHandCursor)
+        self.status_bar.addPermanentWidget(self.save_label, stretch=0)
+        self.set_save_state("unknown")
+
         # Add temporary status message / tips
         self.message_label = QtWidgets.QLabel()
         self.message_label.setStyleSheet("font-size: 14px;")
         self.message_label.setAlignment(QtCore.Qt.AlignLeft)
         self.status_bar.addWidget(self.message_label, stretch=1)
 
+        self._save_state = "unknown"
         self.msg_context = Context.DEFAULT
         self.mode = Mode.NAVIGATION
         self.set_mode(Mode.NAVIGATION)
@@ -51,6 +65,43 @@ class StatusManager:
         if mode == Mode.DRAWING:
             return QCoreApplication.translate("StatusManager", "Drawing Mode")
         return QCoreApplication.translate("StatusManager", "Navigation Mode")
+
+    SAVE_STYLES = {
+        "unknown": "color: #777;",
+        "unchanged": "color: #999;",
+        "dirty": "color: #c07000;",
+        "saved": "color: #1a7f37;",
+        "failed": "color: #c0392b;",
+    }
+
+    @staticmethod
+    def _save_state_text(state: str) -> str:
+        if state == "dirty":
+            return QCoreApplication.translate("StatusManager", "● unsaved changes")
+        if state == "saved":
+            return QCoreApplication.translate("StatusManager", "✓ saved")
+        if state == "failed":
+            return QCoreApplication.translate("StatusManager", "✗ save FAILED")
+        if state == "unchanged":
+            return QCoreApplication.translate("StatusManager", "— unchanged, nothing to write")
+        return QCoreApplication.translate("StatusManager", "— not saved yet")
+
+    def set_save_state(self, state: str, detail: str = "", tooltip: str = "") -> None:
+        """Show whether the current frame is on disk, and where."""
+        self._save_state = state
+        style = self.SAVE_STYLES.get(state, self.SAVE_STYLES["unknown"])
+        self.save_label.setStyleSheet(f"font-size: 13px; {style}")
+        text = self._save_state_text(state)
+        self.save_label.setText(f"{text}{('  ' + detail) if detail else ''}")
+        self.save_label.setToolTip(
+            tooltip
+            or QCoreApplication.translate(
+                "labelCloud", "Click to see where the labels were saved."
+            )
+        )
+
+    def current_save_state(self) -> str:
+        return getattr(self, "_save_state", "unknown")
 
     def set_cursor_position(self, position) -> None:
         """Show the world coordinates under the cursor (helps place boxes exactly)."""

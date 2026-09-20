@@ -1,0 +1,130 @@
+# Changelog
+
+Notable changes in this fork, relative to upstream **labelCloud 1.1.1**
+([ch-sa/labelCloud](https://github.com/ch-sa/labelCloud), GPL-3.0).
+
+The label file format is unchanged: `folder` / `filename` / `path` /
+`objects[{name, centroid, dimensions, rotations}]`, rotations in degrees
+(`centroid_abs`).
+
+## [Unreleased]
+
+### Assist — semi-automatic annotation
+
+* **Click-to-fit** (`Ctrl+G`, *Assist → Fit Box at Cursor*): grows a region around
+  the clicked point and fits an oriented box of the current class. Poles are fitted
+  upright with the bottom on the locally estimated ground and the cross-section from
+  the class template; wires get the long axis in `dimensions.width` with the yaw set
+  so the box's local **+y** follows the cable.
+* **Refit** (`Ctrl+R`): re-fits the active box to the points inside it, keeping the
+  cross-section the user chose.
+* **Snap to ground** (`Ctrl+E`).
+* **Pre-annotate this frame** (`Ctrl+Shift+G`): runs the offline pole/wire detector
+  for the current frame in a background thread and queues its output as proposals.
+* **Proposal review queue**: proposals are ordinary boxes flagged as candidates,
+  drawn **dashed in orange**; `Enter` confirms the active one and jumps to the next,
+  `Ctrl+←`/`Ctrl+→` walk the queue, `Ctrl+Shift+Del` rejects the rest. Duplicates
+  within 0.6 m of an existing box are skipped.
+* **Fit guards**: a click that lands on a hedge, kerb or wall is refused instead of
+  producing an oversized box (median scatter across the cable ≤ 0.9 m, cable length
+  ≤ 35 m, with one automatic retry using a tighter region).
+* **Fit performance**: the region grower uses a uniform grid index and a per-class
+  point cap. On 74k-point frames a fit takes ~0.14 s (pole) / ~0.21 s (wire) median
+  instead of freezing the window for seconds.
+* **Dataset statistics** (`Ctrl+I`): frames with boxes / confirmed empty / not yet
+  labelled / unreadable, plus boxes per class.
+
+### Editing and workflow
+
+* **Undo/redo** (`Ctrl+Z` / `Ctrl+Shift+Z` / `Ctrl+Y`), snapshot based, with burst
+  coalescing: one drag or a run of key presses undoes as a single step.
+* **Copy / paste / duplicate** (`Ctrl+C` / `Ctrl+V` / `Ctrl+D`); the clipboard
+  deliberately survives frame changes so a good box can be reused in the next frame.
+* **Group editing**: `Shift`+click adds boxes to a group; movement, rotation,
+  scaling, class, delete and flip then apply to the whole group. `Esc` clears it.
+* **Local-axis movement** (`U` / `J` / `M` / `;`) so a rotated box moves along its
+  own axes instead of the camera axes.
+* **Coarse / fine steps**: `Shift` ×10 and `Alt` ×0.1 on every movement, rotation
+  and scaling key.
+* **Class size templates** (`Ctrl+T`) with a per-class `default_dimensions`; a
+  `null` entry keeps the current value.
+* **Dimension lock** (`Ctrl+L`): scaling keys, face dragging and refitting respect it.
+* **180° flip** (`Ctrl+U`).
+* **Focus view** (`Ctrl+F`): draws only the points inside the active box.
+* **Pointer mode**: a button next to *Pick/Span/Fit* (and `Esc`) leaves every drawing
+  mode so the mouse only navigates again; drawing buttons toggle off when clicked
+  twice.
+* **Mouse dragging**: drag the box body to move it, drag a hovered face to resize it,
+  middle-drag to rotate around z. A gesture is frozen at press time, so resizing no
+  longer flips into camera rotation (which made the view jitter).
+* **Click vs drag**: a drawing mode only builds a box on a release that moved ≤ 5 px,
+  so dragging to rotate the cloud no longer drops a stray box.
+* **Next-frame class** combo: pins the class new boxes get, frame after frame.
+* **± parameter stepper**: pick one of the nine box parameters and nudge it without
+  the keyboard.
+* **Status bar** shows the world coordinates under the cursor.
+
+### Data safety
+
+* **Per-file label encoding detection**: `centroid` (absolute degrees or relative
+  radians), 8-corner `vertices` and KITTI folders are recognised. A file stored in a
+  different encoding than the session writes is **never overwritten**, and the first
+  rewrite of any file leaves a `.bak` copy.
+* **Rotation units are only reported when provable** (`|angle| > 2π` ⇒ degrees);
+  ambiguous small angles keep the configured format instead of being guessed.
+* **Class definition compatibility**: a bare-list `_classes.json` (as written by the
+  pole/wire auto-labeler) loads instead of crashing at startup, entries without
+  `id`/`color` are tolerated, and classes that only appear in label files are merged
+  in and persisted.
+* **Config defaults**: `default_config.ini` is merged under the user's `config.ini`,
+  so options added by an update cannot raise `KeyError` on an older file.
+* **Save failures** (read-only folder, full disk) are reported instead of raising out
+  of the event loop; the frame stays marked as unsaved.
+* **Autosave** (`LABEL/autosave_interval_seconds`, default 60 s) writes only edited
+  frames.
+* **Save indicator and save log**: the status bar shows whether the frame is on disk
+  and where; `Ctrl+Shift+S` lists the recent writes.
+* **Unedited frames are never written** when moving through a dataset — no file is
+  created and no existing file is rewritten; `Ctrl+S` forces a write, which is how a
+  frame gets marked as deliberately checked and empty. The status bar shows
+  `— unchanged, nothing to write` in that case.
+
+### Interface language
+
+* Switchable **English / Simplified Chinese** (`Settings → Language`), including the
+  system-locale option; the switch takes effect immediately without a restart.
+* Dialogs, message boxes and status messages are translated (309 strings); log
+  messages stay English on purpose.
+* `tools/update_translations.py` rebuilds the `.ts`/`.qm` from one reviewable
+  dictionary and reports anything untranslated.
+* `tools/update_readme_shortcuts.py` regenerates the shortcut tables in both
+  READMEs from the live keymap.
+
+### Packaging, tooling and docs
+
+* Source repository with `pyproject.toml` and an editable install; the console
+  script's shebang now points at the environment it was installed into.
+* `run_labelcloud.sh`: one command to start in a fixed work directory with absolute
+  dataset paths, `--list` to show datasets, `DRY_RUN=1` to only write the config, and
+  a refusal to open a `vertices` label folder with a centroid session.
+* `config.ini` is only regenerated when it is missing or the dataset changed, so
+  language, shortcuts and autosave settings survive across launches.
+* `[ASSIST]` section to point at the offline pre-annotation tool, choose classes and
+  pick the pole parameter profile (`recall` / `strict`).
+* `[SHORTCUTS]` section to rebind any command, plus an `F1` shortcut overview.
+* Dependency-free regression suite (`tests/check_assist.py`, 23 checks) covering
+  encodings, class config, language switching, the keymap, undo, templates, fitting
+  on synthetic pole/wire scenes, the proposal queue, statistics, save handling and
+  mouse-mode behaviour.
+* Bilingual `README.md` / `README_zh_cn.md`.
+
+### Fixed
+
+* `Ctrl+V`/`Ctrl+Z` used to fall through to the single-key commands and rotated the
+  box; modifiers are now matched exactly.
+* The picking/spanning/fit buttons could not be toggled off because the comparison
+  used object identity.
+* An upstream circular import made `import labelCloud.model.bbox` fail depending on
+  the import order.
+* `.gitignore` patterns for the runtime folders also excluded the source packages
+  `labelCloud/io/labels/` and `labelCloud/io/pointclouds/`.

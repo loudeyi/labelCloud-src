@@ -313,6 +313,47 @@ TRANSLATIONS.update({
 })
 
 TRANSLATIONS.update({
+    # save indicator states (context StatusManager)
+    "● unsaved changes": "● 有未保存修改",
+    "✓ saved": "✓ 已保存",
+    "✗ save FAILED": "✗ 保存失败",
+    "— not saved yet": "— 尚未保存",
+    "— unchanged, nothing to write": "— 未修改，无需写盘",
+    "This frame was not edited, so nothing is written to %s.": (
+        "这一帧没有改动，因此不会写入 %s。"
+    ),
+    # pointer mode, save indicator, next-frame class
+    "Pointer (no drawing)": "指针（不建框）",
+    "Leave the drawing modes: the mouse only navigates the point cloud again. [Esc]": (
+        "退出建框模式：鼠标只用来浏览点云。[Esc]"
+    ),
+    "New boxes in next frames:": "下一帧新框类别：",
+    "Class every new box gets when you move to the next frames, so one pass can label poles and the next pass wires.": (
+        "切到下一帧后新建的框默认用这个类别 —— 这样你可以一遍只标杆、下一遍只标线。"
+    ),
+    "Class used for new boxes frame after frame (persists across frames).": (
+        "后续各帧新建框使用的类别（跨帧保持）。"
+    ),
+    "Follow the active / default class": "跟随当前/默认类别",
+    "Click to see where the labels were saved.": "点击查看标注保存到了哪里。",
+    "Save Log": "保存日志",
+    "Save Log ... [Ctrl+Shift+S]": "保存日志 … [Ctrl+Shift+S]",
+    "Shows where and when the labels of the recent frames were written.": (
+        "显示最近各帧的标注写入时间与路径。"
+    ),
+    "Show the save log": "显示保存日志",
+    "Label folder: %s": "标注目录：%s",
+    "Time": "时间",
+    "Result": "结果",
+    "File": "文件",
+    "saved": "已保存",
+    "FAILED: %s": "失败：%s",
+    "Every frame is written when you move to another frame or press Ctrl+S; "
+    "autosave writes the current frame periodically.": (
+        "切帧和 Ctrl+S 都会写盘；自动保存会定期写入当前帧。"
+    ),
+    "Keys": "按键",
+    "Action": "功能",
     # group selection (F-11b)
     "Group selection: %s boxes.": "已选中 %s 个检测框（成组操作）。",
     "Changed %s boxes.": "已同时修改 %s 个检测框。",

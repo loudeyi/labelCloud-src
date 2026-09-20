@@ -117,6 +117,7 @@ class SpanningStrategy(BaseLabelingStrategy):
             # Also calculate y_angle
             y_angle = np.arctan(len_vec_2d[2] / len_vec_2d[0])
             bbox.set_y_rotation(-math3d.radians_to_degrees(y_angle))
+        bbox.set_classname(self.view.controller.new_box_class())
         return bbox
 
     def draw_preview(self) -> None:

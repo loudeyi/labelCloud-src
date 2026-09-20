@@ -726,6 +726,32 @@
        </widget>
       </item>
       <item>
+       <widget class="QPushButton" name="button_pointer">
+        <property name="text">
+         <string>Pointer (no drawing)</string>
+        </property>
+        <property name="toolTip">
+         <string>Leave the drawing modes: the mouse only navigates the point cloud again. [Esc]</string>
+        </property>
+        <property name="icon">
+         <iconset>
+          <normaloff>../icons/select-off.svg</normaloff>../icons/select-off.svg</iconset>
+        </property>
+        <property name="iconSize">
+         <size>
+          <width>20</width>
+          <height>20</height>
+         </size>
+        </property>
+        <property name="checkable">
+         <bool>true</bool>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QPushButton" name="button_pick_bbox">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
@@ -956,6 +982,23 @@
                   </property>
               </widget>
           </item>
+             <item>
+              <widget class="QLabel" name="next_class_title">
+               <property name="text">
+                <string>New boxes in next frames:</string>
+               </property>
+               <property name="toolTip">
+                <string>Class every new box gets when you move to the next frames, so one pass can label poles and the next pass wires.</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QComboBox" name="combo_next_class">
+               <property name="toolTip">
+                <string>Class used for new boxes frame after frame (persists across frames).</string>
+               </property>
+              </widget>
+             </item>
          <item>
           <widget class="QLabel" name="current_bbox_title">
            <property name="sizePolicy">
@@ -1604,6 +1647,7 @@
     </property>
     <addaction name="act_set_pcd_folder"/>
     <addaction name="act_set_label_folder"/>
+    <addaction name="act_show_save_log"/>
    </widget>
    <widget class="QMenu" name="menuLabels">
     <property name="title">
@@ -1836,6 +1880,14 @@ if it does not have labels yet.</string>
   <action name="act_show_statistics">
    <property name="text">
     <string>Dataset Statistics ... [Ctrl+I]</string>
+   </property>
+  </action>
+  <action name="act_show_save_log">
+   <property name="text">
+    <string>Save Log ... [Ctrl+Shift+S]</string>
+   </property>
+   <property name="toolTip">
+    <string>Shows where and when the labels of the recent frames were written.</string>
    </property>
   </action>
   <action name="act_show_shortcuts">

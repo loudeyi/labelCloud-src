@@ -31,8 +31,18 @@ from ..model import BBox
 DEFAULT_LINK_RADIUS = 0.9
 #: Vertical band around the seed that a wire may span (cables sag, but not 10 m).
 WIRE_VERTICAL_BAND = 3.0
-#: Never grow beyond this many points (keeps a click responsive on dense frames).
-MAX_REGION_POINTS = 30000
+#: Never grow beyond this many points. A pole is a few thousand points; a cable
+#: segment is thinner still, so a tight cap keeps a click responsive on dense
+#: frames (74k points) instead of walking a leaked region for seconds.
+MAX_REGION_POINTS = 20000
+MAX_WIRE_REGION_POINTS = 6000
+#: A cable is thin: if the region's points scatter wider than this around the
+#: fitted line, the click landed on a hedge/wall/kerb and no box is produced.
+MAX_WIRE_RESIDUAL = 0.9
+#: A single cable spanning more than this is a leaked region, not a wire.
+MAX_WIRE_LENGTH = 35.0
+#: Growth cost guard: with the grid index a region of this size is still instant.
+GRID_MAX_POINTS = 200000
 #: Radius around the object used to estimate the local ground height.
 GROUND_RADIUS = 4.0
 #: Percentile of the local z values taken as the ground.
@@ -52,44 +62,101 @@ def nearest_point_index(points: npt.NDArray[np.float32], target) -> Optional[int
     return int(np.argmin(distances))
 
 
+class _GridIndex:
+    """Uniform grid over the points, for fast neighbour lookup.
+
+    The first implementation compared every point against every visited point,
+    which is fine for a pole (a few hundred points) but catastrophically slow when
+    a region leaks into a hedge or the ground: the click inside would freeze the
+    window for tens of seconds. A grid makes the cost proportional to the number of
+    neighbours actually examined.
+
+    Coordinates are kept as plain Python floats: the inner loop touches them
+    millions of times, and numpy scalar indexing costs more than the arithmetic.
+    """
+
+    __slots__ = ("cell", "coordinates", "keys", "buckets")
+
+    def __init__(self, points: npt.NDArray[np.float32], cell: float) -> None:
+        self.cell = max(cell, 1e-3)
+        self.coordinates = points[:, :3].tolist()
+        self.keys = [
+            (
+                int(math.floor(x / self.cell)),
+                int(math.floor(y / self.cell)),
+                int(math.floor(z / self.cell)),
+            )
+            for x, y, z in self.coordinates
+        ]
+        buckets: dict = {}
+        for index, key in enumerate(self.keys):
+            bucket = buckets.get(key)
+            if bucket is None:
+                buckets[key] = [index]
+            else:
+                bucket.append(index)
+        self.buckets = buckets
+
+    def neighbours(self, index: int, radius: float):
+        """Yield candidate indices within ``radius`` of the query point's cell."""
+        reach = int(math.ceil(radius / self.cell))
+        bx, by, bz = self.keys[index]
+        buckets = self.buckets
+        for dx in range(-reach, reach + 1):
+            for dy in range(-reach, reach + 1):
+                for dz in range(-reach, reach + 1):
+                    bucket = buckets.get((bx + dx, by + dy, bz + dz))
+                    if bucket:
+                        yield from bucket
+
+
 def grow_region(
     points: npt.NDArray[np.float32],
     seed_index: int,
     link_radius: float = DEFAULT_LINK_RADIUS,
     vertical_band: Optional[float] = None,
     max_points: int = MAX_REGION_POINTS,
+    grid: Optional[_GridIndex] = None,
 ) -> npt.NDArray[np.bool_]:
     """Grow a connected component around ``seed_index`` (breadth first).
 
     A plain radius search would leak into the tree or the ground next to a pole,
     so the caller can clamp the vertical band and the growth stops at
-    ``max_points``.
+    ``max_points``. Neighbour lookup goes through a uniform grid (see
+    :class:`_GridIndex`) so a leaked region stays fast.
     """
     count = len(points)
     visited = np.zeros(count, dtype=bool)
     if count == 0 or not (0 <= seed_index < count):
         return visited
 
-    seed = points[seed_index, :3]
+    if grid is None:
+        grid = _GridIndex(points, cell=link_radius)
+    coordinates = grid.coordinates
+
+    seed_z = coordinates[seed_index][2]
     visited[seed_index] = True
     queue = [seed_index]
     radius_sq = link_radius * link_radius
     grown = 1
+    neighbours_of = grid.neighbours
 
     while queue and grown < max_points:
         current = queue.pop()
-        point = points[current, :3]
-        deltas = points[:, :3] - point
-        distances = np.einsum("ij,ij->i", deltas, deltas)
-        candidates = np.nonzero((distances <= radius_sq) & (~visited))[0]
-        for candidate in candidates:
-            if vertical_band is not None and (
-                abs(points[candidate, 2] - seed[2]) > vertical_band
-            ):
-                visited[candidate] = True  # do not reconsider it either
+        x, y, z = coordinates[current]
+        for candidate in neighbours_of(current, link_radius):
+            if visited[candidate]:
                 continue
-            visited[candidate] = True
-            queue.append(int(candidate))
+            cx, cy, cz = coordinates[candidate]
+            ddx = cx - x
+            ddy = cy - y
+            ddz = cz - z
+            if ddx * ddx + ddy * ddy + ddz * ddz > radius_sq:
+                continue
+            visited[candidate] = True  # never reconsider it, band member or not
+            if vertical_band is not None and abs(cz - seed_z) > vertical_band:
+                continue
+            queue.append(candidate)
             grown += 1
             if grown >= max_points:
                 break
@@ -145,21 +212,72 @@ def fit_box(
     sub_points = points[indices]
     sub_seed = int(np.searchsorted(indices, seed_index))
 
-    region = grow_region(
-        sub_points,
-        sub_seed,
-        link_radius=link_radius,
-        vertical_band=WIRE_VERTICAL_BAND if tilt_allowed else None,
-    )
+    if tilt_allowed:
+        # A click that lands on a hedge, a kerb or a fence grows into a huge
+        # region and would produce an absurdly large box. Try the normal radius,
+        # then a much tighter one, and refuse rather than hand back nonsense.
+        for radius, band in (
+            (link_radius, WIRE_VERTICAL_BAND),
+            (min(link_radius, 0.5), 1.5),
+        ):
+            grid = _GridIndex(sub_points, cell=max(radius, 1e-3))
+            region = grow_region(
+                sub_points,
+                sub_seed,
+                link_radius=radius,
+                vertical_band=band,
+                max_points=MAX_WIRE_REGION_POINTS,
+                grid=grid,
+            )
+            inside = sub_points[region]
+            if len(inside) < 5:
+                continue
+            fitted = _fit_wire(inside, classname)
+            if _wire_is_plausible(fitted, inside):
+                return fitted
+            logging.info(
+                "Rejected an implausible wire fit (%.1f m long, %.1f m wide); "
+                "retrying with a tighter region.",
+                fitted.get_dimensions()[1],
+                fitted.get_dimensions()[0],
+            )
+        logging.warning(
+            "Could not find a cable-like structure at this point; no box was created."
+        )
+        return None
+
+    grid = _GridIndex(sub_points, cell=max(link_radius, 1e-3))
+    region = grow_region(sub_points, sub_seed, link_radius=link_radius, grid=grid)
     inside = sub_points[region]
     if len(inside) < 5:
         logging.warning("Not enough points around the click to fit a box.")
         return None
-
-    if tilt_allowed:
-        return _fit_wire(inside, classname)
     # the ground was measured on the full cloud, before the mask removed it
     return _fit_pole(inside, classname, seed=points[seed_index], ground=ground)
+
+
+def _wire_is_plausible(bbox: BBox, points: npt.NDArray[np.float32]) -> bool:
+    """Reject the box shapes that come from a leaked region rather than a cable.
+
+    A cable is a *thin chain*: long, but its points hug the fitted axis. A hedge,
+    kerb or wall produces a long box whose points scatter across it, and a leaked
+    ground patch produces a very long box as well.
+    """
+    _length, width, _height = bbox.get_dimensions()
+    # for a wire the long axis is stored in `width` (see the class conventions)
+    if width > MAX_WIRE_LENGTH:
+        return False
+
+    # Scatter of the region's points around the cable axis. The box's local x is
+    # the direction *across* the cable, which is what must stay small; the local y
+    # runs along it and is legitimately many metres long.
+    yaw = math.radians(bbox.get_z_rotation())
+    cos_yaw, sin_yaw = math.cos(yaw), math.sin(yaw)
+    center = bbox.get_center()
+    dx = points[:, 0] - center[0]
+    dy = points[:, 1] - center[1]
+    across = dx * cos_yaw + dy * sin_yaw
+    return float(np.median(np.abs(across))) <= MAX_WIRE_RESIDUAL
 
 
 def _fit_pole(

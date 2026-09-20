@@ -52,7 +52,7 @@ class FittingStrategy(BaseLabelingStrategy):
         classname = (
             controller.bbox_controller.get_classname()
             if controller.bbox_controller.has_active_bbox()
-            else LabelConfig().get_default_class_name()
+            else controller.new_box_class()
         )
         seed_index = assist.nearest_point_index(pointcloud.points, point)
         if seed_index is None:

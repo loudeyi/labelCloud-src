@@ -122,6 +122,7 @@ BINDINGS: Tuple[Binding, ...] = (
     Binding("reject_candidates", "Ctrl+Shift+Del", "Reject all proposals in this frame", "Assist", False),
     Binding("flip_180", "Ctrl+U", "Flip the box by 180 degrees", "Assist", False),
     Binding("show_statistics", "Ctrl+I", "Show dataset statistics", "Help", False),
+    Binding("show_save_log", "Ctrl+Shift+S", "Show the save log", "Help", False),
     Binding("snap_box", "Ctrl+E", "Snap the active box onto the ground", "Assist", False),
     Binding("toggle_focus", "Ctrl+F", "Show only the points inside the active box", "View", False),
     Binding("show_shortcuts", "F1", "Show this shortcut list", "Help", False),

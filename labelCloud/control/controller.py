@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 from typing import Optional
 
 import numpy as np
@@ -45,10 +46,17 @@ class Controller:
         # Keyboard shortcuts (rebindable through the [SHORTCUTS] config section)
         self.keymap = KeyMap()
 
-        # Mouse dragging of the active box (no modifier needed)
-        self.bbox_drag_active = False
+        # Mouse dragging of the active box (no modifier needed).
+        # `drag_target` freezes what the gesture started on, so the mode cannot
+        # flip between "resize a face" and "rotate the cloud" while the button is
+        # held — that flip is what made the view jitter during a face drag.
+        self.drag_target: Optional[str] = None  # None | "box" | "face" | "rotate"
+        self.drag_side: Optional[str] = None  # side frozen at press time
+        self.drag_start_pos = None
         self.bbox_drag_offset = (0.0, 0.0, 0.0)
-        self.bbox_rotate_active = False
+        self.pending_draw_kind: Optional[str] = None  # "drawing" | "align"
+        #: a click that moved more than this many pixels counts as a drag
+        self.CLICK_MAX_MOVE_PX = 5
 
         # Focus view: shows only the points inside the active box
         self.focus_active = False
@@ -56,9 +64,18 @@ class Controller:
 
         # Save safety
         self.save_error_count = 0
+        #: (timestamp, path, ok, message) of the recent label writes, newest last
+        self.save_log: List[tuple] = []
+        self.SAVE_LOG_LIMIT = 200
+        self._last_save_state = "unknown"
 
         # Background pre-annotation (offline pole/wire tool)
         self.preannotate_worker = None
+
+        #: Class every *new* box gets, frame after frame. ``None`` follows the
+        #: active box / the class definition. Lets one pass label poles and the
+        #: next pass wires instead of re-picking the class in every frame.
+        self.next_box_class: Optional[str] = None
 
     def startup(self, view: "GUI") -> None:
         """Sets the view in all controllers and dependent modules; Loads labels from file."""
@@ -77,6 +94,7 @@ class Controller:
     def loop_gui(self) -> None:
         """Function collection called during each event loop iteration."""
         self.set_crosshair()
+        self.refresh_save_state()
         if self.curr_cursor_pos is not None:
             self.view.status_manager.set_cursor_position(
                 self.view.gl_widget.get_world_coords(
@@ -112,21 +130,37 @@ class Controller:
             self.reset()
             self.bbox_controller.set_bboxes(self.pcd_manager.get_labels_from_file())
             self.bbox_controller.set_active_bbox(0)
+            self.apply_next_class_to_view()
+            self.apply_next_class_to_view()
 
     def custom_pcd(self, custom: int) -> None:
         self.save()
         self.pcd_manager.get_custom_pcd(custom)
         self.reset()
         self.bbox_controller.set_bboxes(self.pcd_manager.get_labels_from_file())
+        self.apply_next_class_to_view()
 
     # CONTROL METHODS
-    def save(self, quiet: bool = False) -> bool:
+    def save(self, quiet: bool = False, force: bool = False) -> bool:
         """Save the current frame. Returns True on success.
 
         A failing save (read-only folder, full disk, another process holding the
         file) used to raise out of the event loop and take the edits with it. It is
         now reported loudly and the frame stays marked as unsaved.
+
+        Unless ``force`` is set, a frame that was not edited is left alone: moving
+        through a dataset used to rewrite every visited label file (changing its
+        ``path`` field and creating a backup copy each time) even though nothing had
+        been edited. ``Ctrl+S`` passes ``force`` so a frame can still be marked as
+        deliberately checked and empty.
         """
+        if not force and not self.bbox_controller.dirty:
+            # Nothing was edited: browsing through a dataset must not create or
+            # rewrite label files. Ctrl+S passes force=True, which is how a frame
+            # gets recorded as "checked, and it is empty".
+            self.refresh_save_state()
+            return True
+
         try:
             self.pcd_manager.save_labels_into_file(self.bbox_controller.bboxes)
 
@@ -136,6 +170,7 @@ class Controller:
         except Exception as error:  # noqa: BLE001 - must never kill the event loop
             logging.error("Could not save the labels: %s", error, exc_info=True)
             self.save_error_count += 1
+            self.record_save(self.label_file_path(), False, str(error))
             self.view.status_manager.set_message(
                 QCoreApplication.translate(
                     "labelCloud", "Saving failed - your edits are NOT on disk (see the log)."
@@ -161,9 +196,101 @@ class Controller:
             return False
 
         self.bbox_controller.dirty = False
+        self.record_save(self.label_file_path(), True, "")
         if not quiet:
             logging.info("Saved labels of %s.", self.pcd_manager.pcd_path)
         return True
+
+    def label_file_path(self):
+        """Path the current frame is written to (best effort).
+
+        Must never raise: it is used while *reporting* a failed save, and an
+        exception there would replace the useful error message with a traceback.
+        """
+        try:
+            # `pcd_path` is a property that indexes the file list, so it raises
+            # IndexError while no point cloud is loaded — and this runs from the
+            # 20 ms GUI loop, where an exception would take the window down.
+            pcd_path = self.pcd_manager.pcd_path
+            manager = self.pcd_manager.label_manager
+            return manager.label_folder.joinpath(
+                pcd_path.stem + manager.label_strategy.FILE_ENDING
+            )
+        except (AttributeError, IndexError, TypeError):
+            return Path("?")
+
+    def record_save(self, path, ok: bool, message: str = "") -> None:
+        """Remember a write and refresh the status-bar indicator."""
+        import time as _time
+
+        path = str(path)
+        self.save_log.append((_time.time(), path, bool(ok), message))
+        del self.save_log[: max(0, len(self.save_log) - self.SAVE_LOG_LIMIT)]
+
+        # the status bar has room for the file itself; the full path goes into the
+        # tooltip (and the save log), because a long absolute path would push the
+        # other indicators off the screen
+        short = "/".join(Path(path).parts[-2:]) if path not in ("", "?") else path
+        if ok:
+            stamp = _time.strftime("%H:%M:%S")
+            self._last_saved_path = path
+            self.view.status_manager.set_save_state(
+                "saved", f"{stamp}  {short}", tooltip=path
+            )
+        else:
+            self.view.status_manager.set_save_state(
+                "failed", message[:60], tooltip=f"{path}\n{message}"
+            )
+
+    def refresh_save_state(self) -> None:
+        """Keep the indicator in sync with the dirty flag (called from the loop)."""
+        dirty = self.bbox_controller.dirty
+        if dirty:
+            if self._last_save_state != "dirty":
+                self.view.status_manager.set_save_state("dirty")
+            self._last_save_state = "dirty"
+            return
+
+        # not edited: either already on disk, or nothing to write at all
+        path = self.label_file_path()
+        if path in (Path("?"), None):
+            self._last_save_state = "unknown"
+            return
+        exists = False
+        try:
+            exists = path.is_file()
+        except OSError:
+            exists = False
+        short = "/".join(path.parts[-2:])
+        if exists:
+            if self._last_save_state != "saved":
+                self.view.status_manager.set_save_state("saved", short, tooltip=str(path))
+        elif self._last_save_state != "unchanged":
+            self.view.status_manager.set_save_state(
+                "unchanged",
+                self.tr_short_path(short),
+                tooltip=QCoreApplication.translate(
+                    "labelCloud",
+                    "This frame was not edited, so nothing is written to %s.",
+                )
+                % path,
+            )
+        self._last_save_state = "saved" if exists else "unchanged"
+
+    @staticmethod
+    def tr_short_path(short: str) -> str:
+        return short
+
+    def cmd_show_save_log(self, factor: float = 1.0) -> None:
+        from ..view.save_log_dialog import SaveLogDialog
+
+        if not self.save_log:
+            self.record_save(self.label_file_path(), True, "")
+        SaveLogDialog(
+            self.view,
+            self.save_log,
+            str(self.pcd_manager.label_manager.label_folder),
+        ).exec_()
 
     def autosave(self) -> None:
         """Periodic save of unsaved edits (interval from LABEL/autosave_interval_seconds)."""
@@ -280,22 +407,25 @@ class Controller:
 
     # EVENT PROCESSING
     def mouse_clicked(self, a0: QtGui.QMouseEvent) -> None:
-        """Triggers actions when the user clicks the mouse."""
+        """Triggers actions when the user presses the mouse."""
         self.last_cursor_pos = a0.pos()
+        self.drag_start_pos = a0.pos()
 
+        # Building a box happens on *release* and only for a real click: dragging
+        # to rotate the cloud while a drawing mode is armed used to drop a box at
+        # the release position, which is how a stray (and huge) box appeared every
+        # time the fit mode was left switched on.
         if (
-            self.drawing_mode.is_active()
-            and (a0.buttons() & Keys.LeftButton)
+            (a0.buttons() & Keys.LeftButton)
             and (not self.ctrl_pressed)
+            and (self.drawing_mode.is_active() or self.align_mode.is_active)
         ):
-            self.drawing_mode.register_point(a0.x(), a0.y(), correction=True)
-
-        elif self.align_mode.is_active and (not self.ctrl_pressed):
-            self.align_mode.register_point(
-                self.view.gl_widget.get_world_coords(a0.x(), a0.y(), correction=False)
+            self.pending_draw_kind = (
+                "drawing" if self.drawing_mode.is_active() else "align"
             )
+            return
 
-        elif (a0.buttons() & Keys.LeftButton) and (
+        if (a0.buttons() & Keys.LeftButton) and (
             a0.modifiers() & Keys.ShiftModifier
         ):
             # Shift+click builds a group: several boxes can be moved/rotated/
@@ -321,16 +451,20 @@ class Controller:
         elif a0.buttons() & Keys.MiddleButton:
             # middle drag rotates around z: the missing "grab the box" gesture
             if self.bbox_controller.has_active_bbox():
-                self.bbox_rotate_active = True
+                self.drag_target = "rotate"
                 self.bbox_controller.begin_drag("Rotate around z")
 
         elif self.selected_side:
+            # freeze the side now; the hovered side can change while dragging
+            self.drag_target = "face"
+            self.drag_side = self.selected_side
             self.side_mode = True
+            self.bbox_controller.begin_drag("Resize bounding box")
 
         elif (a0.buttons() & Keys.LeftButton) and (not self.ctrl_pressed):
             # dragging the box body moves it; dragging anywhere else navigates
             if self.start_bbox_drag(a0):
-                pass
+                self.drag_target = "box"
 
     def start_bbox_drag(self, a0: QtGui.QMouseEvent) -> bool:
         """Begin moving the active box when the click landed on it."""
@@ -353,16 +487,35 @@ class Controller:
             center[1] - world[1],
             center[2] - world[2],
         )
-        self.bbox_drag_active = True
         self.bbox_controller.begin_drag("Move bounding box")
         return True
 
     def mouse_released(self, a0: QtGui.QMouseEvent) -> None:
-        """End any drag gesture started on the bounding box."""
-        if self.bbox_drag_active or self.bbox_rotate_active:
+        """End the gesture, and register a drawing click if it really was a click."""
+        if self.pending_draw_kind is not None:
+            kind = self.pending_draw_kind
+            self.pending_draw_kind = None
+            moved = 0
+            if self.drag_start_pos is not None:
+                delta = a0.pos() - self.drag_start_pos
+                moved = abs(delta.x()) + abs(delta.y())
+            if moved <= self.CLICK_MAX_MOVE_PX:
+                if kind == "drawing" and self.drawing_mode.is_active():
+                    self.drawing_mode.register_point(
+                        a0.x(), a0.y(), correction=True
+                    )
+                elif kind == "align" and self.align_mode.is_active:
+                    self.align_mode.register_point(
+                        self.view.gl_widget.get_world_coords(
+                            a0.x(), a0.y(), correction=False
+                        )
+                    )
+
+        if self.drag_target is not None:
             self.bbox_controller.end_drag()
-        self.bbox_drag_active = False
-        self.bbox_rotate_active = False
+        self.drag_target = None
+        self.drag_side = None
+        self.drag_start_pos = None
         self.side_mode = False
         self.scroll_mode = False
 
@@ -391,8 +544,8 @@ class Controller:
             ) / 5  # Calculate relative movement from last click position
             dy = (self.last_cursor_pos.y() - a0.y()) / 5
 
-            # --- dragging the active box (no modifier required) ----------------
-            if self.bbox_drag_active and (a0.buttons() & Keys.LeftButton):
+            # --- an active gesture owns the mouse until it is released --------
+            if self.drag_target == "box" and (a0.buttons() & Keys.LeftButton):
                 world = self.view.gl_widget.get_world_coords(
                     a0.x(), a0.y(), correction=True
                 )
@@ -403,17 +556,16 @@ class Controller:
                 )
                 self.last_cursor_pos = a0.pos()
                 return
-            if self.bbox_rotate_active and (a0.buttons() & Keys.MiddleButton):
+            if self.drag_target == "rotate" and (a0.buttons() & Keys.MiddleButton):
                 active = self.bbox_controller.get_active_bbox()
                 if active is not None:
-                    active.set_z_rotation(
-                        active.get_z_rotation() - dx * 5.0
-                    )
+                    active.set_z_rotation(active.get_z_rotation() - dx * 5.0)
                 self.last_cursor_pos = a0.pos()
                 return
-            if self.side_mode and (a0.buttons() & Keys.LeftButton) and self.selected_side:
-                # dragging a hovered face resizes it (the wheel still works too)
-                self.bbox_controller.resize_side(self.selected_side, dy / 20.0)
+            if self.drag_target == "face" and (a0.buttons() & Keys.LeftButton):
+                # the side is the one recorded at press time, so the resize cannot
+                # oscillate when the cursor leaves the face it started on
+                self.bbox_controller.resize_side(self.drag_side, dy / 20.0)
                 self.last_cursor_pos = a0.pos()
                 return
 
@@ -438,12 +590,14 @@ class Controller:
                     self.pcd_manager.translate_along_x(dx)
                     self.pcd_manager.translate_along_y(dy)
 
-            # Reset scroll locks of "side scrolling" for significant cursor movements
-            if dx > Controller.MOVEMENT_THRESHOLD or dy > Controller.MOVEMENT_THRESHOLD:
-                if self.side_mode:
-                    self.side_mode = False
-                else:
-                    self.scroll_mode = False
+            # Reset the wheel-scroll lock on significant movement, but never while
+            # a gesture is being dragged (that is what made face resizing jitter)
+            if self.drag_target is None and (
+                dx > Controller.MOVEMENT_THRESHOLD
+                or dy > Controller.MOVEMENT_THRESHOLD
+            ):
+                self.side_mode = False
+                self.scroll_mode = False
         self.last_cursor_pos = a0.pos()
 
     def mouse_scroll_event(self, a0: QtGui.QWheelEvent) -> None:
@@ -553,6 +707,7 @@ class Controller:
         "reject_candidates": "cmd_reject_candidates",
         "flip_180": "cmd_flip_180",
         "show_statistics": "cmd_show_statistics",
+        "show_save_log": "cmd_show_save_log",
     }
 
     def key_press_event(self, a0: QtGui.QKeyEvent) -> None:
@@ -604,7 +759,9 @@ class Controller:
         logging.info("Reseted position to default.")
 
     def cmd_save(self, factor: float = 1.0) -> None:
-        self.save()
+        # explicit save: also writes an untouched frame, which is how a frame is
+        # marked as "checked, nothing in it"
+        self.save(force=True)
 
     def _group_call(self, function) -> None:
         """Apply a box operation to the whole selection when there is one."""
@@ -815,10 +972,30 @@ class Controller:
 
     # ASSIST COMMANDS
 
+    def new_box_class(self) -> str:
+        """Class a newly created box should get."""
+        if self.next_box_class:
+            return self.next_box_class
+        return LabelConfig().get_default_class_name()
+
+    def set_next_box_class(self, classname: Optional[str]) -> None:
+        """Pin the class used for new boxes (``None`` = follow the active one)."""
+        self.next_box_class = classname or None
+        logging.info(
+            "New boxes use class '%s'.",
+            self.next_box_class or "the active/default class",
+        )
+        self.apply_next_class_to_view()
+
+    def apply_next_class_to_view(self) -> None:
+        """Show the pinned class in the dropdown while no box is selected."""
+        if self.next_box_class and not self.bbox_controller.has_active_bbox():
+            self.view.current_class_dropdown.setCurrentText(self.next_box_class)
+
     def _current_class(self) -> str:
         if self.bbox_controller.has_active_bbox():
             return self.bbox_controller.get_classname()
-        return LabelConfig().get_default_class_name()
+        return self.new_box_class()
 
     def cmd_fit_box_at_cursor(self, factor: float = 1.0) -> None:
         """Grow a region under the mouse cursor and fit a box (F-20)."""

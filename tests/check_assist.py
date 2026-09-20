@@ -621,9 +621,15 @@ from labelCloud.control.bbox_controller import BoundingBoxController
 from labelCloud.model.bbox import BBox
 
 class FakeStatus:
+    def __init__(self): self.save_state = "unknown"
     def set_message(self, *a, **k): pass
     def update_status(self, *a, **k): pass
     def set_mode(self, *a, **k): pass
+    def set_save_state(self, state, detail="", tooltip=""):
+        self.save_state = state
+        self.save_detail = detail
+        self.save_tooltip = tooltip
+    def current_save_state(self): return self.save_state
 
 class FakeWidget:
     def __init__(self): self.value = 0
@@ -954,9 +960,15 @@ from labelCloud.control.controller import Controller
 from labelCloud.model.bbox import BBox
 
 class FakeStatus:
+    def __init__(self): self.save_state = "unknown"
     def set_message(self, *a, **k): pass
     def update_status(self, *a, **k): pass
     def set_mode(self, *a, **k): pass
+    def set_save_state(self, state, detail="", tooltip=""):
+        self.save_state = state
+        self.save_detail = detail
+        self.save_tooltip = tooltip
+    def current_save_state(self): return self.save_state
 
 class FakeWidget:
     def blockSignals(self, *a): pass
@@ -980,12 +992,21 @@ class FakeView:
         self.dial_bbox_z_rotation = FakeWidget()
     def update_bbox_stats(self, bbox): pass
 
+class FakeStrategy:
+    FILE_ENDING = ".json"
+
+class FakeLabelManager:
+    def __init__(self, folder):
+        self.label_folder = folder
+        self.label_strategy = FakeStrategy()
+
 class WorkingPcdManager:
-    pcd_path = Path("frame.pcd")
     pointcloud = None
-    def __init__(self, fail):
+    def __init__(self, fail, folder):
         self.fail = fail
         self.saved = 0
+        self.label_manager = FakeLabelManager(folder)
+        self.pcd_path = folder / "frame.pcd"
     def save_labels_into_file(self, bboxes):
         if self.fail:
             raise OSError("read-only file system")
@@ -1000,13 +1021,26 @@ box = BBox(0.0, 0.0, 0.0, 1.0, 1.0, 1.0)
 control.bbox_controller.add_bbox(box)
 out = {"dirty_after_edit": control.bbox_controller.dirty}
 
-control.pcd_manager = WorkingPcdManager(fail=True)
+labels_dir = Path("labels"); labels_dir.mkdir(exist_ok=True)
+control.pcd_manager = WorkingPcdManager(fail=True, folder=labels_dir)
 out["failed_save_returns"] = control.save(quiet=True)
 out["dirty_after_failure"] = control.bbox_controller.dirty
 out["error_count"] = control.save_error_count
 
-control.pcd_manager = WorkingPcdManager(fail=False)
+control.pcd_manager = WorkingPcdManager(fail=False, folder=labels_dir)
+label_path = control.label_file_path()
+label_path.write_text("{}")          # the frame already has a file on disk
+control.bbox_controller.dirty = False   # ... and nothing was edited since loading
+out["writes_before_clean_save"] = control.pcd_manager.saved
+# ... an untouched frame must not be rewritten on a frame change
+out["clean_save_returns"] = control.save(quiet=True)
+out["writes_after_clean_save"] = control.pcd_manager.saved
+# ... but an explicit save (Ctrl+S) writes it, marking it as checked
+control.save(quiet=True, force=True)
+out["writes_after_forced_save"] = control.pcd_manager.saved
+control.bbox_controller.dirty = True
 out["ok_save_returns"] = control.save(quiet=True)
+out["writes_after_dirty_save"] = control.pcd_manager.saved
 out["dirty_after_success"] = control.bbox_controller.dirty
 out["writes"] = control.pcd_manager.saved
 out["autosave_without_changes"] = control.autosave()   # must not write again
@@ -1031,10 +1065,18 @@ def test_save_safety():
             and data["failed_save_returns"] is False
             and data["dirty_after_failure"] is True
             and data["error_count"] == 1
+            and data["clean_save_returns"] is True
+            # unchanged frame: no write at all
+            and data["writes_after_clean_save"] == data["writes_before_clean_save"]
+            # explicit save: one write
+            and data["writes_after_forced_save"] == data["writes_before_clean_save"] + 1
+            # edited frame: another write
+            and data["writes_after_dirty_save"] == data["writes_before_clean_save"] + 2
             and data["ok_save_returns"] is True
             and data["dirty_after_success"] is False
-            and data["writes"] == 1
-            and data["writes_after_autosave"] == 1
+            and data["writes"] == data["writes_after_dirty_save"]
+            # nothing is dirty any more, so the periodic autosave writes nothing
+            and data["writes_after_autosave"] == data["writes_after_dirty_save"]
         )
         detail = json.dumps(data)
     check("F-18 failed save is reported, frame stays dirty, autosave is a no-op", ok, detail)
@@ -1345,6 +1387,188 @@ def test_launcher_preserves_user_config():
         )
 
 
+MOUSE_AND_CLASS_SNIPPET = """
+import json
+from pathlib import Path
+from PyQt5.QtCore import QPoint, Qt
+from labelCloud.control.controller import Controller
+from labelCloud.labeling_strategies import BaseLabelingStrategy
+from labelCloud.labeling_strategies.picking import PickingStrategy
+
+class FakeStatus:
+    def __init__(self): self.save_state = "unknown"; self.messages = []
+    def set_message(self, *a, **k): self.messages.append(a[0] if a else "")
+    def update_status(self, *a, **k): pass
+    def set_mode(self, *a, **k): pass
+    def set_save_state(self, state, detail="", tooltip=""):
+        self.save_state = state
+        self.save_detail = detail
+        self.save_tooltip = tooltip
+    def current_save_state(self): return self.save_state
+    def set_cursor_position(self, *a, **k): pass
+    def retranslate(self): pass
+
+class FakeGL:
+    modelview = None
+    projection = None
+    def get_world_coords(self, x, y, correction=False): return (1.0, 2.0, 3.0)
+
+class FakeDropdown:
+    def __init__(self): self.text = ""
+    def setCurrentText(self, text): self.text = text
+    def currentData(self): return None
+
+class FakeView:
+    def __init__(self):
+        self.status_manager = FakeStatus()
+        self.gl_widget = FakeGL()
+        self.current_class_dropdown = FakeDropdown()
+        self.label_list = None
+        self.controller = None
+    def update_bbox_stats(self, bbox): pass
+
+class SpyStrategy(BaseLabelingStrategy):
+    POINTS_NEEDED = 1
+    def __init__(self, view):
+        super().__init__(view)
+        self.registered = 0
+    def register_point(self, point):
+        self.registered += 1
+    def get_bbox(self):
+        raise AssertionError("no box should be completed in this test")
+
+class FakeEvent:
+    def __init__(self, x, y, buttons=Qt.LeftButton, modifiers=Qt.NoModifier):
+        self._pos = QPoint(x, y)
+        self._buttons = buttons
+        self._modifiers = modifiers
+    def pos(self): return self._pos
+    def x(self): return self._pos.x()
+    def y(self): return self._pos.y()
+    def buttons(self): return self._buttons
+    def modifiers(self): return self._modifiers
+
+control = Controller()
+view = FakeView()
+control.view = view
+view.controller = control
+control.drawing_mode.set_view(view)
+
+out = {}
+
+# --- a drag while a drawing mode is armed must not create a box ---------------
+spy = SpyStrategy(view)
+control.drawing_mode.drawing_strategy = spy
+control.mouse_clicked(FakeEvent(100, 100))
+control.mouse_released(FakeEvent(160, 130))       # dragged 60 px
+out["drag_registered"] = spy.registered
+
+# --- a real click does register ----------------------------------------------
+control.mouse_clicked(FakeEvent(100, 100))
+control.mouse_released(FakeEvent(102, 101))       # 3 px
+out["click_registered"] = spy.registered
+
+# --- pointer mode leaves the drawing mode ------------------------------------
+control.mouse_clicked(FakeEvent(100, 100))
+control.mouse_released(FakeEvent(100, 100))
+control.drawing_mode.reset()
+out["mode_cleared"] = control.drawing_mode.is_active()
+
+# --- next-frame class ---------------------------------------------------------
+out["class_before_pin"] = control.new_box_class()
+control.set_next_box_class("wire")
+out["class_after_pin"] = control.new_box_class()
+out["dropdown_follows_pin"] = view.current_class_dropdown.text
+control.set_next_box_class(None)
+out["class_after_unpin"] = control.new_box_class()
+
+# --- a new box from the picking strategy gets the pinned class ----------------
+control.set_next_box_class("wire")
+picking = PickingStrategy(view)
+picking.point_1 = (0.0, 0.0, 0.0)
+box = picking.get_bbox()
+out["picked_class"] = box.get_classname()
+
+# --- save indicator ----------------------------------------------------------
+class StubStrategy:
+    FILE_ENDING = ".json"
+
+class StubLabels:
+    def __init__(self, folder):
+        self.label_folder = folder
+        self.label_strategy = StubStrategy()
+
+class StubPcd:
+    pointcloud = None
+    def __init__(self, folder):
+        self.label_manager = StubLabels(folder)
+        self.pcd_path = folder / "frame.pcd"
+
+labels_dir = Path("labels"); labels_dir.mkdir(exist_ok=True)
+control.pcd_manager = StubPcd(labels_dir)
+
+control.record_save(control.label_file_path(), True)
+out["state_after_save"] = view.status_manager.current_save_state()
+
+control.label_file_path().write_text("{}")   # the frame is on disk
+control.bbox_controller.dirty = True
+control.refresh_save_state()
+out["state_when_dirty"] = view.status_manager.current_save_state()
+
+control.bbox_controller.dirty = False
+control.refresh_save_state()
+out["state_when_clean"] = view.status_manager.current_save_state()
+
+control.label_file_path().unlink()           # no file on disk, nothing edited
+control.refresh_save_state()
+out["state_when_untouched"] = view.status_manager.current_save_state()
+
+control.label_file_path().write_text("{}")
+control.refresh_save_state()
+out["state_when_file_exists"] = view.status_manager.current_save_state()
+
+control.record_save(control.label_file_path(), False, "disk full")
+out["state_after_failure"] = view.status_manager.current_save_state()
+out["log_len"] = len(control.save_log)
+out["log_path"] = control.save_log[-1][1]
+print(json.dumps(out))
+"""
+
+
+def test_mouse_modes_and_save_indicator():
+    """Click-vs-drag, pointer mode, the next-frame class and the save indicator."""
+    proc = run_snippet(
+        "mouse-modes",
+        MOUSE_AND_CLASS_SNIPPET,
+        classes_json=("pole", "wire"),
+        env={"QT_QPA_PLATFORM": "offscreen"},
+    )
+    ok = proc.returncode == 0
+    detail = proc.stderr.strip().splitlines()[-1] if not ok else ""
+    if ok:
+        data = json.loads(proc.stdout.strip().splitlines()[-1])
+        ok = (
+            data["drag_registered"] == 0        # dragging never builds a box
+            and data["click_registered"] == 1   # a real click does
+            and data["mode_cleared"] is False   # pointer mode leaves drawing
+            and data["class_before_pin"] == "pole"
+            and data["class_after_pin"] == "wire"
+            and data["dropdown_follows_pin"] == "wire"
+            and data["class_after_unpin"] == "pole"
+            and data["picked_class"] == "wire"
+            and data["state_after_save"] == "saved"
+            and data["state_when_dirty"] == "dirty"
+            and data["state_when_clean"] == "saved"
+            and data["state_when_untouched"] == "unchanged"
+            and data["state_when_file_exists"] == "saved"
+            and data["state_after_failure"] == "failed"
+            and data["log_len"] == 2
+            and data["log_path"].endswith("frame.json")
+        )
+        detail = json.dumps(data)
+    check("pointer mode, click-vs-drag, next-frame class, save indicator", ok, detail)
+
+
 if __name__ == "__main__":
     print(f"python: {PYTHON}")
     print(f"repo:   {REPO}\n")
@@ -1370,6 +1594,7 @@ if __name__ == "__main__":
     test_proposals_and_statistics()
     test_readme_shortcuts_match_keymap()
     test_launcher_preserves_user_config()
+    test_mouse_modes_and_save_indicator()
 
     failed = [name for name, ok, _ in RESULTS if not ok]
     print(f"\n{len(RESULTS) - len(failed)}/{len(RESULTS)} checks passed")

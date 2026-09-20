@@ -229,6 +229,7 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
         )
 
         # label mode selection
+        self.button_pointer: QtWidgets.QPushButton
         self.button_pick_bbox: QtWidgets.QPushButton
         self.button_span_bbox: QtWidgets.QPushButton
         self.button_fit_bbox: QtWidgets.QPushButton
@@ -237,6 +238,8 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
         # RIGHT PANEL
         self.label_list: QtWidgets.QListWidget
         self.current_class_dropdown: QtWidgets.QComboBox
+        self.next_class_title: QtWidgets.QLabel
+        self.combo_next_class: QtWidgets.QComboBox
         self.button_deselect_label: QtWidgets.QPushButton
         self.button_delete_label: QtWidgets.QPushButton
         self.button_assign_label: QtWidgets.QPushButton
@@ -303,6 +306,7 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
 
         # Connect with controller
         self.controller.startup(self)
+        self.populate_next_class_dropdown()
 
         # Start event cycle
         self.timer = QtCore.QTimer(self)
@@ -372,6 +376,7 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
         self.current_class_dropdown.currentTextChanged.connect(
             self.controller.bbox_controller.set_classname
         )
+        self.combo_next_class.currentIndexChanged.connect(self.change_next_class)
         self.button_deselect_label.clicked.connect(
             self.controller.bbox_controller.deselect_bbox
         )
@@ -397,20 +402,15 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
         self.button_show_image.pressed.connect(lambda: self.show_2d_image())
 
         # LABEL CONTROL
+        self.button_pointer.clicked.connect(self.activate_pointer_mode)
         self.button_pick_bbox.clicked.connect(
-            lambda: self.controller.drawing_mode.set_drawing_strategy(
-                PickingStrategy(self)
-            )
+            lambda: self.start_drawing_mode(PickingStrategy(self))
         )
         self.button_span_bbox.clicked.connect(
-            lambda: self.controller.drawing_mode.set_drawing_strategy(
-                SpanningStrategy(self)
-            )
+            lambda: self.start_drawing_mode(SpanningStrategy(self))
         )
         self.button_fit_bbox.clicked.connect(
-            lambda: self.controller.drawing_mode.set_drawing_strategy(
-                FittingStrategy(self)
-            )
+            lambda: self.start_drawing_mode(FittingStrategy(self))
         )
         self.button_save_label.clicked.connect(self.controller.save)
 
@@ -465,6 +465,13 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
         self.act_show_shortcuts.triggered.connect(
             lambda: self.controller.cmd_show_shortcuts()
         )
+        self.act_show_save_log.triggered.connect(
+            lambda: self.controller.cmd_show_save_log()
+        )
+        # clicking the save indicator in the status bar opens the same log
+        self.status_manager.save_label.mousePressEvent = (
+            lambda _event: self.controller.cmd_show_save_log()
+        )
 
         # ASSIST
         self.act_preannotate_frame.triggered.connect(
@@ -491,6 +498,50 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
             action.triggered.connect(
                 lambda _checked=False, s=setting: self.change_language(s)
             )
+
+    # DRAWING MODES
+
+    def activate_pointer_mode(self) -> None:
+        """Leave every drawing mode: the mouse navigates again.
+
+        Without this there was no way back from the sticky fit mode other than
+        knowing that Esc also cancels drawing, and every further click kept
+        producing boxes.
+        """
+        self.controller.drawing_mode.reset()
+        self.controller.align_mode.reset()
+        self.button_pointer.setChecked(True)
+        self.button_pick_bbox.setChecked(False)
+        self.button_span_bbox.setChecked(False)
+        self.button_fit_bbox.setChecked(False)
+        logging.info("Pointer mode: no drawing mode active.")
+
+    def start_drawing_mode(self, strategy) -> None:
+        """Arm a drawing mode (clicking its button again disarms it)."""
+        self.button_pointer.setChecked(False)
+        self.controller.drawing_mode.set_drawing_strategy(strategy)
+        if not self.controller.drawing_mode.is_active():
+            self.activate_pointer_mode()
+
+    # NEXT-FRAME CLASS
+
+    def populate_next_class_dropdown(self) -> None:
+        """Fill the "new boxes in next frames" combo from the class list."""
+        self.combo_next_class.blockSignals(True)
+        current = self.controller.next_box_class
+        self.combo_next_class.clear()
+        self.combo_next_class.addItem(
+            self.tr("Follow the active / default class"), None
+        )
+        for name in LabelConfig().get_classes():
+            self.combo_next_class.addItem(name, name)
+        index = self.combo_next_class.findData(current)
+        self.combo_next_class.setCurrentIndex(index if index >= 0 else 0)
+        self.combo_next_class.blockSignals(False)
+
+    def change_next_class(self) -> None:
+        value = self.combo_next_class.currentData()
+        self.controller.set_next_box_class(value)
 
     def step_selected_parameter(self, direction: int) -> None:
         """Step the parameter chosen in the ± combo box."""
@@ -795,6 +846,7 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
                 action.setChecked(True)
 
         self.act_set_default_class.addActions(self.actiongroup_default_class.actions())
+        self.populate_next_class_dropdown()
 
     def change_default_object_class(self, action: QAction) -> None:
         LabelConfig().set_default_class(action.text())

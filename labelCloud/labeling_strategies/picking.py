@@ -72,6 +72,7 @@ class PickingStrategy(BaseLabelingStrategy):
             )
         )
         final_bbox.set_z_rotation(self.bbox_z_rotation)
+        final_bbox.set_classname(self.view.controller.new_box_class())
         return final_bbox
 
     def reset(self) -> None:

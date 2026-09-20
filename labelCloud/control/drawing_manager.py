@@ -29,7 +29,11 @@ class DrawingManager(object):
         return False
 
     def set_drawing_strategy(self, strategy: BaseLabelingStrategy) -> None:
-        if self.is_active() and self.drawing_strategy == strategy:
+        # compare by class, not identity: the buttons build a new strategy object
+        # each click, so the old check never matched and the button could not be
+        # toggled off again
+        same_mode = self.is_active() and type(self.drawing_strategy) is type(strategy)
+        if same_mode:
             self.reset()
             logging.info("Deactivated drawing!")
         else:
