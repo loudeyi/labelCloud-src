@@ -43,6 +43,8 @@ without restarting.
 | **180° flip** | `Ctrl+U` | Flips the box heading |
 | **Focus view** | `Ctrl+F` | Draws only the points inside the active box (dense frames) |
 | **Dataset statistics** | `Ctrl+I` | Frames labelled / confirmed empty / not yet labelled, and boxes per class |
+| **Carry forward** | `Ctrl+Shift+E` | Follows the box into the next frames until the object is gone (5 frames per press) |
+| **Keyframe interpolation** | `Ctrl+Shift+I` then `Ctrl+Shift+K` | Boxes the two ends of a gap and fills every frame in between |
 
 Proposals are drawn **dashed in orange** and never look like confirmed labels. Accepting one is a
 single keystroke; rejecting is one keystroke for the whole batch.
@@ -115,8 +117,38 @@ list. Everything below is in the application, no file editing required.
 3. The status bar shows progress while it runs; you can keep working. The result is
    *the answer to "how long was this pole in view"*, which is useful on its own.
 
-`propagate_max_frames` caps the pass (200 by default) and `propagate_refit = False`
-writes the extrapolated box without re-fitting it.
+One press writes **at most five frames** (`propagate_max_frames`): far enough to get
+through a short occlusion, short enough that a prediction which slowly drifts cannot pile
+up boxes deep into the sequence. Press it again from the newest frame to continue.
+`propagate_refit = False` writes the extrapolated box without re-fitting it.
+
+### Filling a gap between two keyframes (`Ctrl+Shift+I` → `Ctrl+Shift+K`)
+
+Carry-forward follows *motion*. When the object is easy to box at the start and at the end
+of a stretch but hidden in between — a pole behind a tree, a cable in a gap of points — the
+frames in between can be computed from the two ends:
+
+1. In the earlier frame, box the object and press **`Ctrl+Shift+I`** (*Assist → Set
+   Keyframe Here*). The session card shows `Keyframe: frame 40 · pole`.
+2. Jump forward — ten, fifty, three hundred frames — and box the **same object** again.
+   This second box is the other end.
+3. Press **`Ctrl+Shift+K`** (*Assist → Interpolate from the Keyframe to Here*).
+
+The frames in between are filled in the background:
+
+* position and size are **interpolated** between the two boxes, so the result does not
+  depend on how steady the vehicle was driving;
+* the heading takes the **shortest arc** — a pole that turns from 350° to 10° turns 20°,
+  not 340° the other way round;
+* every generated box is checked against the points of **its own frame**: a frame where
+  the object is not there is **skipped**, never filled with a guess, and a frame that
+  already holds the object is **left alone**;
+* the writing follows the usual safety rules (backup before the first rewrite, refused
+  outright on `vertices`-format files).
+
+The status line reports the result — `Interpolation: filled 48 of 52 frames (4 without
+points, 0 already labelled)` — and `propagate_refit` decides whether each interpolated box
+is re-fitted to the points it covers (on by default).
 
 ### Seeing an object whole: overlay previous frames
 

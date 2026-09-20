@@ -34,6 +34,17 @@ The label file format is unchanged: `folder` / `filename` / `path` /
 * **Dataset statistics** (`Ctrl+I`): frames with boxes / confirmed empty / not yet
   labelled / unreadable, plus boxes per class.
 
+### Fill the frames between two keyframes (Ctrl+Shift+I, Ctrl+Shift+K)
+
+* `Ctrl+Shift+I` remembers the active box as the first keyframe (shown in the session
+  card); `Ctrl+Shift+K` takes the box of the current frame as the second one and fills
+  everything in between in a background thread.
+* Position and size are interpolated between the two boxes, the heading follows the
+  **shortest arc**, and each generated box is verified against the points of its own
+  frame: a frame without the object is skipped rather than filled with a guess, a frame
+  that already holds it is left alone. The status line reports
+  `Interpolation: filled N of M frames (X without points, Y already labelled)`.
+
 ### Carry a box forward (Ctrl+Shift+E)
 
 * Labels one object across the following frames in a background thread: the pose is
@@ -41,6 +52,9 @@ The label file format is unchanged: `folder` / `filename` / `path` /
   re-fitted and the box is appended to that frame's label file (existing objects are
   kept, duplicates are skipped), and the pass stops by itself when the object leaves
   the view. The status line reports how many frames were written and why it stopped.
+* One press writes **at most five frames** (`propagate_max_frames`, previously 200):
+  enough to cross a short occlusion, few enough that a prediction which slowly drifts
+  cannot pile up boxes deep into the sequence. Press it again to continue.
 
 ### Multi-frame overlay
 
