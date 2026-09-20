@@ -113,7 +113,7 @@ list. Everything below is in the application, no file editing required.
    * a frame that already contains this object is left alone (no duplicates);
    * the pass **stops by itself when the object is gone** — when the points inside the
      box fall below the prediction thresholds — and the status line reports how many
-     frames were written and where it stopped: `Propagated to 42 frames (0 skipped):
+     frames were written and where it stopped: `Propagated to 5 frames (0 skipped):
      object left the view at 177641487...pcd (3 points, adaptive rule)`.
 3. The status bar shows progress while it runs; you can keep working. The result is
    *the answer to "how long was this pole in view"*, which is useful on its own.
@@ -262,7 +262,7 @@ predict_next_frame = True     ; also toggled from the Labels menu (Ctrl+Shift+P)
 predict_as_candidates = True  ; start as proposals instead of finished boxes
 predict_refit = True          ; re-fit each prediction to its points
 predict_min_points = 5        ; drop below this absolute count
-predict_min_point_ratio = 0.35 ; ... or below this share of the previous count
+predict_min_point_ratio = 0.5  ; ... or below this share of the previous count
 ```
 
 Predictions arrive as **unconfirmed proposals** and are therefore **not written**:
@@ -577,9 +577,12 @@ Adding a translatable string: wrap it in `self.tr(...)` (or
 * In-app pre-annotation is CPU-only, one frame at a time.
 * Fit quality is guarded: a click that lands on a hedge, kerb or wall is **refused** instead of
   producing an oversized box, and a wire longer than 35 m is treated as a leaked region.
+* Keyframe interpolation works in the sensor frame. The frames carry no ego pose, so a gap in which
+  the vehicle moved a long way and turned sharply is the case where the interpolated boxes drift;
+  the per-frame point check then skips those frames instead of writing boxes into empty space.
 * Still missing compared to an ideal tool: rubber-band marquee selection (group editing itself is
-  implemented, via `Shift`+click) and keyframe interpolation across frames (designed, not yet
-  implemented).
+  implemented, via `Shift`+click), and a persistent track id that survives a re-label (the passes
+  recognise an object by position, not by identity).
 
 ## Credits and license
 

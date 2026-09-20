@@ -88,8 +88,20 @@ if [ ! -f "$CLASSES" ]; then
   cat > "$CLASSES" <<'JSON'
 {
     "classes": [
-        { "name": "pole", "id": 1, "color": "#00ff7f", "z_rotation_only": true },
-        { "name": "wire", "id": 2, "color": "#00aaff", "z_rotation_only": false }
+        {
+            "name": "pole",
+            "id": 1,
+            "color": "#00ff7f",
+            "z_rotation_only": true,
+            "default_dimensions": { "length": 2.6, "width": 4.0, "height": null }
+        },
+        {
+            "name": "wire",
+            "id": 2,
+            "color": "#00aaff",
+            "z_rotation_only": false,
+            "default_dimensions": { "length": 0.2, "width": 20.0, "height": 0.2 }
+        }
     ],
     "default": 1,
     "type": "object_detection",
@@ -161,9 +173,9 @@ export_precision = 8
 ; default length of the bounding box (for picking mode)
 std_boundingbox_length = 0.75
 ; default width of the bounding box (for picking mode)
-std_boundingbox_width = 0.53
+std_boundingbox_width = 0.55
 ; default height of the bounding box (for picking mode)
-std_boundingbox_height = 0.18
+std_boundingbox_height = 0.15
 ; standard step for translating the bounding box with button or key (in meter)
 std_translation = 0.03
 ; standard step for rotating the bounding box with button or key (in degree)

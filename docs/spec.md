@@ -1,16 +1,20 @@
 # labelCloud 半自动标注增强 —— 方案与清单
 
-> 状态：**阶段 0 + 1 + 2 已完成并验证** · 2026-09-20 · 代码在 `/home/tyy/DSH-WS/labelCloud-src/`（13 个提交）
+> 状态：**阶段 0 + 1 + 2 + 阶段 3 的时序部分已完成并验证** · 代码在 `/home/tyy/DSH-WS/labelCloud-src/`（22 个提交）
 >
 > **进度**：阶段 0（F-00~F-07）✅ · 阶段 1（F-10~F-18 + F-11b/F-16b）✅ · 阶段 2（F-20~F-26）✅ ·
-> README 双语（F-60/F-61）✅ · 回归检查 `tests/check_assist.py` **22/22 通过**。
-> 阶段 3（时序：F-30~F-34）与阶段 4（分割模型 F-50/F-51）按约定留待你试用后再定。
+> README 双语（F-60/F-61）✅ · 回归检查 `tests/check_assist.py` **28/28 checks passed**。
+> 阶段 3：F-30（多帧叠加）✅、F-31（`Ctrl+Shift+E` 带到后续帧，每次 5 帧）✅、
+> F-32（`Ctrl+Shift+I`/`Ctrl+Shift+K` 关键帧插值）✅、F-33（传播时按最近聚类重拟合 + 自适应阈值）✅；
+> **F-34（track id / finalize）未做** —— 需要你确认是否值得。
+> 阶段 4（分割模型 F-50/F-51）按约定留待你试用后再定。
+> 计划外的两件（你后来点名要的）：**质检模式 `Ctrl+Shift+Q`** 与预测设置对话框（`Ctrl+Shift+P` 的阈值可调）。
 
 ## 验证证据（不是"应该能跑"，是跑过的）
 
 | 项 | 验证方式 | 结果 |
 | --- | --- | --- |
-| 回归检查 | `/home/tyy/DSH-WS/labelcloud-hzh/bin/python tests/check_assist.py` | **22/22 通过**（每条在独立工作目录、独立子进程里跑） |
+| 回归检查 | `/home/tyy/DSH-WS/labelcloud-hzh/bin/python tests/check_assist.py` | **28/28 checks passed**（每条在独立工作目录、独立子进程里跑） |
 | 程序能启动 | offscreen 起 `labelCloud`，检查日志无 Traceback | 语言=zh_CN、CentroidFormat、无错误 |
 | 端到端闭环 | 真帧：载入 → 候选入队 → Enter 确认 → 撤销/重做 → 保存 → 重新读回 | 写出 `pole width 4.0` / `wire width 14.0, rz 300`，重读回 2 个框、类别正确 |
 | 一键拟合（合成数据） | 合成地面+杆+斜电线 | 杆心误差 ≤0.15 m、底贴地、竖直、模板 2.6/4.0；电线长轴落在 width、偏航误差 0° |
@@ -18,6 +22,9 @@
 | 程序内预标注 | 12 帧跑后台 worker，与离线工具 `labels_auto` 逐帧对比 | **逐框数量完全一致**；pole 召回 0.92/精度 0.79；单帧 0.03~1.18 s（后台线程） |
 | 硬约束：不动原始标注 | `find datasets_y40/*/labels_lc -newermt 今天` | **0 个文件被改动**（labels_auto 的 mtime 是 09:08，早于我 10:12 的第一次写入） |
 | 离线工具仍独立可用 | `tools/pole_wire_autolabel` 目录今日改动数 | 0 |
+| 关键帧插值（端到端） | offscreen 起真 GUI，7 帧合成数据，前后两帧各摆一个框后按 `Ctrl+Shift+K` | 中间 5 帧全部写出，`y` 依次 1.0→5.0，无点的帧被跳过、已有框的帧不重复 |
+| 质检（端到端） | offscreen 起真 GUI，3 帧里故意放重复框 + 长轴写错的电线 | 列表 2 行，按类别过滤正常，双击跳帧成功；干净数据 0 条 |
+| 质检（规则） | `check_assist.py` 的 `test_quality_check` | 7 类问题各中 1 条、干净框不报、IoU 与中位数数值正确 |
 
 ---
 
