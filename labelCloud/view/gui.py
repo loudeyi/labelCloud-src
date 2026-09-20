@@ -31,7 +31,11 @@ from ..i18n import (
 )
 from ..io.labels.config import LabelConfig
 from ..io.pointclouds import BasePointCloudHandler
-from ..labeling_strategies import PickingStrategy, SpanningStrategy
+from ..labeling_strategies import (
+    FittingStrategy,
+    PickingStrategy,
+    SpanningStrategy,
+)
 from ..model.point_cloud import PointCloud
 from .settings_dialog import SettingsDialog  # type: ignore
 from .startup.dialog import StartupDialog
@@ -227,6 +231,7 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
         # label mode selection
         self.button_pick_bbox: QtWidgets.QPushButton
         self.button_span_bbox: QtWidgets.QPushButton
+        self.button_fit_bbox: QtWidgets.QPushButton
         self.button_save_label: QtWidgets.QPushButton
 
         # RIGHT PANEL
@@ -400,6 +405,11 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
                 SpanningStrategy(self)
             )
         )
+        self.button_fit_bbox.clicked.connect(
+            lambda: self.controller.drawing_mode.set_drawing_strategy(
+                FittingStrategy(self)
+            )
+        )
         self.button_save_label.clicked.connect(self.controller.save)
 
         # BOUNDING BOX PARAMETER
@@ -452,6 +462,26 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
         self.act_change_settings.triggered.connect(self.show_settings_dialog)
         self.act_show_shortcuts.triggered.connect(
             lambda: self.controller.cmd_show_shortcuts()
+        )
+
+        # ASSIST
+        self.act_preannotate_frame.triggered.connect(
+            lambda: self.controller.cmd_preannotate_frame()
+        )
+        self.act_accept_candidate.triggered.connect(
+            lambda: self.controller.cmd_accept_candidate()
+        )
+        self.act_reject_candidates.triggered.connect(
+            lambda: self.controller.cmd_reject_candidates()
+        )
+        self.act_fit_box.triggered.connect(
+            lambda: self.controller.cmd_fit_box_at_cursor()
+        )
+        self.act_refit_box.triggered.connect(lambda: self.controller.cmd_refit_box())
+        self.act_snap_box.triggered.connect(lambda: self.controller.cmd_snap_box())
+        self.act_flip_180.triggered.connect(lambda: self.controller.cmd_flip_180())
+        self.act_show_statistics.triggered.connect(
+            lambda: self.controller.cmd_show_statistics()
         )
 
         # LANGUAGE
@@ -704,6 +734,7 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
     def activate_draw_modes(self, state: bool) -> None:
         self.button_pick_bbox.setEnabled(state)
         self.button_span_bbox.setEnabled(state)
+        self.button_fit_bbox.setEnabled(state)
 
     def line_edited_activated(self) -> bool:
         for line_edit in self.all_line_edits:

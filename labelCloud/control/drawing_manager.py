@@ -52,9 +52,12 @@ class DrawingManager(object):
             if (
                 self.drawing_strategy.is_bbox_finished()
             ):  # Register bbox to bbox controller when finished
-                self.bbox_controller.add_bbox(self.drawing_strategy.get_bbox())
-                self.drawing_strategy.reset()
-                self.drawing_strategy = None
+                strategy = self.drawing_strategy
+                self.bbox_controller.add_bbox(strategy.get_bbox())
+                sticky = getattr(strategy, "STICKY", False)
+                strategy.reset()
+                # a sticky strategy (click-to-fit) stays armed for the next object
+                self.drawing_strategy = type(strategy)(self.view) if sticky else None
 
     def draw_preview(self) -> None:
         if self.drawing_strategy is not None:

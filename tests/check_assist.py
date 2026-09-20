@@ -751,6 +751,36 @@ out["nudge_rx_allowed_for_wire"] = control.get_active_bbox().get_x_rotation()
 control.undo()
 out["nudge_undo_removes_tilt"] = control.get_active_bbox().get_x_rotation()
 
+# --- F-23: proposal queue lifecycle ---
+control.set_bboxes([])
+existing = BBox(0.0, 0.0, 0.0, 2.0, 3.0, 4.0)
+existing.set_classname("pole")
+control.add_bbox(existing)
+proposals = []
+for x, y in ((9.0, 0.0), (10.0, 0.0), (9.05, 0.0)):   # third duplicates the first
+    candidate = BBox(x, y, 0.0, 2.0, 3.0, 4.0)
+    candidate.set_classname("pole")
+    proposals.append(candidate)
+out["candidates_added"] = control.add_candidates(proposals)      # 2, dedup by 0.6 m
+out["candidate_count"] = control.candidate_count()
+out["active_is_candidate"] = control.get_active_bbox().candidate
+control.accept_candidate()
+out["count_after_accept"] = control.candidate_count()
+control.select_relative_candidate(1)
+out["jumped_to_candidate"] = control.get_active_bbox().candidate
+out["rejected"] = control.reject_all_candidates()
+out["boxes_after_reject"] = len(control.bboxes)
+
+# --- F-11b/F-16b: 180 degree flip ---
+flip = BBox(0.0, 0.0, 0.0, 2.0, 3.0, 4.0)
+flip.set_classname("wire")
+flip.set_z_rotation(30.0)
+control.add_bbox(flip)
+control.update_rotation("rot_z", (control.get_active_bbox().get_z_rotation() + 180.0) % 360.0)
+out["flip_180"] = round(control.get_active_bbox().get_z_rotation(), 1)
+control.update_rotation("rot_z", (control.get_active_bbox().get_z_rotation() + 180.0) % 360.0)
+out["flip_back"] = round(control.get_active_bbox().get_z_rotation(), 1)
+
 # --- local-axis movement follows the box, not the camera ---
 tilted = control.get_active_bbox()
 tilted.set_z_rotation(90.0)
@@ -869,6 +899,16 @@ def test_editing_commands():
             and data["nudge_length"] == 1.5
             and data["nudge_rx_allowed_for_wire"] == 5.0
             and data["nudge_undo_removes_tilt"] == 0.0
+            and data["candidates_added"] == 2  # the duplicate is skipped
+            and data["candidate_count"] == 2
+            and data["active_is_candidate"] is True
+            and data["count_after_accept"] == 1
+            and data["jumped_to_candidate"] is True
+            and data["rejected"] == 1
+            # the pre-existing box plus the one that was just confirmed
+            and data["boxes_after_reject"] == 2
+            and data["flip_180"] == 210.0
+            and data["flip_back"] == 30.0
         )
         detail = json.dumps(data)
     check("F-10/11/12/13 undo, lock, template, paste, local axes", ok, detail)
@@ -967,6 +1007,230 @@ def test_save_safety():
     check("F-18 failed save is reported, frame stays dirty, autosave is a no-op", ok, detail)
 
 
+# --------------------------------------------------------------------------- #
+# F-20/F-21/F-22: click-to-fit, refit, ground snapping
+# --------------------------------------------------------------------------- #
+FIT_SNIPPET = """
+import json
+import math
+import numpy as np
+from labelCloud.control import assist
+
+rng = np.random.default_rng(7)
+
+# --- a synthetic scene: ground plane at z = -2, a pole, and a slanted cable ---
+ground = np.column_stack([
+    rng.uniform(-12, 12, 6000),
+    rng.uniform(-12, 12, 6000),
+    np.full(6000, -2.0) + rng.normal(0, 0.03, 6000),
+])
+angle = rng.uniform(0, 2 * math.pi, 900)
+height = rng.uniform(0, 1, 900)
+pole = np.column_stack([
+    3.0 + 0.12 * np.cos(angle),
+    4.0 + 0.12 * np.sin(angle),
+    -2.0 + 10.0 * height,
+])
+
+yaw_deg = 30.0
+direction = np.array([math.cos(math.radians(yaw_deg)), math.sin(math.radians(yaw_deg))])
+steps = rng.uniform(0, 20, 700)
+wire = np.column_stack([
+    -5.0 + steps * direction[0],
+    2.0 + steps * direction[1],
+    3.0 + steps * 0.02 + rng.normal(0, 0.02, 700),
+])
+
+points = np.vstack([ground, pole, wire]).astype(np.float32)
+out = {}
+
+# --- F-20: pole ---
+seed = assist.nearest_point_index(points, (3.0, 4.0, 3.0))
+pole_box = assist.fit_box(points, seed, "pole")
+bottom = pole_box.center[2] - pole_box.height / 2.0
+out["pole_class"] = pole_box.get_classname()
+out["pole_centre"] = [round(pole_box.center[0], 2), round(pole_box.center[1], 2)]
+out["pole_bottom"] = round(bottom, 2)
+out["pole_height"] = round(pole_box.height, 2)
+out["pole_dims_lw"] = [round(v, 2) for v in pole_box.get_dimensions()[:2]]
+out["pole_upright"] = [round(v, 3) for v in pole_box.get_rotations()]
+
+# --- F-20: wire (long axis must land in width, yaw so local +y follows it) ---
+seed = assist.nearest_point_index(points, (0.0, 4.9, 3.2))
+wire_box = assist.fit_box(points, seed, "wire")
+out["wire_class"] = wire_box.get_classname()
+out["wire_long_axis_is_width"] = wire_box.get_dimensions()[1] > wire_box.get_dimensions()[0]
+out["wire_width"] = round(wire_box.get_dimensions()[1], 1)
+out["wire_length"] = round(wire_box.get_dimensions()[0], 2)
+out["wire_height"] = round(wire_box.get_dimensions()[2], 2)
+out["wire_yaw"] = round(wire_box.get_z_rotation(), 1)
+out["wire_yaw_error"] = round(
+    min(
+        abs((wire_box.get_z_rotation() - (yaw_deg - 90.0)) % 360),
+        360 - abs((wire_box.get_z_rotation() - (yaw_deg - 90.0)) % 360),
+    ),
+    1,
+)
+
+# --- F-21: refit a box that was left slightly off ---
+moved = assist.fit_box(points, seed, "wire")
+moved.set_x_translation(moved.center[0] + 0.8)
+moved.set_z_translation(moved.center[2] + 0.5)
+refitted = assist.refit_box(moved, points)
+out["refit_improved_x"] = abs(refitted.center[0] - wire_box.center[0]) < abs(
+    moved.center[0] - wire_box.center[0]
+)
+out["refit_class_kept"] = refitted.get_classname() == "wire"
+
+# --- F-21: a pole refit keeps the cross-section the user chose ---
+pole_box.set_dimensions(1.1, 1.7, pole_box.height)
+pole_box.set_x_translation(pole_box.center[0] + 0.6)
+refit_pole = assist.refit_box(pole_box, points)
+out["pole_refit_centre_error"] = round(abs(refit_pole.center[0] - 3.0), 2)
+out["pole_refit_kept_cross_section"] = [round(v, 2) for v in refit_pole.get_dimensions()[:2]]
+
+# --- F-22: snapping moves an elevated box onto the ground ---
+elevated = assist.fit_box(points, assist.nearest_point_index(points, (3.0, 4.0, 3.0)), "pole")
+elevated.set_z_translation(elevated.center[2] + 1.5)
+moved_flag = assist.snap_box(elevated, points)
+out["snap_moved"] = moved_flag
+out["snap_bottom"] = round(elevated.center[2] - elevated.height / 2.0, 2)
+out["snap_is_idempotent"] = assist.snap_box(elevated, points)
+
+print(json.dumps(out))
+"""
+
+
+def test_fit_refit_snap():
+    """The fitting engine must reproduce the pole/wire conventions on synthetic data."""
+    classes = {
+        "classes": [
+            {
+                "name": "pole",
+                "id": 1,
+                "color": "#00ff7f",
+                "z_rotation_only": True,
+                "default_dimensions": {"length": 2.6, "width": 4.0, "height": None},
+            },
+            {
+                "name": "wire",
+                "id": 2,
+                "color": "#00aaff",
+                "z_rotation_only": False,
+                "default_dimensions": {"length": 2.5, "width": None, "height": 2.0},
+            },
+        ],
+        "default": 1,
+        "type": "object_detection",
+        "format": "centroid_abs",
+    }
+    with tempfile.TemporaryDirectory() as tmp:
+        cwd = Path(tmp)
+        classes_path = cwd / "_classes.json"
+        classes_path.write_text(json.dumps(classes))
+        (cwd / "config.ini").write_text(BASE_CONFIG.format(cwd=cwd, classes=classes_path))
+        proc = subprocess.run(
+            [PYTHON, "-c", textwrap.dedent(FIT_SNIPPET)],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+        )
+    ok = proc.returncode == 0
+    detail = proc.stderr.strip().splitlines()[-1] if not ok else ""
+    if ok:
+        data = json.loads(proc.stdout.strip().splitlines()[-1])
+        ok = (
+            data["pole_class"] == "pole"
+            and abs(data["pole_centre"][0] - 3.0) <= 0.15
+            and abs(data["pole_centre"][1] - 4.0) <= 0.15
+            and -2.2 <= data["pole_bottom"] <= -1.8
+            and 10.0 <= data["pole_height"] <= 11.5
+            and data["pole_dims_lw"] == [2.6, 4.0]
+            and data["pole_upright"] == [0.0, 0.0, 0.0]
+            and data["wire_class"] == "wire"
+            and data["wire_long_axis_is_width"] is True
+            and data["wire_width"] >= 18.0
+            and data["wire_yaw_error"] <= 8.0
+            and data["refit_improved_x"] is True
+            and data["refit_class_kept"] is True
+            and data["pole_refit_centre_error"] <= 0.15
+            and data["pole_refit_kept_cross_section"] == [1.1, 1.7]
+            and data["snap_moved"] is True
+            and -2.2 <= data["snap_bottom"] <= -1.8
+            and data["snap_is_idempotent"] is False
+        )
+        detail = json.dumps(data)
+    check("F-20/21/22 fit pole+wire, refit, snap conventions", ok, detail)
+
+
+PROPOSALS_STATS_SNIPPET = """
+import json
+from pathlib import Path
+from labelCloud.control.assist_worker import to_bboxes
+from labelCloud.view.statistics_dialog import collect_statistics
+
+proposals = [
+    {"name": "pole", "center": (1.0, 2.0, 3.0), "dims": (2.6, 4.0, 11.0), "rot": (0.0, 0.0, 0.0)},
+    {"name": "wire", "center": (5.0, 6.0, 7.0), "dims": (2.5, 17.0, 2.0), "rot": (0.0, 0.0, 300.0)},
+    {"name": "broken"},                       # malformed -> skipped, not fatal
+]
+boxes = to_bboxes(proposals)
+out = {
+    "converted": len(boxes),
+    "classes": [b.get_classname() for b in boxes],
+    "all_candidates": all(b.candidate for b in boxes),
+    "wire_yaw": round(boxes[1].get_z_rotation(), 1),
+    "dims_kept": [round(v, 1) for v in boxes[1].get_dimensions()],
+}
+
+# --- statistics over a tiny synthetic dataset ---
+pcd_dir = Path("pointclouds"); pcd_dir.mkdir(exist_ok=True)
+label_dir = Path("labels"); label_dir.mkdir(exist_ok=True)
+for stem, objects in (
+    ("frame_a", [{"name": "pole"}, {"name": "pole"}]),
+    ("frame_b", [{"name": "wire"}]),
+    ("frame_c", []),                           # confirmed empty
+    ("frame_d", [{"name": "pole"}]),
+):
+    (pcd_dir / (stem + ".pcd")).write_text("")
+    (label_dir / (stem + ".json")).write_text(json.dumps({"objects": objects}))
+(pcd_dir / "frame_e.pcd").write_text("")      # never labelled
+(pcd_dir / "frame_f.pcd").write_text("")      # labelled, but the file is broken
+(label_dir / "frame_f.json").write_text("{ not json")
+
+stats = collect_statistics(pcd_dir, label_dir)
+out["stats"] = {k: stats[k] for k in
+                ("total", "labelled", "empty", "unlabelled", "unreadable", "boxes", "per_class")}
+print(json.dumps(out))
+"""
+
+
+def test_proposals_and_statistics():
+    """Proposal conversion must be tolerant, and the statistics must classify frames."""
+    proc = run_snippet("proposals-stats", PROPOSALS_STATS_SNIPPET)
+    ok = proc.returncode == 0
+    detail = proc.stderr.strip().splitlines()[-1] if not ok else ""
+    if ok:
+        data = json.loads(proc.stdout.strip().splitlines()[-1])
+        stats = data["stats"]
+        ok = (
+            data["converted"] == 2
+            and data["classes"] == ["pole", "wire"]
+            and data["all_candidates"] is True
+            and data["wire_yaw"] == 300.0
+            and data["dims_kept"] == [2.5, 17.0, 2.0]
+            and stats["total"] == 6
+            and stats["labelled"] == 3
+            and stats["empty"] == 1
+            and stats["unreadable"] == 1
+            and stats["unlabelled"] == 1
+            and stats["boxes"] == 4
+            and stats["per_class"] == {"pole": 3, "wire": 1}
+        )
+        detail = json.dumps(data)
+    check("F-24/25/26 proposal conversion and dataset statistics", ok, detail)
+
+
 if __name__ == "__main__":
     print(f"python: {PYTHON}")
     print(f"repo:   {REPO}\n")
@@ -988,6 +1252,8 @@ if __name__ == "__main__":
     test_keymap_config_override()
     test_editing_commands()
     test_save_safety()
+    test_fit_refit_snap()
+    test_proposals_and_statistics()
 
     failed = [name for name, ok, _ in RESULTS if not ok]
     print(f"\n{len(RESULTS) - len(failed)}/{len(RESULTS)} checks passed")

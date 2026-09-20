@@ -580,6 +580,86 @@ class BoundingBoxController(object):
         bbox.set_x_translation(bbox.center[0] + distance * dx)  # type: ignore[union-attr]
         bbox.set_y_translation(bbox.center[1] + distance * dy)  # type: ignore[union-attr]
 
+    @undoable("Replace bounding box")
+    @has_active_bbox_decorator
+    def replace_active_bbox(self, bbox: BBox, description: str = "Replace box") -> None:
+        """Swap the active box for a refitted/re-snapped copy of itself."""
+        if not isinstance(bbox, BBox):
+            return
+        self.bboxes[self.active_bbox_id] = bbox
+        self.update_all()
+
+    # PRE-ANNOTATION CANDIDATES
+
+    def candidate_ids(self) -> List[int]:
+        """Indices of boxes that are still unconfirmed proposals."""
+        return [i for i, bbox in enumerate(self.bboxes) if getattr(bbox, "candidate", False)]
+
+    def candidate_count(self) -> int:
+        return len(self.candidate_ids())
+
+    def add_candidates(self, candidates: List[BBox], min_distance: float = 0.6) -> int:
+        """Append proposals, skipping ones that duplicate a box already here."""
+        if not candidates:
+            return 0
+        before = self.history_capture("Add pre-annotation candidates")
+        centers = [np.asarray(bbox.get_center()) for bbox in self.bboxes]
+        added = 0
+        for candidate in candidates:
+            center = np.asarray(candidate.get_center())
+            if any(
+                np.linalg.norm(center[:2] - existing[:2]) < min_distance
+                for existing in centers
+            ):
+                continue
+            candidate.candidate = True
+            self.bboxes.append(candidate)
+            centers.append(center)
+            added += 1
+        if added:
+            self.dirty = True
+            self.history.record(before, "Add pre-annotation candidates")
+            self.set_active_bbox(len(self.bboxes) - 1)
+        return added
+
+    @undoable("Accept candidate")
+    def accept_candidate(self, bbox_id: Optional[int] = None) -> bool:
+        """Confirm a proposal: it becomes a normal, editable box."""
+        index = self.active_bbox_id if bbox_id is None else bbox_id
+        if not (0 <= index < len(self.bboxes)):
+            return False
+        bbox = self.bboxes[index]
+        if not getattr(bbox, "candidate", False):
+            return False
+        bbox.candidate = False
+        self.update_label_list()
+        return True
+
+    @undoable("Reject all candidates")
+    def reject_all_candidates(self) -> int:
+        """Delete every unconfirmed proposal at once."""
+        rejected = self.candidate_ids()
+        if not rejected:
+            return 0
+        self.bboxes = [
+            bbox for i, bbox in enumerate(self.bboxes) if i not in set(rejected)
+        ]
+        self.active_bbox_id = -1 if not self.bboxes else min(self.active_bbox_id, len(self.bboxes) - 1)
+        self.update_all()
+        return len(rejected)
+
+    def select_relative_candidate(self, step: int = 1) -> bool:
+        """Jump to the next/previous unconfirmed proposal."""
+        pending = self.candidate_ids()
+        if not pending:
+            return False
+        if self.active_bbox_id in pending:
+            position = (pending.index(self.active_bbox_id) + step) % len(pending)
+        else:
+            position = 0 if step > 0 else len(pending) - 1
+        self.set_active_bbox(pending[position])
+        return True
+
     # RELATIVE NUDGES (numeric panel, ± buttons)
 
     @undoable("Edit position", coalesce="nudge-position")

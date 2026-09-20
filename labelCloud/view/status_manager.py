@@ -27,6 +27,11 @@ class StatusManager:
         self.mode_label.setAlignment(QtCore.Qt.AlignCenter)
         self.status_bar.addWidget(self.mode_label, stretch=0)
 
+        # Add a permanent readout of the world position under the cursor
+        self.position_label = QtWidgets.QLabel()
+        self.position_label.setStyleSheet("font-size: 13px; color: #555;")
+        self.status_bar.addPermanentWidget(self.position_label, stretch=0)
+
         # Add temporary status message / tips
         self.message_label = QtWidgets.QLabel()
         self.message_label.setStyleSheet("font-size: 14px;")
@@ -46,6 +51,15 @@ class StatusManager:
         if mode == Mode.DRAWING:
             return QCoreApplication.translate("StatusManager", "Drawing Mode")
         return QCoreApplication.translate("StatusManager", "Navigation Mode")
+
+    def set_cursor_position(self, position) -> None:
+        """Show the world coordinates under the cursor (helps place boxes exactly)."""
+        if position is None:
+            self.position_label.setText("")
+            return
+        self.position_label.setText(
+            "X %6.2f   Y %6.2f   Z %6.2f" % (position[0], position[1], position[2])
+        )
 
     def set_mode(self, mode: Mode) -> None:
         self.mode = mode

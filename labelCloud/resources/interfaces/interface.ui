@@ -767,6 +767,32 @@
        </widget>
       </item>
       <item>
+       <widget class="QPushButton" name="button_fit_bbox">
+        <property name="text">
+         <string>Fit Box (click object)</string>
+        </property>
+        <property name="toolTip">
+         <string>Click a pole or a wire to fit a box around it. [Ctrl+G]</string>
+        </property>
+        <property name="icon">
+         <iconset>
+          <normaloff>../icons/select-off.svg</normaloff>../icons/select-off.svg</iconset>
+        </property>
+        <property name="iconSize">
+         <size>
+          <width>20</width>
+          <height>20</height>
+         </size>
+        </property>
+        <property name="checkable">
+         <bool>true</bool>
+        </property>
+        <property name="checked">
+         <bool>false</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QPushButton" name="button_span_bbox">
         <property name="text">
          <string>Span Bounding Box</string>
@@ -1595,6 +1621,19 @@
     <addaction name="act_delete_all_labels"/>
     <addaction name="act_propagate_labels"/>
    </widget>
+   <widget class="QMenu" name="menuAssist">
+    <property name="title">
+     <string>Assist</string>
+    </property>
+    <addaction name="act_preannotate_frame"/>
+    <addaction name="act_accept_candidate"/>
+    <addaction name="act_reject_candidates"/>
+    <addaction name="act_fit_box"/>
+    <addaction name="act_refit_box"/>
+    <addaction name="act_snap_box"/>
+    <addaction name="act_flip_180"/>
+    <addaction name="act_show_statistics"/>
+   </widget>
    <widget class="QMenu" name="menuSettings">
     <property name="title">
      <string>Settings</string>
@@ -1622,6 +1661,7 @@
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuLabels"/>
+   <addaction name="menuAssist"/>
    <addaction name="menuSettings"/>
   </widget>
   <widget class="QStatusBar" name="status_bar"/>
@@ -1756,6 +1796,46 @@ when opening that point cloud again.</string>
    <property name="toolTip">
     <string>Propagate Labels to the next Point Cloud
 if it does not have labels yet.</string>
+   </property>
+  </action>
+  <action name="act_preannotate_frame">
+   <property name="text">
+    <string>Pre-annotate This Frame [Ctrl+Shift+G]</string>
+   </property>
+  </action>
+  <action name="act_accept_candidate">
+   <property name="text">
+    <string>Confirm Proposal [Enter]</string>
+   </property>
+  </action>
+  <action name="act_reject_candidates">
+   <property name="text">
+    <string>Reject All Proposals [Ctrl+Shift+Del]</string>
+   </property>
+  </action>
+  <action name="act_fit_box">
+   <property name="text">
+    <string>Fit Box at Cursor [Ctrl+G]</string>
+   </property>
+  </action>
+  <action name="act_refit_box">
+   <property name="text">
+    <string>Refit Active Box [Ctrl+R]</string>
+   </property>
+  </action>
+  <action name="act_snap_box">
+   <property name="text">
+    <string>Snap Box to Ground [Ctrl+E]</string>
+   </property>
+  </action>
+  <action name="act_flip_180">
+   <property name="text">
+    <string>Flip Box 180° [Ctrl+U]</string>
+   </property>
+  </action>
+  <action name="act_show_statistics">
+   <property name="text">
+    <string>Dataset Statistics ... [Ctrl+I]</string>
    </property>
   </action>
   <action name="act_show_shortcuts">

@@ -156,6 +156,15 @@ propagate_labels = False
 ; save the current frame automatically every N seconds (0 disables it)
 autosave_interval_seconds = 60
 
+[ASSIST]
+; folder of the offline pole/wire pre-annotation tool (tools/pole_wire_autolabel);
+; leave empty to disable the "pre-annotate this frame" command
+polewire_path = /home/tyy/DSH-WS/tools/pole_wire_autolabel
+; classes the pre-annotation should propose
+classes = pole,wire
+; pole parameters: recall (more boxes, fewer misses) or strict (fewer, cleaner)
+pole_profile = recall
+
 [USER_INTERFACE]
 ; only allow z-rotation of bounding boxes. set false to also label x- & y-rotation
 z_rotation_only = True

@@ -313,6 +313,68 @@ TRANSLATIONS.update({
 })
 
 TRANSLATIONS.update({
+    # assist menu + pre-annotation queue (phase 2)
+    "Pre-annotate This Frame [Ctrl+Shift+G]": "自动预标注本帧 [Ctrl+Shift+G]",
+    "Confirm Proposal [Enter]": "确认候选框 [Enter]",
+    "Reject All Proposals [Ctrl+Shift+Del]": "拒绝全部候选框 [Ctrl+Shift+Del]",
+    "Fit Box at Cursor [Ctrl+G]": "在光标处拟合 [Ctrl+G]",
+    "Refit Active Box [Ctrl+R]": "重新拟合当前框 [Ctrl+R]",
+    "Snap Box to Ground [Ctrl+E]": "吸附到地面 [Ctrl+E]",
+    "Flip Box 180° [Ctrl+U]": "检测框翻转 180° [Ctrl+U]",
+    "Dataset Statistics ... [Ctrl+I]": "数据集统计 … [Ctrl+I]",
+    "Dataset Statistics": "数据集统计",
+    "Pre-annotate this frame and queue the proposals": "自动预标注本帧，候选框排队待确认",
+    "Confirm the proposal under review": "确认当前候选框",
+    "Next unconfirmed proposal": "下一个未确认的候选框",
+    "Previous unconfirmed proposal": "上一个未确认的候选框",
+    "Reject all proposals in this frame": "拒绝本帧全部候选框",
+    "Flip the box by 180 degrees": "把检测框翻转 180°",
+    "Show dataset statistics": "显示数据集统计",
+    "Pre-annotation is still running ...": "预标注还在运行中 …",
+    "Running pre-annotation in the background ...": "正在后台运行预标注 …",
+    "%s proposals added; Enter confirms one, Ctrl+Right jumps to the next.": (
+        "已加入 %s 个候选框；Enter 确认，Ctrl+→ 跳到下一个。"
+    ),
+    "Pre-annotation failed - see the log for details.": "预标注失败，详见日志。",
+    "Confirmed. %s proposals left in this frame.": "已确认。本帧还剩 %s 个候选框。",
+    "Rejected %s proposals in this frame.": "已拒绝本帧 %s 个候选框。",
+    "Scanning %s ...": "正在统计 %s …",
+    "Frames found": "点云帧数",
+    "Frames with boxes": "有标注框的帧",
+    "Frames confirmed empty": "确认无目标的帧",
+    "Frames not labelled yet": "尚未标注的帧",
+    "Unreadable label files": "无法解析的标注文件",
+    "Boxes in total": "检测框总数",
+    "Boxes per class": "各类别检测框数",
+    "This frame: %s boxes, %s of them unconfirmed proposals.": (
+        "本帧：%s 个检测框，其中 %s 个是未确认的候选框。"
+    ),
+    "Item": "项目",
+    "Count": "数量",
+    "Class": "类别",
+    "Boxes": "检测框数",
+    # assist (phase 2)
+    "Fit Box (click object)": "辅助拟合（点目标）",
+    "Click a pole or a wire to fit a box around it. [Ctrl+G]": (
+        "在电线杆或电线上点一下，自动拟合出检测框。[Ctrl+G]"
+    ),
+    "Fit a box around the object under the cursor": "在光标处的目标上拟合检测框",
+    "Refit the active box to the points inside it": "把当前检测框重新拟合到框内点",
+    "Fit boxes automatically and queue them for review": "自动拟合检测框并排队待确认",
+    "Snap the active box onto the ground": "把当前检测框吸附到地面",
+    "Assist": "辅助",
+    "Click a pole or a wire to fit a box around it.": "在电线杆或电线上点一下，自动拟合出检测框。",
+    "Could not fit a box here - try clicking directly on the object.": (
+        "这里拟合不出检测框——请点在目标本体上。"
+    ),
+    "Could not fit a box here - click closer to the object.": "这里拟合不出检测框——请点得离目标更近。",
+    "Move the mouse over an object first.": "请先把鼠标移到目标上。",
+    "Fitted a %s box.": "已拟合一个 %s 检测框。",
+    "Select a box first, then refit it.": "请先选中一个检测框，再重新拟合。",
+    "Not enough points inside the box to refit it.": "框内点太少，无法重新拟合。",
+    "Refit the box to the points inside it.": "已把检测框重新拟合到框内的点。",
+    "Snapped the box onto the ground.": "已把检测框吸附到地面。",
+    "The box already sits on the ground.": "检测框已经贴在地面上了。",
     "Saving failed - your edits are NOT on disk (see the log).": (
         "保存失败——你的修改还没写进磁盘（详见日志）。"
     ),

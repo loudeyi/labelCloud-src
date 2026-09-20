@@ -15,13 +15,19 @@ from ..definitions import (
     Point3D,
     Rotations3D,
 )
-from ..io.labels.config import LabelConfig
 from ..utils import math3d, oglhelper
+
+# `LabelConfig` is imported inside the methods that need it: importing the
+# io.labels package at module level closes a cycle
+# (model.bbox -> io.labels.config -> io.labels -> centroid -> model), which made
+# `import labelCloud.model.bbox` fail depending on the import order.
 
 
 class BBox(object):
     MIN_DIMENSION: float = config.getfloat("LABEL", "MIN_BOUNDINGBOX_DIMENSION")
     HIGHLIGHTED_COLOR: Color3f = Color3f(0, 1, 0)
+    #: Colour of a not-yet-confirmed proposal from the automatic pre-annotation.
+    CANDIDATE_COLOR: Color3f = Color3f(1.0, 0.55, 0.0)
 
     def __init__(
         self,
@@ -43,11 +49,16 @@ class BBox(object):
         self.x_rotation: float = 0
         self.y_rotation: float = 0
         self.z_rotation: float = 0
+        from ..io.labels.config import LabelConfig
+
         self.classname: str = LabelConfig().get_default_class_name()
         #: When locked, the size template is protected against accidental edits
         #: (scaling keys, side scrolling, re-fitting). Purely in-memory: the label
         #: file schema must stay compatible with upstream labelCloud.
         self.locked: bool = False
+        #: True while the box is still an unconfirmed proposal (drawn dashed in
+        #: orange). Accepting clears the flag; rejecting deletes the box.
+        self.candidate: bool = False
         self.verticies: npt.NDArray = np.zeros((8, 3))
         self.set_axis_aligned_verticies()
 
@@ -166,7 +177,13 @@ class BBox(object):
         self.set_axis_aligned_verticies()
 
         GL.glPushMatrix()
-        bbox_color = LabelConfig().get_class_color(self.classname)
+        from ..io.labels.config import LabelConfig
+
+        bbox_color = (
+            self.CANDIDATE_COLOR
+            if self.candidate
+            else LabelConfig().get_class_color(self.classname)
+        )
         if highlighted:
             bbox_color = self.HIGHLIGHTED_COLOR
 
@@ -176,8 +193,24 @@ class BBox(object):
             for vertex_id in edge:
                 drawing_sequence.append(vertices[vertex_id])
 
+        if self.candidate and not highlighted:
+            self._draw_dashed(drawing_sequence)
+            GL.glPopMatrix()
+            return
+
         oglhelper.draw_lines(drawing_sequence, color=Color3f.to_rgba(bbox_color))
         GL.glPopMatrix()
+
+    def _draw_dashed(self, drawing_sequence: List[Point3D]) -> None:
+        """Draw a proposal dashed, so it is never mistaken for a confirmed box."""
+        GL.glPushAttrib(GL.GL_ENABLE_BIT | GL.GL_LINE_BIT)
+        GL.glEnable(GL.GL_LINE_STIPPLE)
+        GL.glLineStipple(2, 0x00FF)
+        oglhelper.draw_lines(
+            drawing_sequence, color=Color3f.to_rgba(self.CANDIDATE_COLOR)
+        )
+        GL.glDisable(GL.GL_LINE_STIPPLE)
+        GL.glPopAttrib()
 
     def draw_orientation(self, crossed_side: bool = True) -> None:
         # Get object coordinates for arrow

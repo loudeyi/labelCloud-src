@@ -2,12 +2,14 @@ import json
 import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import TYPE_CHECKING, List, Optional, Union
 
 import numpy as np
 
-from ...model import BBox
 from .config import LabelConfig
+
+if TYPE_CHECKING:  # imported only for the annotations below
+    from ...model import BBox
 
 
 class BaseLabelFormat(ABC):
@@ -61,11 +63,11 @@ class BaseLabelFormat(ABC):
         return label_path
 
     @abstractmethod
-    def import_labels(self, pcd_path: Path) -> List[BBox]:
+    def import_labels(self, pcd_path: Path) -> List["BBox"]:
         raise NotImplementedError
 
     @abstractmethod
-    def export_labels(self, bboxes: List[BBox], pcd_path: Path) -> None:
+    def export_labels(self, bboxes: List["BBox"], pcd_path: Path) -> None:
         raise NotImplementedError
 
 

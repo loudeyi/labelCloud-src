@@ -57,6 +57,9 @@ class Controller:
         # Save safety
         self.save_error_count = 0
 
+        # Background pre-annotation (offline pole/wire tool)
+        self.preannotate_worker = None
+
     def startup(self, view: "GUI") -> None:
         """Sets the view in all controllers and dependent modules; Loads labels from file."""
         self.view = view
@@ -74,6 +77,12 @@ class Controller:
     def loop_gui(self) -> None:
         """Function collection called during each event loop iteration."""
         self.set_crosshair()
+        if self.curr_cursor_pos is not None:
+            self.view.status_manager.set_cursor_position(
+                self.view.gl_widget.get_world_coords(
+                    self.curr_cursor_pos.x(), self.curr_cursor_pos.y(), correction=True
+                )
+            )
         self.set_selected_side()
         self.view.gl_widget.updateGL()
 
@@ -511,6 +520,16 @@ class Controller:
         "apply_template": "cmd_apply_template",
         "toggle_focus": "cmd_toggle_focus",
         "show_shortcuts": "cmd_show_shortcuts",
+        "fit_box_at_cursor": "cmd_fit_box_at_cursor",
+        "refit_box": "cmd_refit_box",
+        "snap_box": "cmd_snap_box",
+        "preannotate_frame": "cmd_preannotate_frame",
+        "accept_candidate": "cmd_accept_candidate",
+        "next_candidate": "cmd_next_candidate",
+        "prev_candidate": "cmd_prev_candidate",
+        "reject_candidates": "cmd_reject_candidates",
+        "flip_180": "cmd_flip_180",
+        "show_statistics": "cmd_show_statistics",
     }
 
     def key_press_event(self, a0: QtGui.QKeyEvent) -> None:
@@ -727,6 +746,182 @@ class Controller:
             self.clear_focus()
         else:
             self.activate_focus()
+
+    # ASSIST COMMANDS
+
+    def _current_class(self) -> str:
+        if self.bbox_controller.has_active_bbox():
+            return self.bbox_controller.get_classname()
+        return LabelConfig().get_default_class_name()
+
+    def cmd_fit_box_at_cursor(self, factor: float = 1.0) -> None:
+        """Grow a region under the mouse cursor and fit a box (F-20)."""
+        from . import assist
+
+        pointcloud = self.pcd_manager.pointcloud
+        if pointcloud is None or self.curr_cursor_pos is None:
+            self.view.status_manager.set_message(
+                QCoreApplication.translate(
+                    "labelCloud", "Move the mouse over an object first."
+                )
+            )
+            return
+        world = self.view.gl_widget.get_world_coords(
+            self.curr_cursor_pos.x(), self.curr_cursor_pos.y(), correction=True
+        )
+        seed_index = assist.nearest_point_index(pointcloud.points, world)
+        if seed_index is None:
+            return
+        classname = self._current_class()
+        fitted = assist.fit_box(pointcloud.points, seed_index, classname)
+        if fitted is None:
+            self.view.status_manager.set_message(
+                QCoreApplication.translate(
+                    "labelCloud", "Could not fit a box here - click closer to the object."
+                )
+            )
+            return
+        fitted.locked = False
+        self.bbox_controller.add_bbox(fitted)
+        self.view.status_manager.set_message(
+            QCoreApplication.translate("labelCloud", "Fitted a %s box.") % classname
+        )
+
+    def cmd_refit_box(self, factor: float = 1.0) -> None:
+        """Refit the active box to the points inside it (F-21)."""
+        from . import assist
+
+        pointcloud = self.pcd_manager.pointcloud
+        bbox = self.bbox_controller.get_active_bbox()
+        if pointcloud is None or bbox is None:
+            self.view.status_manager.set_message(
+                QCoreApplication.translate(
+                    "labelCloud", "Select a box first, then refit it."
+                )
+            )
+            return
+        if self.bbox_controller.is_active_locked():
+            self.bbox_controller.warn_dimensions_locked()
+            return
+        refitted = assist.refit_box(bbox, pointcloud.points)
+        if refitted is None:
+            self.view.status_manager.set_message(
+                QCoreApplication.translate(
+                    "labelCloud", "Not enough points inside the box to refit it."
+                )
+            )
+            return
+        self.bbox_controller.replace_active_bbox(refitted, "Refit bounding box")
+        self.view.status_manager.set_message(
+            QCoreApplication.translate("labelCloud", "Refit the box to the points inside it.")
+        )
+
+    def cmd_snap_box(self, factor: float = 1.0) -> None:
+        """Snap the active box onto the local ground (F-22)."""
+        from . import assist
+
+        pointcloud = self.pcd_manager.pointcloud
+        bbox = self.bbox_controller.get_active_bbox()
+        if pointcloud is None or bbox is None:
+            return
+        if assist.snap_box(bbox, pointcloud.points):
+            self.bbox_controller.replace_active_bbox(bbox, "Snap box to ground")
+            self.view.update_bbox_stats(bbox)
+            self.view.status_manager.set_message(
+                QCoreApplication.translate("labelCloud", "Snapped the box onto the ground.")
+            )
+        else:
+            self.view.status_manager.set_message(
+                QCoreApplication.translate("labelCloud", "The box already sits on the ground.")
+            )
+
+    def cmd_preannotate_frame(self, factor: float = 1.0) -> None:
+        """Run the offline pre-annotation on this frame, in a background thread (F-24)."""
+        from .assist_worker import worker_for
+
+        if self.preannotate_worker is not None and self.preannotate_worker.isRunning():
+            self.view.status_manager.set_message(
+                QCoreApplication.translate(
+                    "labelCloud", "Pre-annotation is still running ..."
+                )
+            )
+            return
+
+        worker = worker_for(getattr(self.pcd_manager, "pcd_path", None), self.view)
+        if worker is None:
+            return
+        worker.proposals_ready.connect(self.on_proposals_ready)
+        worker.failed.connect(self.on_proposals_failed)
+        self.preannotate_worker = worker
+        self.view.status_manager.set_message(
+            QCoreApplication.translate(
+                "labelCloud", "Running pre-annotation in the background ..."
+            )
+        )
+        worker.start()
+
+    def on_proposals_ready(self, proposals: list, message: str) -> None:
+        from .assist_worker import to_bboxes
+
+        boxes = to_bboxes(proposals)
+        added = self.bbox_controller.add_candidates(boxes)
+        self.view.status_manager.set_message(
+            QCoreApplication.translate(
+                "labelCloud",
+                "%s proposals added; Enter confirms one, Ctrl+Right jumps to the next.",
+            )
+            % added
+        )
+
+    def on_proposals_failed(self, message: str) -> None:
+        self.view.status_manager.set_message(
+            QCoreApplication.translate(
+                "labelCloud", "Pre-annotation failed - see the log for details."
+            )
+        )
+
+    def cmd_accept_candidate(self, factor: float = 1.0) -> None:
+        """Confirm the active proposal and jump to the next one (F-23)."""
+        if self.bbox_controller.accept_candidate():
+            remaining = self.bbox_controller.candidate_count()
+            self.bbox_controller.select_relative_candidate(1)
+            self.view.status_manager.set_message(
+                QCoreApplication.translate(
+                    "labelCloud", "Confirmed. %s proposals left in this frame."
+                )
+                % remaining
+            )
+
+    def cmd_reject_candidates(self, factor: float = 1.0) -> None:
+        rejected = self.bbox_controller.reject_all_candidates()
+        if rejected:
+            self.view.status_manager.set_message(
+                QCoreApplication.translate(
+                    "labelCloud", "Rejected %s proposals in this frame."
+                )
+                % rejected
+            )
+
+    def cmd_next_candidate(self, factor: float = 1.0) -> None:
+        self.bbox_controller.select_relative_candidate(1)
+
+    def cmd_prev_candidate(self, factor: float = 1.0) -> None:
+        self.bbox_controller.select_relative_candidate(-1)
+
+    def cmd_flip_180(self, factor: float = 1.0) -> None:
+        """Flip the active box by 180 degrees (heading is often ambiguous)."""
+        bbox = self.bbox_controller.get_active_bbox()
+        if bbox is None:
+            return
+        self.bbox_controller.update_rotation(
+            "rot_z", (bbox.get_z_rotation() + 180.0) % 360.0
+        )
+        self.view.update_bbox_stats(self.bbox_controller.get_active_bbox())
+
+    def cmd_show_statistics(self, factor: float = 1.0) -> None:
+        from ..view.statistics_dialog import StatisticsDialog
+
+        StatisticsDialog(self.view, self).exec_()
 
     def cmd_show_shortcuts(self, factor: float = 1.0) -> None:
         from ..view.shortcut_dialog import ShortcutDialog
