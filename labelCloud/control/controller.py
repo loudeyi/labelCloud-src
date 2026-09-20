@@ -15,6 +15,7 @@ from .alignmode import AlignMode
 from .bbox_controller import BoundingBoxController
 from .config_manager import config
 from .keymap import KeyMap
+from .undo import BBoxState
 from .drawing_manager import DrawingManager
 from .pcd_manager import PointCloudManger
 from PyQt5.QtCore import QCoreApplication
@@ -53,6 +54,12 @@ class Controller:
         self.drag_target: Optional[str] = None  # None | "box" | "face" | "rotate"
         self.drag_side: Optional[str] = None  # side frozen at press time
         self.drag_start_pos = None
+        #: dimension of the dragged side when the gesture started, so the resize is
+        #: computed from the total cursor movement instead of accumulating deltas
+        #: (accumulation drifts and made the box oscillate under the cursor)
+        self.drag_start_extent: Optional[float] = None
+        #: pixels of vertical drag per metre when resizing a face
+        self.FACE_DRAG_PIXELS_PER_METER = 20.0
         self.bbox_drag_offset = (0.0, 0.0, 0.0)
         self.pending_draw_kind: Optional[str] = None  # "drawing" | "align"
         #: a click that moved more than this many pixels counts as a drag
@@ -64,8 +71,10 @@ class Controller:
 
         # Save safety
         self.save_error_count = 0
-        #: (timestamp, path, ok, message) of the recent label writes, newest last
-        self.save_log: List[tuple] = []
+        #: (timestamp, kind, path, ok, message) of loads and writes, newest last
+        self.activity_log: List[tuple] = []
+        #: kept for compatibility with anything reading the old name
+        self.save_log = self.activity_log
         self.SAVE_LOG_LIMIT = 200
         self._last_save_state = "unknown"
 
@@ -109,16 +118,12 @@ class Controller:
         if save:
             self.save()
         if self.pcd_manager.pcds_left():
-            previous_bboxes = self.bbox_controller.bboxes
+            prediction_sources = self.capture_prediction_sources()
+            previous_bboxes = list(self.bbox_controller.bboxes)
             self.pcd_manager.get_next_pcd()
             self.reset()
             self.bbox_controller.set_bboxes(self.pcd_manager.get_labels_from_file())
-
-            if not self.bbox_controller.bboxes and config.getboolean(
-                "LABEL", "propagate_labels"
-            ):
-                self.bbox_controller.set_bboxes(previous_bboxes)
-            self.bbox_controller.set_active_bbox(0)
+            self.on_frame_loaded(prediction_sources, previous_bboxes)
         else:
             self.view.update_progress(len(self.pcd_manager.pcds))
             self.view.button_next_pcd.setEnabled(False)
@@ -126,19 +131,148 @@ class Controller:
     def prev_pcd(self) -> None:
         self.save()
         if self.pcd_manager.current_id > 0:
+            prediction_sources = self.capture_prediction_sources()
+            previous_bboxes = list(self.bbox_controller.bboxes)
             self.pcd_manager.get_prev_pcd()
             self.reset()
             self.bbox_controller.set_bboxes(self.pcd_manager.get_labels_from_file())
-            self.bbox_controller.set_active_bbox(0)
-            self.apply_next_class_to_view()
-            self.apply_next_class_to_view()
+            self.on_frame_loaded(prediction_sources, previous_bboxes)
 
     def custom_pcd(self, custom: int) -> None:
         self.save()
         self.pcd_manager.get_custom_pcd(custom)
         self.reset()
         self.bbox_controller.set_bboxes(self.pcd_manager.get_labels_from_file())
+        self.on_frame_loaded([], [])
+
+    # FRAME LOADING: STATUS, CLASS PIN, PREDICTION
+
+    def on_frame_loaded(self, prediction_sources, previous_bboxes) -> None:
+        """Common work after a frame was loaded."""
+        pcd_path = getattr(self.pcd_manager, "pcd_path", None)
+        if pcd_path is not None:
+            self.record_load(pcd_path)
+        if not self.bbox_controller.bboxes:
+            self.bbox_controller.set_active_bbox(0)
         self.apply_next_class_to_view()
+        self.predict_into_current_frame(prediction_sources, previous_bboxes)
+
+    def capture_prediction_sources(self):
+        """Boxes of the current frame plus how many points each one holds.
+
+        Collected *before* switching frames, because the check for "is this object
+        still there?" compares the new frame's point count against the old one's.
+        """
+        if not config.getboolean("LABEL", "predict_next_frame", fallback=False):
+            return []
+        pointcloud = self.pcd_manager.pointcloud
+        if pointcloud is None:
+            return []
+        sources = []
+        for bbox in self.bbox_controller.bboxes:
+            try:
+                count = int(bbox.is_inside(pointcloud.points).sum())
+            except Exception:  # noqa: BLE001 - prediction must never break loading
+                count = 0
+            sources.append((BBoxState.from_bbox(bbox), count))
+        return sources
+
+    def predict_into_current_frame(self, sources, previous_bboxes) -> int:
+        """Show boxes predicted from the previous frame in the frame just loaded."""
+        if self.bbox_controller.bboxes:
+            return 0  # this frame has its own labels: do not mix predictions in
+
+        if sources:
+            predicted, dropped = self.predict_from(sources)
+            if predicted:
+                added = self.bbox_controller.add_predicted(predicted)
+                self.view.status_manager.set_message(
+                    QCoreApplication.translate(
+                        "labelCloud", "Predicted %s boxes from the previous frame (%s dropped)."
+                    )
+                    % (added, dropped)
+                )
+                return added
+            if dropped:
+                self.view.status_manager.set_message(
+                    QCoreApplication.translate(
+                        "labelCloud", "No box predicted: the objects are no longer there."
+                    )
+                )
+            return 0
+
+        # legacy upstream behaviour, kept working (and now actually saved)
+        if previous_bboxes and config.getboolean("LABEL", "propagate_labels", fallback=False):
+            copies = [BBoxState.from_bbox(bbox).to_bbox() for bbox in previous_bboxes]
+            self.bbox_controller.add_predicted(copies)
+            return len(copies)
+        return 0
+
+    def predict_from(self, sources):
+        """Turn (box, previous point count) pairs into predictions for this frame.
+
+        The size and orientation are carried over (the objects are rigid), the
+        position is optionally re-fitted to the points inside, and a box whose
+        points have nearly disappeared is dropped: that is the signal that the
+        object is behind the vehicle and should not be predicted any more.
+        """
+        from . import assist
+
+        pointcloud = self.pcd_manager.pointcloud
+        if pointcloud is None:
+            return [], len(sources)
+        points = pointcloud.points
+
+        min_points = config.getint("LABEL", "predict_min_points", fallback=5)
+        ratio = config.getfloat("LABEL", "predict_min_point_ratio", fallback=0.35)
+        do_refit = config.getboolean("LABEL", "predict_refit", fallback=True)
+        as_candidates = config.getboolean("LABEL", "predict_as_candidates", fallback=True)
+
+        predicted, dropped = [], 0
+        for state, previous_count in sources:
+            bbox = state.to_bbox()
+            try:
+                count = int(bbox.is_inside(points).sum())
+            except Exception:  # noqa: BLE001
+                count = 0
+            if count < min_points or count < ratio * max(previous_count, 1):
+                logging.info(
+                    "Dropping the prediction of a %s box: %s points left (was %s).",
+                    bbox.get_classname(),
+                    count,
+                    previous_count,
+                )
+                dropped += 1
+                continue
+            if do_refit:
+                refitted = assist.refit_box(bbox, points)
+                if refitted is not None:
+                    refitted.candidate = as_candidates
+                    predicted.append(refitted)
+                    continue
+            bbox.candidate = as_candidates
+            predicted.append(bbox)
+        return predicted, dropped
+
+    def toggle_predict_next_frame(self, enabled: Optional[bool] = None) -> bool:
+        """Turn the next-frame prediction on or off and persist it."""
+        current = config.getboolean("LABEL", "predict_next_frame", fallback=False)
+        value = (not current) if enabled is None else bool(enabled)
+        config.set("LABEL", "predict_next_frame", str(value))
+        from .config_manager import config_manager
+
+        config_manager.write_into_file()
+        logging.info("Predicting boxes for the next frame: %s.", value)
+        view = getattr(self, "view", None)
+        if view is not None:
+            view.status_manager.set_message(
+                QCoreApplication.translate("labelCloud", "Next-frame prediction enabled.")
+                if value
+                else QCoreApplication.translate(
+                    "labelCloud", "Next-frame prediction disabled."
+                )
+            )
+        return value
 
     # CONTROL METHODS
     def save(self, quiet: bool = False, force: bool = False) -> bool:
@@ -219,18 +353,32 @@ class Controller:
         except (AttributeError, IndexError, TypeError):
             return Path("?")
 
-    def record_save(self, path, ok: bool, message: str = "") -> None:
-        """Remember a write and refresh the status-bar indicator."""
+    def record_load(self, path) -> None:
+        """Remember which frame was loaded (shown in the status bar and log)."""
+        self.record_save(path, True, "", kind="load")
+
+    def record_save(self, path, ok: bool, message: str = "", kind: str = "save") -> None:
+        """Remember a load or a write and refresh the status-bar indicator."""
         import time as _time
 
         path = str(path)
-        self.save_log.append((_time.time(), path, bool(ok), message))
+        name = path.replace("\\", "/").rsplit("/", 1)[-1]
+        if kind == "load":
+            self.activity_log.append((_time.time(), "load", path, True, ""))
+            del self.activity_log[: max(0, len(self.activity_log) - self.SAVE_LOG_LIMIT)]
+            self.view.status_manager.set_loaded_file(
+                path,
+                getattr(self.pcd_manager, "current_id", 0),
+                len(getattr(self.pcd_manager, "pcds", []) or []),
+            )
+            return
+        self.activity_log.append((_time.time(), "save", path, bool(ok), message))
         del self.save_log[: max(0, len(self.save_log) - self.SAVE_LOG_LIMIT)]
 
         # the status bar has room for the file itself; the full path goes into the
         # tooltip (and the save log), because a long absolute path would push the
         # other indicators off the screen
-        short = "/".join(Path(path).parts[-2:]) if path not in ("", "?") else path
+        short = name if path not in ("", "?") else path
         if ok:
             stamp = _time.strftime("%H:%M:%S")
             self._last_saved_path = path
@@ -280,6 +428,9 @@ class Controller:
     @staticmethod
     def tr_short_path(short: str) -> str:
         return short
+
+    def cmd_toggle_predict_next_frame(self, factor: float = 1.0) -> None:
+        self.toggle_predict_next_frame()
 
     def cmd_show_save_log(self, factor: float = 1.0) -> None:
         from ..view.save_log_dialog import SaveLogDialog
@@ -372,7 +523,11 @@ class Controller:
 
     def set_selected_side(self) -> None:
         """Sets the currently hovered bounding box side in the glWidget."""
-        if (
+        if self.drag_target is not None:
+            # a gesture owns the highlight: recomputing it moves the red side to
+            # whatever the growing box happens to be under the cursor (flicker)
+            pass
+        elif (
             (not self.side_mode)
             and self.curr_cursor_pos
             and self.bbox_controller.has_active_bbox()
@@ -410,6 +565,10 @@ class Controller:
         """Triggers actions when the user presses the mouse."""
         self.last_cursor_pos = a0.pos()
         self.drag_start_pos = a0.pos()
+        # Trust the event's own modifiers as well as the key state: the key flag is
+        # only set by a KeyPress event, so pressing Ctrl after the button went down
+        # (or losing the KeyPress to another widget) used to change the gesture.
+        ctrl_held = bool(self.ctrl_pressed or (a0.modifiers() & Keys.ControlModifier))
 
         # Building a box happens on *release* and only for a real click: dragging
         # to rotate the cloud while a drawing mode is armed used to drop a box at
@@ -417,7 +576,7 @@ class Controller:
         # time the fit mode was left switched on.
         if (
             (a0.buttons() & Keys.LeftButton)
-            and (not self.ctrl_pressed)
+            and (not ctrl_held)
             and (self.drawing_mode.is_active() or self.align_mode.is_active)
         ):
             self.pending_draw_kind = (
@@ -454,17 +613,40 @@ class Controller:
                 self.drag_target = "rotate"
                 self.bbox_controller.begin_drag("Rotate around z")
 
-        elif self.selected_side:
-            # freeze the side now; the hovered side can change while dragging
-            self.drag_target = "face"
-            self.drag_side = self.selected_side
-            self.side_mode = True
-            self.bbox_controller.begin_drag("Resize bounding box")
+        elif self.selected_side and not ctrl_held:
+            # freeze the side now; the hovered side can change while dragging.
+            # Ctrl is excluded on purpose: Ctrl+drag is labelCloud's own "rotate the
+            # box" gesture, and stealing it for resizing broke the muscle memory of
+            # everyone who used the original tool.
+            self.begin_face_drag(self.selected_side)
 
-        elif (a0.buttons() & Keys.LeftButton) and (not self.ctrl_pressed):
+        elif (a0.buttons() & Keys.LeftButton) and (not ctrl_held):
             # dragging the box body moves it; dragging anywhere else navigates
             if self.start_bbox_drag(a0):
                 self.drag_target = "box"
+
+    #: which bounding box dimension a side belongs to (length, width, height)
+    SIDE_DIMENSION_INDEX = {
+        "left": 0,
+        "right": 0,
+        "front": 1,
+        "back": 1,
+        "bottom": 2,
+        "top": 2,
+    }
+
+    def begin_face_drag(self, side: str) -> bool:
+        bbox = self.bbox_controller.get_active_bbox()
+        if bbox is None or side not in self.SIDE_DIMENSION_INDEX:
+            return False
+        self.drag_target = "face"
+        self.drag_side = side
+        self.drag_start_extent = bbox.get_dimensions()[
+            self.SIDE_DIMENSION_INDEX[side]
+        ]
+        self.side_mode = True
+        self.bbox_controller.begin_drag("Resize bounding box")
+        return True
 
     def start_bbox_drag(self, a0: QtGui.QMouseEvent) -> bool:
         """Begin moving the active box when the click landed on it."""
@@ -516,6 +698,7 @@ class Controller:
         self.drag_target = None
         self.drag_side = None
         self.drag_start_pos = None
+        self.drag_start_extent = None
         self.side_mode = False
         self.scroll_mode = False
 
@@ -563,9 +746,16 @@ class Controller:
                 self.last_cursor_pos = a0.pos()
                 return
             if self.drag_target == "face" and (a0.buttons() & Keys.LeftButton):
-                # the side is the one recorded at press time, so the resize cannot
-                # oscillate when the cursor leaves the face it started on
-                self.bbox_controller.resize_side(self.drag_side, dy / 20.0)
+                # Absolute target: extent at press time plus the *total* vertical
+                # movement. Incremental deltas made the box chase the cursor and
+                # visibly vibrate, because every resize also moves the box centre.
+                bbox = self.bbox_controller.get_active_bbox()
+                if bbox is not None and self.drag_start_extent is not None:
+                    index = self.SIDE_DIMENSION_INDEX.get(self.drag_side or "", 0)
+                    total = (self.drag_start_pos.y() - a0.y()) if self.drag_start_pos else 0
+                    target = self.drag_start_extent + total / self.FACE_DRAG_PIXELS_PER_METER
+                    current = bbox.get_dimensions()[index]
+                    self.bbox_controller.resize_side(self.drag_side, target - current)
                 self.last_cursor_pos = a0.pos()
                 return
 
@@ -708,6 +898,7 @@ class Controller:
         "flip_180": "cmd_flip_180",
         "show_statistics": "cmd_show_statistics",
         "show_save_log": "cmd_show_save_log",
+        "toggle_predict_next_frame": "cmd_toggle_predict_next_frame",
     }
 
     def key_press_event(self, a0: QtGui.QKeyEvent) -> None:

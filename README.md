@@ -53,12 +53,43 @@ single keystroke; rejecting is one keystroke for the whole batch.
 | --- | --- | --- |
 | **Pointer mode** | button next to *Pick/Span/Fit*, or `Esc` | Leaves every drawing mode so the mouse only navigates the cloud again. The drawing buttons also toggle off when clicked twice, and **dragging never creates a box** — a fit only happens on a real click (≤ 5 px of movement) |
 | **Next-frame class** | "New boxes in next frames" combo | Pins the class every new box gets, frame after frame: one pass can label poles, the next pass wires, without re-picking the class in each frame |
-| **Save indicator** | right of the status bar | `✓ saved 13:38:09  labels_lc/frame.json`, `● unsaved changes`, or a red `✗ save FAILED`. The tooltip shows the full path |
-| **Save log** | click the indicator, `Ctrl+Shift+S`, or *File → Save Log* | Lists the recent writes with time, result and exact path |
+| **Load indicator** | right of the status bar | `▸ loaded 13:47:02 1/1292  frame.pcd` — which point cloud is on screen, with its position in the folder |
+| **Save indicator** | right of the status bar | `✓ saved 13:38:09  frame.json`, `● unsaved changes`, `— unchanged, nothing to write`, or a red `✗ save FAILED`. The tooltip shows the full path |
+| **Activity log** | click either indicator, `Ctrl+Shift+S`, or *File → Save Log* | Every frame loaded and every write, with time, result and exact path |
+| **Next-frame prediction** | *Labels → Predict Boxes for the Next Frame*, or `Ctrl+Shift+P` | Carries the boxes of the current frame into the next one: size and heading are kept, the position follows the points, and an object whose points are gone stops being predicted |
 | **Autosave** | every 60 s (`LABEL/autosave_interval_seconds`) | Writes only when something was actually edited. A frame you merely browsed past is **not written at all** — press `Ctrl+S` to record it as "checked, and it is empty" |
 | **Group editing** | `Shift`+click boxes | Move/rotate/scale/class/delete/flip act on the whole group |
 | **Undo/redo** | `Ctrl+Z` / `Ctrl+Shift+Z` | One step per gesture: a whole drag, or a burst of key presses, undoes as a single action |
 | **Dimension lock + templates** | `Ctrl+L` / `Ctrl+T` | Protects a fitted size; templates fix the pole cross-section and the wire section |
+
+## Next-frame prediction
+
+Poles and wires are static, so the boxes of one frame are almost right in the next
+one. With prediction enabled, every frame without its own labels receives the
+previous frame's boxes:
+
+* **size and orientation are carried over** (the objects are rigid);
+* the **position is re-fitted** to the points inside the box, so it follows the
+  vehicle's motion instead of being copied blindly;
+* a box is **dropped when its points are gone** — fewer than `predict_min_points`
+  points inside, or less than `predict_min_point_ratio` of the points it held in the
+  previous frame. That is the signal that the pole is behind you;
+* predictions arrive as **unconfirmed proposals** (dashed orange) unless
+  `predict_as_candidates = False`; `Enter` confirms one, `Ctrl+→` walks them.
+
+```ini
+[LABEL]
+predict_next_frame = True     ; also toggled from the Labels menu (Ctrl+Shift+P)
+predict_as_candidates = True  ; start as proposals instead of finished boxes
+predict_refit = True          ; re-fit each prediction to its points
+predict_min_points = 5        ; drop below this absolute count
+predict_min_point_ratio = 0.35 ; ... or below this share of the previous count
+```
+
+Predictions count as edited content, so they are written to the label folder when
+you move on. A frame that already has its own labels is never overwritten with
+predictions. The older `propagate_labels` option still works and now really is
+saved (upstream copied the boxes without marking the frame as edited).
 
 ## Bounding-box conventions
 
@@ -220,6 +251,7 @@ example `copy_box = Ctrl+Shift+C`. `F1` shows the same table inside the applicat
 | `Ctrl+D` | Duplicate the active bounding box in place |
 | `Ctrl+L` | Lock/unlock the box dimensions |
 | `Ctrl+T` | Apply the class template (dimensions + upright) |
+| `Ctrl+Shift+P` | Toggle next-frame prediction |
 
 ### Assist
 
@@ -240,7 +272,7 @@ example `copy_box = Ctrl+Shift+C`. `F1` shows the same table inside the applicat
 | Keys | Action |
 | --- | --- |
 | `Ctrl+I` | Show dataset statistics |
-| `Ctrl+Shift+S` | Show the save log |
+| `Ctrl+Shift+S` | Show the activity log |
 | `F1` | Show this shortcut list |
 
 ### View
@@ -251,11 +283,21 @@ example `copy_box = Ctrl+Shift+C`. `F1` shows the same table inside the applicat
 
 <!-- END SHORTCUTS -->
 
-Mouse: drag the box body to move it, drag a hovered face to resize it, middle-drag to rotate
-around z, double-click a box to select it, **`Shift`+click to add or remove a box from the group
-selection** (the status bar shows the group size). With more than one box selected, every movement,
-rotation, scaling, class, delete and flip command acts on the whole group. `Ctrl` + mouse keeps the
-original labelCloud behaviour.
+Mouse:
+
+| Gesture | Effect |
+| --- | --- |
+| drag on the box body | move the box |
+| drag on a face you hover | resize that face (the resize is computed from the total movement, so it does not jitter) |
+| drag anywhere else | rotate the point cloud (view) — unchanged from upstream |
+| **`Ctrl` + left-drag** | **rotate the box** — upstream's gesture, kept free of the face resize |
+| `Ctrl` + right-drag | move the box to the cursor |
+| middle-drag | rotate the box around z |
+| double-click | select a box |
+| `Shift` + click | add/remove a box from the group selection (the status bar shows the group size) |
+
+With more than one box selected, every movement, rotation, scaling, class, delete and flip command
+acts on the whole group.
 
 ## Configuration
 

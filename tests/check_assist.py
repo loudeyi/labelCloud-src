@@ -1392,6 +1392,7 @@ import json
 from pathlib import Path
 from PyQt5.QtCore import QPoint, Qt
 from labelCloud.control.controller import Controller
+from labelCloud.model.bbox import BBox
 from labelCloud.labeling_strategies import BaseLabelingStrategy
 from labelCloud.labeling_strategies.picking import PickingStrategy
 
@@ -1418,12 +1419,24 @@ class FakeDropdown:
     def setCurrentText(self, text): self.text = text
     def currentData(self): return None
 
+class FakeList:
+    def blockSignals(self, *a): pass
+    def clear(self): pass
+    def addItem(self, *a): pass
+    def setCurrentRow(self, *a): pass
+    def currentItem(self): return None
+
+class FakeDial:
+    def blockSignals(self, *a): pass
+    def setValue(self, v): pass
+
 class FakeView:
     def __init__(self):
         self.status_manager = FakeStatus()
         self.gl_widget = FakeGL()
         self.current_class_dropdown = FakeDropdown()
-        self.label_list = None
+        self.label_list = FakeList()
+        self.dial_bbox_z_rotation = FakeDial()
         self.controller = None
     def update_bbox_stats(self, bbox): pass
 
@@ -1453,6 +1466,25 @@ view = FakeView()
 control.view = view
 view.controller = control
 control.drawing_mode.set_view(view)
+control.bbox_controller.set_view(view)
+
+
+class MinimalPcd:
+    # the real manager needs a view that only Controller.startup() provides
+    pointcloud = None
+
+    def populate_class_dropdown(self):
+        pass
+
+
+control.pcd_manager = MinimalPcd()
+
+# The GL widget normally sets this in __init__. There is no GL context in this
+# test, so ray picking (which needs the modelview/projection matrices) is stubbed
+# out; the gesture state machine is what is under test here.
+from labelCloud.utils import oglhelper
+oglhelper.DEVICE_PIXEL_RATIO = 1.0
+oglhelper.get_intersected_bboxes = lambda *a, **k: None
 
 out = {}
 
@@ -1468,6 +1500,22 @@ control.mouse_clicked(FakeEvent(100, 100))
 control.mouse_released(FakeEvent(102, 101))       # 3 px
 out["click_registered"] = spy.registered
 
+# --- Ctrl+drag must stay "rotate the box", not "resize a face" ----------------
+control.drawing_mode.reset()             # no drawing mode armed for this check
+control.bbox_controller.set_bboxes([])
+face_box = BBox(0.0, 0.0, 0.0, 2.0, 3.0, 4.0)
+face_box.set_classname("pole")
+control.bbox_controller.add_bbox(face_box)
+control.selected_side = "right"          # as if the cursor hovers that face
+control.mouse_clicked(FakeEvent(100, 100, modifiers=Qt.ControlModifier))
+out["ctrl_press_drag_target"] = control.drag_target      # None -> falls through to rotation
+control.mouse_released(FakeEvent(100, 100))
+control.mouse_clicked(FakeEvent(100, 100))               # no modifier
+out["plain_press_drag_target"] = control.drag_target      # "face"
+out["face_start_extent"] = control.drag_start_extent
+control.mouse_released(FakeEvent(100, 100))
+control.selected_side = None
+
 # --- pointer mode leaves the drawing mode ------------------------------------
 control.mouse_clicked(FakeEvent(100, 100))
 control.mouse_released(FakeEvent(100, 100))
@@ -1475,6 +1523,8 @@ control.drawing_mode.reset()
 out["mode_cleared"] = control.drawing_mode.is_active()
 
 # --- next-frame class ---------------------------------------------------------
+# the dropdown only follows the pin while no box is selected (as after a frame load)
+control.bbox_controller.deselect_bbox()
 out["class_before_pin"] = control.new_box_class()
 control.set_next_box_class("wire")
 out["class_after_pin"] = control.new_box_class()
@@ -1529,8 +1579,9 @@ out["state_when_file_exists"] = view.status_manager.current_save_state()
 
 control.record_save(control.label_file_path(), False, "disk full")
 out["state_after_failure"] = view.status_manager.current_save_state()
-out["log_len"] = len(control.save_log)
-out["log_path"] = control.save_log[-1][1]
+out["log_len"] = len(control.activity_log)
+out["log_kinds"] = [entry[1] for entry in control.activity_log]
+out["log_path"] = control.activity_log[-1][2]
 print(json.dumps(out))
 """
 
@@ -1550,6 +1601,9 @@ def test_mouse_modes_and_save_indicator():
         ok = (
             data["drag_registered"] == 0        # dragging never builds a box
             and data["click_registered"] == 1   # a real click does
+            and data["ctrl_press_drag_target"] is None   # Ctrl keeps upstream rotate
+            and data["plain_press_drag_target"] == "face"
+            and data["face_start_extent"] == 2.0
             and data["mode_cleared"] is False   # pointer mode leaves drawing
             and data["class_before_pin"] == "pole"
             and data["class_after_pin"] == "wire"
@@ -1563,10 +1617,184 @@ def test_mouse_modes_and_save_indicator():
             and data["state_when_file_exists"] == "saved"
             and data["state_after_failure"] == "failed"
             and data["log_len"] == 2
+            and data["log_kinds"] == ["save", "save"]
             and data["log_path"].endswith("frame.json")
         )
         detail = json.dumps(data)
     check("pointer mode, click-vs-drag, next-frame class, save indicator", ok, detail)
+
+
+PREDICTION_SNIPPET = """
+import json
+from pathlib import Path
+import numpy as np
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtCore import Qt
+
+app = QApplication([])
+from labelCloud.control.controller import Controller
+from labelCloud.model.bbox import BBox
+
+class FakeStatus:
+    def __init__(self): self.messages = []; self.save_state = "unknown"; self.loaded = []
+    def set_message(self, *a, **k): self.messages.append(a[0] if a else "")
+    def update_status(self, *a, **k): pass
+    def set_mode(self, *a, **k): pass
+    def set_save_state(self, state, detail="", tooltip=""): self.save_state = state
+    def current_save_state(self): return self.save_state
+    def set_cursor_position(self, *a, **k): pass
+    def set_loaded_file(self, path, index=0, total=0): self.loaded.append(str(path))
+    def retranslate(self): pass
+
+class FakePointCloud:
+    def __init__(self, points): self.points = points
+
+class FakeLabels:
+    FILE_ENDING = ".json"
+    def __init__(self, folder): self.label_folder = folder; self.label_strategy = self
+class FakePcd:
+    pointcloud = None
+    def __init__(self, folder, points):
+        self.label_manager = FakeLabels(folder)
+        self.pcd_path = folder / "frame.pcd"
+        self.pointcloud = FakePointCloud(points)
+    def populate_class_dropdown(self):
+        pass
+    def save_labels_into_file(self, bboxes):
+        doc = {"folder": "images", "filename": "frame.pcd", "path": str(self.pcd_path),
+               "objects": [{"name": b.get_classname(),
+                            "centroid": dict(zip("xyz", b.get_center())),
+                            "dimensions": dict(zip(("length", "width", "height"),
+                                                   b.get_dimensions())),
+                            "rotations": dict(zip("xyz", b.get_rotations()))}
+                           for b in bboxes]}
+        self.label_manager.label_folder.joinpath("frame.json").write_text(json.dumps(doc))
+
+class FakeWidget:
+    def blockSignals(self, *a): pass
+    def setValue(self, v): pass
+class FakeDropdown:
+    def setCurrentText(self, *a): pass
+class FakeList:
+    def blockSignals(self, *a): pass
+    def clear(self): pass
+    def addItem(self, *a): pass
+    def setCurrentRow(self, *a): pass
+    def currentItem(self): return None
+class FakeView:
+    def __init__(self):
+        self.status_manager = FakeStatus()
+        self.current_class_dropdown = FakeDropdown()
+        self.label_list = FakeList()
+        self.dial_bbox_z_rotation = FakeWidget()
+        self.controller = None
+    def update_bbox_stats(self, bbox): pass
+
+def pole_points(cx, cy, count=200, height=10.0):
+    rng = np.random.default_rng(3)
+    angle = rng.uniform(0, 2 * np.pi, count)
+    z = rng.uniform(0, height, count)
+    return np.column_stack([cx + 0.12 * np.cos(angle), cy + 0.12 * np.sin(angle), z])
+
+control = Controller()
+view = FakeView(); control.view = view
+view.controller = control
+control.bbox_controller.set_view(view)
+
+out = {}
+
+# --- a pole that stays in view is predicted; one that leaves is dropped -------
+alive = BBox(10.0, 2.0, 5.0, 2.6, 4.0, 10.0); alive.set_classname("pole")
+gone = BBox(40.0, -8.0, 5.0, 2.6, 4.0, 10.0); gone.set_classname("pole")
+labels = Path("labels"); labels.mkdir(exist_ok=True)
+
+control.pcd_manager = FakePcd(labels, pole_points(10.0, 2.0))
+control.bbox_controller.set_bboxes([alive, gone])
+control.bbox_controller.dirty = True
+from labelCloud.control.config_manager import config as _cfg
+out["setting_before"] = _cfg.getboolean("LABEL", "predict_next_frame", fallback=False)
+out["toggle_on"] = control.toggle_predict_next_frame(True)
+out["written_to_file"] = "predict_next_frame = True" in Path("config.ini").read_text()
+sources = control.capture_prediction_sources()
+out["source_count"] = len(sources)
+out["source_points"] = [c > 100 for _s, c in sources]
+
+# next frame: the first pole is still there, the second is gone
+control.pcd_manager = FakePcd(labels, pole_points(10.0, 2.0))
+control.bbox_controller.set_bboxes([])
+predicted, dropped = control.predict_from(sources)
+out["predicted"] = len(predicted)
+out["dropped"] = dropped
+out["predicted_class"] = predicted[0].get_classname() if predicted else None
+out["predicted_candidate"] = bool(predicted[0].candidate) if predicted else None
+out["size_kept"] = [round(v, 2) for v in predicted[0].get_dimensions()] if predicted else None
+
+# the same prediction, but the object only left a couple of points behind
+control.pcd_manager = FakePcd(labels, pole_points(10.0, 2.0, count=6))
+control.bbox_controller.set_bboxes([])
+few, few_dropped = control.predict_from(sources)
+out["predicted_when_scarce"] = len(few)
+out["dropped_when_scarce"] = few_dropped
+
+# --- predictions count as new content and are written ------------------------
+control.pcd_manager = FakePcd(labels, pole_points(10.0, 2.0))
+control.bbox_controller.set_bboxes([])
+added = control.predict_into_current_frame(sources, [])
+out["added_to_frame"] = added
+out["dirty_after_prediction"] = control.bbox_controller.dirty
+out["save_result"] = control.save(quiet=True)
+out["label_file_written"] = (labels / "frame.json").is_file()
+doc = json.loads((labels / "frame.json").read_text())
+out["written_objects"] = [o["name"] for o in doc["objects"]]
+
+# --- switching it off stops the collection ----------------------------------
+from labelCloud.control.config_manager import config
+out["setting_after"] = config.getboolean("LABEL", "predict_next_frame", fallback=False)
+out["sources_when_enabled"] = len(control.capture_prediction_sources())
+out["toggle_off"] = control.toggle_predict_next_frame(False)
+out["sources_when_disabled"] = len(control.capture_prediction_sources())
+print(json.dumps(out))
+"""
+
+
+def test_next_frame_prediction():
+    """Prediction carries boxes over, guards on point count, and gets saved."""
+    proc = run_snippet(
+        "prediction",
+        PREDICTION_SNIPPET,
+        env={"QT_QPA_PLATFORM": "offscreen"},
+    )
+    ok = proc.returncode == 0
+    detail = proc.stderr.strip().splitlines()[-1] if not ok else ""
+    if ok:
+        data = json.loads(proc.stdout.strip().splitlines()[-1])
+        ok = (
+            data["source_count"] == 2
+            and data["source_points"] == [True, False]   # the missing pole has no points
+            and data["predicted"] == 1                   # only the one still in view
+            and data["dropped"] == 1
+            and data["predicted_class"] == "pole"
+            and data["predicted_candidate"] is True
+            # cross-section carried over exactly, height follows the points
+            and data["size_kept"][:2] == [2.6, 4.0]
+            and abs(data["size_kept"][2] - 10.0) <= 0.5
+            and data["predicted_when_scarce"] == 0       # too few points left
+            and data["dropped_when_scarce"] == 2
+            and data["added_to_frame"] == 1
+            and data["dirty_after_prediction"] is True   # so it will be written
+            and data["save_result"] is True
+            and data["label_file_written"] is True
+            and data["written_objects"] == ["pole"]
+            and data["setting_before"] is False
+            and data["toggle_on"] is True
+            and data["writing_to_file" if False else "written_to_file"] is True
+            and data["setting_after"] is True
+            and data["sources_when_enabled"] == 1
+            and data["toggle_off"] is False
+            and data["sources_when_disabled"] == 0
+        )
+        detail = json.dumps(data)
+    check("next-frame prediction: carry over, guard, persist", ok, detail)
 
 
 if __name__ == "__main__":
@@ -1595,6 +1823,7 @@ if __name__ == "__main__":
     test_readme_shortcuts_match_keymap()
     test_launcher_preserves_user_config()
     test_mouse_modes_and_save_indicator()
+    test_next_frame_prediction()
 
     failed = [name for name, ok, _ in RESULTS if not ok]
     print(f"\n{len(RESULTS) - len(failed)}/{len(RESULTS)} checks passed")

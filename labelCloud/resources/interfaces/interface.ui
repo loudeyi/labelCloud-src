@@ -1664,6 +1664,7 @@
     <addaction name="act_set_default_class"/>
     <addaction name="act_delete_all_labels"/>
     <addaction name="act_propagate_labels"/>
+    <addaction name="act_predict_next_frame"/>
    </widget>
    <widget class="QMenu" name="menuAssist">
     <property name="title">
@@ -1880,6 +1881,18 @@ if it does not have labels yet.</string>
   <action name="act_show_statistics">
    <property name="text">
     <string>Dataset Statistics ... [Ctrl+I]</string>
+   </property>
+  </action>
+  <action name="act_predict_next_frame">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Predict Boxes for the Next Frame [Ctrl+Shift+P]</string>
+   </property>
+   <property name="toolTip">
+    <string>Carries the boxes of this frame into the next one, keeps their size and
+drops the ones whose points are gone.</string>
    </property>
   </action>
   <action name="act_show_save_log">

@@ -307,6 +307,7 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
         # Connect with controller
         self.controller.startup(self)
         self.populate_next_class_dropdown()
+        self.connect_persistence_signals()
 
         # Start event cycle
         self.timer = QtCore.QTimer(self)
@@ -454,7 +455,10 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
         self.act_delete_all_labels.triggered.connect(
             self.controller.bbox_controller.reset
         )
-        self.act_propagate_labels.toggled.connect(set_propagate_labels)
+        # NOTE: the toggled handlers for these two are connected in
+        # `connect_persistence_signals()` *after* the controller has a view —
+        # restoring the saved checkbox state here must not write config.ini or
+        # touch the status bar.
         self.act_z_rotation_only.toggled.connect(set_zrotation_only)
         self.act_color_with_label.toggled.connect(set_color_with_label)
         self.act_show_floor.toggled.connect(set_floor_visibility)
@@ -549,9 +553,28 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
         if parameter:
             self.controller.step_parameter(parameter, direction)
 
+    def connect_persistence_signals(self) -> None:
+        """Connect the option checkboxes once the controller is functional."""
+        self.act_propagate_labels.toggled.connect(self.change_propagate_labels)
+        self.act_predict_next_frame.toggled.connect(self.change_predict_next_frame)
+
+    def change_propagate_labels(self, state: bool) -> None:
+        """Persist the "copy the previous frame's boxes" option."""
+        config.set("LABEL", "propagate_labels", str(state))
+        from ..control.config_manager import config_manager
+
+        config_manager.write_into_file()
+        logging.info("Propagate labels: %s.", state)
+
+    def change_predict_next_frame(self, state: bool) -> None:
+        self.controller.toggle_predict_next_frame(state)
+
     def set_checkbox_states(self) -> None:
         self.act_propagate_labels.setChecked(
             config.getboolean("LABEL", "propagate_labels")
+        )
+        self.act_predict_next_frame.setChecked(
+            config.getboolean("LABEL", "predict_next_frame", fallback=False)
         )
         self.act_show_floor.setChecked(
             config.getboolean("USER_INTERFACE", "show_floor")

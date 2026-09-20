@@ -14,11 +14,11 @@ from PyQt5.QtCore import QCoreApplication
 
 
 class SaveLogDialog(QtWidgets.QDialog):
-    """Recent save attempts: time, result and target file."""
+    """Recent activity: which frame was loaded, and what was written where."""
 
-    def __init__(self, parent, entries: Sequence[Tuple[float, str, bool, str]], label_folder: str) -> None:
+    def __init__(self, parent, entries: Sequence[Tuple], label_folder: str) -> None:
         super().__init__(parent)
-        self.setWindowTitle(self.tr("Save Log"))
+        self.setWindowTitle(self.tr("Activity Log"))
         self.resize(720, 420)
         layout = QtWidgets.QVBoxLayout(self)
 
@@ -29,20 +29,25 @@ class SaveLogDialog(QtWidgets.QDialog):
         folder_label.setWordWrap(True)
         layout.addWidget(folder_label)
 
-        table = QtWidgets.QTableWidget(len(entries), 3, self)
+        table = QtWidgets.QTableWidget(len(entries), 4, self)
         table.setHorizontalHeaderLabels(
-            [self.tr("Time"), self.tr("Result"), self.tr("File")]
+            [self.tr("Time"), self.tr("What"), self.tr("Result"), self.tr("File")]
         )
         table.verticalHeader().setVisible(False)
         table.setEditTriggers(QtWidgets.QTableWidget.NoEditTriggers)
         table.setSelectionBehavior(QtWidgets.QTableWidget.SelectRows)
 
-        for row, (timestamp, path, ok, message) in enumerate(reversed(entries)):
+        for row, entry in enumerate(reversed(entries)):
+            timestamp, kind, path, ok, message = (list(entry) + ["", "", "", True, ""])[:5]
             when = datetime.datetime.fromtimestamp(timestamp).strftime("%H:%M:%S")
-            result = self.tr("saved") if ok else self.tr("FAILED: %s") % message
-            for column, value in enumerate((when, result, path)):
+            what = self.tr("loaded") if kind == "load" else self.tr("saved")
+            if ok:
+                result = self.tr("ok")
+            else:
+                result = self.tr("FAILED: %s") % message
+            for column, value in enumerate((when, what, result, path)):
                 item = QtWidgets.QTableWidgetItem(str(value))
-                if not ok and column == 1:
+                if not ok and column == 2:
                     item.setForeground(QtWidgets.QApplication.palette().link())
                 table.setItem(row, column, item)
         table.resizeColumnsToContents()
@@ -50,8 +55,8 @@ class SaveLogDialog(QtWidgets.QDialog):
 
         hint = QtWidgets.QLabel(
             self.tr(
-                "Every frame is written when you move to another frame or press "
-                "Ctrl+S; autosave writes the current frame periodically."
+                "Loading a frame, and every write of an edited frame, is listed here. "
+                "The status bar shows the most recent of each."
             )
         )
         hint.setWordWrap(True)

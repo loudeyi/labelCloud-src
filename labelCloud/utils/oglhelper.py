@@ -13,9 +13,7 @@ if TYPE_CHECKING:
     from ..model import BBox, PointCloud
 
 
-DEVICE_PIXEL_RATIO: Optional[float] = (
-    None  # is set once and for every window resize (retina display fix)
-)
+DEVICE_PIXEL_RATIO: float = 1.0  # GLWidget overwrites this once it exists
 
 
 def draw_points(

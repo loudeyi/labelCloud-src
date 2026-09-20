@@ -32,6 +32,12 @@ class StatusManager:
         self.position_label.setStyleSheet("font-size: 13px; color: #555;")
         self.status_bar.addPermanentWidget(self.position_label, stretch=0)
 
+        # Last loaded frame: which file, and when. Keeps the annotation session
+        # readable at a glance without opening the log.
+        self.load_label = QtWidgets.QLabel()
+        self.load_label.setStyleSheet("font-size: 13px; color: #555;")
+        self.status_bar.addPermanentWidget(self.load_label, stretch=0)
+
         # Save state: green = written to disk, orange = unsaved edits, red = failed.
         # Clicking it opens the save log (wired up by the GUI).
         self.save_label = QtWidgets.QLabel()
@@ -102,6 +108,22 @@ class StatusManager:
 
     def current_save_state(self) -> str:
         return getattr(self, "_save_state", "unknown")
+
+    def set_loaded_file(self, path, index: int = 0, total: int = 0) -> None:
+        """Show which point cloud was loaded (compact: time + file name)."""
+        import time as _time
+
+        if not path:
+            self.load_label.setText("")
+            return
+        name = str(path).replace("\\", "/").rsplit("/", 1)[-1]
+        counter = f" {index + 1}/{total}" if total else ""
+        self.load_label.setText(
+            QCoreApplication.translate("StatusManager", "▸ loaded %s%s")
+            % (_time.strftime("%H:%M:%S"), counter)
+            + f"  {name}"
+        )
+        self.load_label.setToolTip(str(path))
 
     def set_cursor_position(self, position) -> None:
         """Show the world coordinates under the cursor (helps place boxes exactly)."""

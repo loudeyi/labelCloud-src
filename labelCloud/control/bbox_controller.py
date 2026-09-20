@@ -673,6 +673,22 @@ class BoundingBoxController(object):
         self.history.record(before, "Delete bounding boxes")
         return len(ids)
 
+    def add_predicted(self, boxes: List[BBox]) -> int:
+        """Insert boxes predicted from the previous frame.
+
+        Marked dirty on purpose: a prediction is new content for this frame, so it
+        has to be written when the user moves on. (Upstream's `propagate_labels`
+        copied boxes without that, which is why they appeared but were never saved.)
+        """
+        if not boxes:
+            return 0
+        before = self.history_capture("Predict boxes")
+        self.bboxes.extend(boxes)
+        self.dirty = True
+        self.history.record(before, "Predict boxes")
+        self.set_active_bbox(0)
+        return len(boxes)
+
     # PRE-ANNOTATION CANDIDATES
 
     def candidate_ids(self) -> List[int]:

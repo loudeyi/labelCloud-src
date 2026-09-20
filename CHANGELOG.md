@@ -34,6 +34,18 @@ The label file format is unchanged: `folder` / `filename` / `path` /
 * **Dataset statistics** (`Ctrl+I`): frames with boxes / confirmed empty / not yet
   labelled / unreadable, plus boxes per class.
 
+### Next-frame prediction
+
+* **`predict_next_frame`** (`Ctrl+Shift+P`, *Labels* menu): a frame without its own
+  labels receives the previous frame's boxes. Size and heading are carried over, the
+  position is re-fitted to the points inside, and a box whose points are gone is
+  dropped (`predict_min_points`, `predict_min_point_ratio`). Predictions arrive as
+  unconfirmed proposals unless `predict_as_candidates = False`, and they are marked
+  as edited content so they are actually written to disk.
+* Upstream's `propagate_labels` still works and is now really saved: it copied the
+  previous frame's boxes without marking the frame as edited, so they were shown but
+  never written. Both options persist to `config.ini`.
+
 ### Editing and workflow
 
 * **Undo/redo** (`Ctrl+Z` / `Ctrl+Shift+Z` / `Ctrl+Y`), snapshot based, with burst
@@ -56,7 +68,12 @@ The label file format is unchanged: `folder` / `filename` / `path` /
   twice.
 * **Mouse dragging**: drag the box body to move it, drag a hovered face to resize it,
   middle-drag to rotate around z. A gesture is frozen at press time, so resizing no
-  longer flips into camera rotation (which made the view jitter).
+  longer flips into camera rotation, and the resize is computed from the *total*
+  cursor movement instead of accumulating deltas (both caused visible jitter).
+* **`Ctrl` + left-drag keeps rotating the box** (upstream's gesture). The face resize
+  is no longer allowed to claim it, and the modifier is read from the mouse event
+  itself rather than from the key state, so the gesture does not change if Ctrl is
+  pressed after the button.
 * **Click vs drag**: a drawing mode only builds a box on a release that moved ≤ 5 px,
   so dragging to rotate the cloud no longer drops a stray box.
 * **Next-frame class** combo: pins the class new boxes get, frame after frame.
@@ -82,8 +99,11 @@ The label file format is unchanged: `folder` / `filename` / `path` /
   of the event loop; the frame stays marked as unsaved.
 * **Autosave** (`LABEL/autosave_interval_seconds`, default 60 s) writes only edited
   frames.
-* **Save indicator and save log**: the status bar shows whether the frame is on disk
-  and where; `Ctrl+Shift+S` lists the recent writes.
+* **Status bar activity**: the loaded point cloud (`▸ loaded 13:47:02 1/1292 frame.pcd`)
+  and the save state (`✓ saved …`, `● unsaved changes`, `— unchanged, nothing to
+  write`, `✗ save FAILED`) with the full path in the tooltip; `Ctrl+Shift+S` or a
+  click on either indicator opens the activity log listing every load and write with
+  time, result and path.
 * **Unedited frames are never written** when moving through a dataset — no file is
   created and no existing file is rewritten; `Ctrl+S` forces a write, which is how a
   frame gets marked as deliberately checked and empty. The status bar shows
@@ -128,3 +148,8 @@ The label file format is unchanged: `folder` / `filename` / `path` /
   the import order.
 * `.gitignore` patterns for the runtime folders also excluded the source packages
   `labelCloud/io/labels/` and `labelCloud/io/pointclouds/`.
+* Restoring a saved option checkbox (for example `predict_next_frame = True`) fired
+  its handler during window construction and crashed before the controller had a
+  view; the persistence handlers are now connected afterwards.
+* `oglhelper.DEVICE_PIXEL_RATIO` had no default, so any ray-based interaction raised
+  `TypeError` when the GL widget had not been initialised.

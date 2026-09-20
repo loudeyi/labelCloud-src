@@ -174,6 +174,16 @@ std_scaling = 0.03
 min_boundingbox_dimension = 0.01
 ; propagate labels to next point cloud if it has no labels yet
 propagate_labels = False
+; predict the boxes of the previous frame in the next frame (see README)
+predict_next_frame = False
+; predictions start as unconfirmed proposals (Enter confirms them)
+predict_as_candidates = True
+; re-fit a predicted box to the points inside it (follows the object)
+predict_refit = True
+; drop a prediction when fewer than this many points are inside it ...
+predict_min_points = 5
+; ... or when it keeps less than this share of the points it had before
+predict_min_point_ratio = 0.35
 ; save the current frame automatically every N seconds (0 disables it)
 autosave_interval_seconds = 60
 

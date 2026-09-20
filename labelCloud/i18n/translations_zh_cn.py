@@ -337,6 +337,27 @@ TRANSLATIONS.update({
     "Follow the active / default class": "跟随当前/默认类别",
     "Click to see where the labels were saved.": "点击查看标注保存到了哪里。",
     "Save Log": "保存日志",
+    "Activity Log": "活动日志",
+    "▸ loaded %s%s": "▸ 已载入 %s%s",
+    "What": "类型",
+    "loaded": "载入",
+    "ok": "成功",
+    "Predict Boxes for the Next Frame [Ctrl+Shift+P]": "预测下一帧的检测框 [Ctrl+Shift+P]",
+    "Carries the boxes of this frame into the next one, keeps their size and\ndrops the ones whose points are gone.": (
+        "把本帧的检测框带到下一帧：尺寸保持，位置跟着点走；框内点明显变少的目标不再预测。"
+    ),
+    "Predicted %s boxes from the previous frame (%s dropped).": (
+        "已从上一帧预测 %s 个检测框（丢弃 %s 个）。"
+    ),
+    "No box predicted: the objects are no longer there.": "没有可预测的检测框：目标已经不在视野里。",
+    "Next-frame prediction enabled.": "已开启下一帧预测。",
+    "Next-frame prediction disabled.": "已关闭下一帧预测。",
+    "Toggle next-frame prediction": "开关下一帧预测",
+    "Show the activity log": "显示活动日志",
+    "Loading a frame, and every write of an edited frame, is listed here. "
+    "The status bar shows the most recent of each.": (
+        "每次载入点云、以及每次写出修改过的帧都会记在这里；状态栏显示最近的一条。"
+    ),
     "Save Log ... [Ctrl+Shift+S]": "保存日志 … [Ctrl+Shift+S]",
     "Shows where and when the labels of the recent frames were written.": (
         "显示最近各帧的标注写入时间与路径。"
