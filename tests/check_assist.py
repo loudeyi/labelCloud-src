@@ -1231,6 +1231,40 @@ def test_proposals_and_statistics():
     check("F-24/25/26 proposal conversion and dataset statistics", ok, detail)
 
 
+def test_readme_shortcuts_match_keymap():
+    """The README shortcut tables must list exactly what the keymap defines.
+
+    They are generated from the same table, so a stale README is a bug: this check
+    fails whenever a binding is added or renamed without updating the docs.
+    """
+    import re
+
+    from labelCloud.control.keymap import KeyMap
+
+    expected = []
+    for group, bindings in KeyMap().groups():
+        expected.append(f"### {group}")
+        for binding in bindings:
+            expected.append(f"| `{binding.sequence}` | {binding.label} |")
+
+    missing = []
+    for name in ("README.md",):
+        text = (REPO / name).read_text()
+        block = text.split("<!-- BEGIN SHORTCUTS -->")[1].split("<!-- END SHORTCUTS -->")[0]
+        rows = [line.strip() for line in block.splitlines() if line.strip()]
+        for line in expected:
+            if line.startswith("###"):
+                continue
+            if line not in rows:
+                missing.append(f"{name}: {line}")
+
+    check(
+        f"README lists all {len(expected)} shortcut rows from the keymap",
+        not missing,
+        "; ".join(missing[:4]),
+    )
+
+
 if __name__ == "__main__":
     print(f"python: {PYTHON}")
     print(f"repo:   {REPO}\n")
@@ -1254,6 +1288,7 @@ if __name__ == "__main__":
     test_save_safety()
     test_fit_refit_snap()
     test_proposals_and_statistics()
+    test_readme_shortcuts_match_keymap()
 
     failed = [name for name, ok, _ in RESULTS if not ok]
     print(f"\n{len(RESULTS) - len(failed)}/{len(RESULTS)} checks passed")
