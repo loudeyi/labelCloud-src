@@ -44,6 +44,10 @@ class BBox(object):
         self.y_rotation: float = 0
         self.z_rotation: float = 0
         self.classname: str = LabelConfig().get_default_class_name()
+        #: When locked, the size template is protected against accidental edits
+        #: (scaling keys, side scrolling, re-fitting). Purely in-memory: the label
+        #: file schema must stay compatible with upstream labelCloud.
+        self.locked: bool = False
         self.verticies: npt.NDArray = np.zeros((8, 3))
         self.set_axis_aligned_verticies()
 

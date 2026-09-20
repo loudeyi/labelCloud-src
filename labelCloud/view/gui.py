@@ -168,6 +168,7 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
         self.act_save_perspective: QtWidgets.QAction
         self.act_align_pcd: QtWidgets.QAction
         self.act_change_settings: QtWidgets.QAction
+        self.act_show_shortcuts: QtWidgets.QAction
 
         # Settings > Language
         self.menuLanguage: QtWidgets.QMenu
@@ -427,6 +428,9 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
         self.act_save_perspective.toggled.connect(set_keep_perspective)
         self.act_align_pcd.toggled.connect(self.controller.align_mode.change_activation)
         self.act_change_settings.triggered.connect(self.show_settings_dialog)
+        self.act_show_shortcuts.triggered.connect(
+            lambda: self.controller.cmd_show_shortcuts()
+        )
 
         # LANGUAGE
         for setting, action in self.language_actions.items():

@@ -680,6 +680,24 @@ Bounding Box Parameter</source>
     </message>
 </context>
 <context>
+    <name>ShortcutDialog</name>
+    <message>
+        <location filename="../view/shortcut_dialog.py" line="27" />
+        <source>Keyboard Shortcuts</source>
+        <translation>快捷键一览</translation>
+    </message>
+    <message>
+        <location filename="../view/shortcut_dialog.py" line="62" />
+        <source>Shift multiplies the step by %s, Alt by %s (movement, rotation and scaling keys).</source>
+        <translation>移动 / 旋转 / 缩放类按键：Shift 步长 ×%s，Alt 步长 ×%s。</translation>
+    </message>
+    <message>
+        <location filename="../view/shortcut_dialog.py" line="72" />
+        <source>Any binding can be changed in the [SHORTCUTS] section of config.ini, for example "copy_box = Ctrl+C".</source>
+        <translation>所有快捷键都可以在 config.ini 的 [SHORTCUTS] 段里改，例如 "copy_box = Ctrl+C"。</translation>
+    </message>
+</context>
+<context>
     <name>StartupDialog</name>
     <message>
         <location filename="../view/startup/dialog.py" line="36" />
@@ -753,7 +771,7 @@ Bounding Box Parameter</source>
         <translation>已按所选地面对齐点云。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="147" />
+        <location filename="../control/controller.py" line="208" />
         <source>Scroll to change the bounding box dimension.</source>
         <translation>滚动滚轮可修改检测框尺寸。</translation>
     </message>
@@ -808,17 +826,17 @@ Bounding Box Parameter</source>
         <translation>这个三角形应当一部分在所选地面之上、一部分之下。</translation>
     </message>
     <message>
-        <location filename="../control/bbox_controller.py" line="92" />
+        <location filename="../control/bbox_controller.py" line="131" />
         <source>Bounding Box added, it can now be corrected.</source>
         <translation>已添加检测框，可以开始修正。</translation>
     </message>
     <message>
-        <location filename="../control/bbox_controller.py" line="119" />
+        <location filename="../control/bbox_controller.py" line="159" />
         <source>Bounding Box selected, it can now be corrected.</source>
         <translation>已选中检测框，可以开始修正。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="255" />
+        <location filename="../control/controller.py" line="366" />
         <source>Hold right mouse button to translate or left mouse button to rotate the bounding box.</source>
         <translation>按住鼠标右键平移、按住左键旋转检测框。</translation>
     </message>
@@ -837,5 +855,70 @@ Bounding Box Parameter</source>
         <source>Select a point representing the length of the bounding box.</source>
         <translation>选择一点来确定检测框的长度。</translation>
     </message>
+    <message>
+        <location filename="../control/bbox_controller.py" line="573" />
+        <source>The box size is locked (Ctrl+L unlocks it).</source>
+        <translation>检测框尺寸已锁定（Ctrl+L 解锁）。</translation>
+    </message>
+    <message>
+        <location filename="../control/controller.py" line="121" />
+        <source>Select a box first to focus on its points.</source>
+        <translation>请先选中一个检测框，再聚焦显示框内点。</translation>
+    </message>
+    <message>
+        <location filename="../control/controller.py" line="129" />
+        <source>No points inside the active box to focus on.</source>
+        <translation>当前检测框内没有点，无法聚焦。</translation>
+    </message>
+    <message>
+        <location filename="../control/controller.py" line="145" />
+        <source>Focus on the active box (Ctrl+F shows everything again).</source>
+        <translation>已聚焦到当前检测框（Ctrl+F 恢复显示全部点）。</translation>
+    </message>
+    <message>
+        <location filename="../control/controller.py" line="512" />
+        <source>Undone the last change.</source>
+        <translation>已撤销上一步操作。</translation>
+    </message>
+    <message>
+        <location filename="../control/controller.py" line="517" />
+        <source>Nothing to undo.</source>
+        <translation>没有可撤销的操作。</translation>
+    </message>
+    <message>
+        <location filename="../control/controller.py" line="523" />
+        <source>Redone the last change.</source>
+        <translation>已重做。</translation>
+    </message>
+    <message>
+        <location filename="../control/controller.py" line="528" />
+        <source>Nothing to redo.</source>
+        <translation>没有可重做的操作。</translation>
+    </message>
+    <message>
+        <location filename="../control/controller.py" line="535" />
+        <source>Copied the box; Ctrl+V pastes it (also in the next frame).</source>
+        <translation>已复制检测框；Ctrl+V 粘贴（切到下一帧也能粘贴）。</translation>
+    </message>
+    <message>
+        <location filename="../control/controller.py" line="543" />
+        <source>Pasted the box.</source>
+        <translation>已粘贴检测框。</translation>
+    </message>
+    <message>
+        <location filename="../control/controller.py" line="547" />
+        <source>Nothing to paste: copy a box first.</source>
+        <translation>没有可粘贴的检测框，请先复制。</translation>
+    </message>
+    <message>
+        <location filename="../control/controller.py" line="557" />
+        <source>Box size locked (Ctrl+L).</source>
+        <translation>检测框尺寸已锁定（Ctrl+L）。</translation>
+    </message>
+    <message>
+        <location filename="../control/controller.py" line="557" />
+        <source>Box size unlocked (Ctrl+L).</source>
+        <translation>检测框尺寸已解锁（Ctrl+L）。</translation>
+    </message>
 </context>
-</TS>
+<context><name>keymap</name><message><source>Load previous point cloud</source><translation>加载上一帧点云</translation></message><message><source>Load next point cloud</source><translation>加载下一帧点云</translation></message><message><source>Reset the point cloud view</source><translation>重置点云视角</translation></message><message><source>Save labels</source><translation>保存标注</translation></message><message><source>Move bounding box backward</source><translation>检测框后移</translation></message><message><source>Move bounding box forward</source><translation>检测框前移</translation></message><message><source>Move bounding box left</source><translation>检测框左移</translation></message><message><source>Move bounding box right</source><translation>检测框右移</translation></message><message><source>Move bounding box up</source><translation>检测框上移</translation></message><message><source>Move bounding box down</source><translation>检测框下移</translation></message><message><source>Move along the box's own x-axis</source><translation>沿检测框自身 x 轴正向移动</translation></message><message><source>Move against the box's own x-axis</source><translation>沿检测框自身 x 轴负向移动</translation></message><message><source>Move along the box's own y-axis</source><translation>沿检测框自身 y 轴正向移动</translation></message><message><source>Move against the box's own y-axis</source><translation>沿检测框自身 y 轴负向移动</translation></message><message><source>Rotate around z-axis counterclockwise</source><translation>绕 Z 轴逆时针旋转</translation></message><message><source>Rotate around z-axis clockwise</source><translation>绕 Z 轴顺时针旋转</translation></message><message><source>Rotate around y-axis counterclockwise</source><translation>绕 Y 轴逆时针旋转</translation></message><message><source>Rotate around y-axis clockwise</source><translation>绕 Y 轴顺时针旋转</translation></message><message><source>Rotate around x-axis counterclockwise</source><translation>绕 X 轴逆时针旋转</translation></message><message><source>Rotate around x-axis clockwise</source><translation>绕 X 轴顺时针旋转</translation></message><message><source>Increase length</source><translation>增大长度</translation></message><message><source>Decrease length</source><translation>减小长度</translation></message><message><source>Increase width</source><translation>增大宽度</translation></message><message><source>Decrease width</source><translation>减小宽度</translation></message><message><source>Increase height</source><translation>增大高度</translation></message><message><source>Decrease height</source><translation>减小高度</translation></message><message><source>Select previous bounding box</source><translation>选中上一个检测框</translation></message><message><source>Select next bounding box</source><translation>选中下一个检测框</translation></message><message><source>Assign previous class</source><translation>切换为上一个类别</translation></message><message><source>Assign next class</source><translation>切换为下一个类别</translation></message><message><source>Delete the active bounding box</source><translation>删除当前检测框</translation></message><message><source>Cancel drawing / deselect</source><translation>取消绘制 / 取消选中</translation></message><message><source>Undo</source><translation>撤销</translation></message><message><source>Redo</source><translation>重做</translation></message><message><source>Copy the active bounding box</source><translation>复制当前检测框</translation></message><message><source>Paste the copied bounding box</source><translation>粘贴检测框</translation></message><message><source>Duplicate the active bounding box in place</source><translation>原地复制当前检测框</translation></message><message><source>Lock/unlock the box dimensions</source><translation>锁定/解锁检测框尺寸</translation></message><message><source>Apply the class template (dimensions + upright)</source><translation>套用类别模板（尺寸 + 竖直朝向）</translation></message><message><source>Show only the points inside the active box</source><translation>只显示当前框内的点</translation></message><message><source>Show this shortcut list</source><translation>显示本快捷键表</translation></message><message><source>Point Cloud</source><translation>点云</translation></message><message><source>Bounding Box</source><translation>检测框</translation></message><message><source>Labels</source><translation>标注</translation></message><message><source>View</source><translation>视图</translation></message><message><source>Help</source><translation>帮助</translation></message></context></TS>

@@ -232,3 +232,94 @@ TRANSLATIONS = {
     "Hold right mouse button to translate or left mouse button to rotate "
     "the bounding box.": "按住鼠标右键平移、按住左键旋转检测框。",
 }
+
+#: Labels of the shortcut table in ``control/keymap.py`` (context ``keymap``),
+#: plus the strings of the F1 dialog itself.
+KEYMAP_LABELS = {
+    # groups
+    "Point Cloud": "点云",
+    "Bounding Box": "检测框",
+    "Labels": "标注",
+    "View": "视图",
+    "Help": "帮助",
+    # point cloud
+    "Load previous point cloud": "加载上一帧点云",
+    "Load next point cloud": "加载下一帧点云",
+    "Reset the point cloud view": "重置点云视角",
+    "Save labels": "保存标注",
+    # movement
+    "Move bounding box backward": "检测框后移",
+    "Move bounding box forward": "检测框前移",
+    "Move bounding box left": "检测框左移",
+    "Move bounding box right": "检测框右移",
+    "Move bounding box up": "检测框上移",
+    "Move bounding box down": "检测框下移",
+    "Move along the box's own x-axis": "沿检测框自身 x 轴正向移动",
+    "Move against the box's own x-axis": "沿检测框自身 x 轴负向移动",
+    "Move along the box's own y-axis": "沿检测框自身 y 轴正向移动",
+    "Move against the box's own y-axis": "沿检测框自身 y 轴负向移动",
+    # rotation / scaling
+    "Rotate around z-axis counterclockwise": "绕 Z 轴逆时针旋转",
+    "Rotate around z-axis clockwise": "绕 Z 轴顺时针旋转",
+    "Rotate around y-axis counterclockwise": "绕 Y 轴逆时针旋转",
+    "Rotate around y-axis clockwise": "绕 Y 轴顺时针旋转",
+    "Rotate around x-axis counterclockwise": "绕 X 轴逆时针旋转",
+    "Rotate around x-axis clockwise": "绕 X 轴顺时针旋转",
+    "Increase length": "增大长度",
+    "Decrease length": "减小长度",
+    "Increase width": "增大宽度",
+    "Decrease width": "减小宽度",
+    "Increase height": "增大高度",
+    "Decrease height": "减小高度",
+    # selection / editing
+    "Select previous bounding box": "选中上一个检测框",
+    "Select next bounding box": "选中下一个检测框",
+    "Assign previous class": "切换为上一个类别",
+    "Assign next class": "切换为下一个类别",
+    "Delete the active bounding box": "删除当前检测框",
+    "Cancel drawing / deselect": "取消绘制 / 取消选中",
+    "Undo": "撤销",
+    "Redo": "重做",
+    "Copy the active bounding box": "复制当前检测框",
+    "Paste the copied bounding box": "粘贴检测框",
+    "Duplicate the active bounding box in place": "原地复制当前检测框",
+    "Lock/unlock the box dimensions": "锁定/解锁检测框尺寸",
+    "Apply the class template (dimensions + upright)": "套用类别模板（尺寸 + 竖直朝向）",
+    "Show only the points inside the active box": "只显示当前框内的点",
+    "Show this shortcut list": "显示本快捷键表",
+}
+
+TRANSLATIONS.update(KEYMAP_LABELS)
+
+TRANSLATIONS.update({
+    # status messages of the new editing commands
+    "The box size is locked (Ctrl+L unlocks it).": "检测框尺寸已锁定（Ctrl+L 解锁）。",
+    "Undone the last change.": "已撤销上一步操作。",
+    "Nothing to undo.": "没有可撤销的操作。",
+    "Redone the last change.": "已重做。",
+    "Nothing to redo.": "没有可重做的操作。",
+    "Copied the box; Ctrl+V pastes it (also in the next frame).": (
+        "已复制检测框；Ctrl+V 粘贴（切到下一帧也能粘贴）。"
+    ),
+    "Pasted the box.": "已粘贴检测框。",
+    "Nothing to paste: copy a box first.": "没有可粘贴的检测框，请先复制。",
+    "Box size locked (Ctrl+L).": "检测框尺寸已锁定（Ctrl+L）。",
+    "Box size unlocked (Ctrl+L).": "检测框尺寸已解锁（Ctrl+L）。",
+    "Select a box first to focus on its points.": "请先选中一个检测框，再聚焦显示框内点。",
+    "No points inside the active box to focus on.": "当前检测框内没有点，无法聚焦。",
+    "Focus on the active box (Ctrl+F shows everything again).": (
+        "已聚焦到当前检测框（Ctrl+F 恢复显示全部点）。"
+    ),
+})
+
+#: Strings of the F1 dialog (context ``ShortcutDialog``).
+TRANSLATIONS.update({
+    "Keyboard Shortcuts": "快捷键一览",
+    "Shift multiplies the step by %s, Alt by %s (movement, rotation and "
+    "scaling keys).": "移动 / 旋转 / 缩放类按键：Shift 步长 ×%s，Alt 步长 ×%s。",
+    "Any binding can be changed in the [SHORTCUTS] section of config.ini, "
+    'for example "copy_box = Ctrl+C".': (
+        "所有快捷键都可以在 config.ini 的 [SHORTCUTS] 段里改，例如 "
+        '"copy_box = Ctrl+C"。'
+    ),
+})

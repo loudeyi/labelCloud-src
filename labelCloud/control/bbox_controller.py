@@ -6,6 +6,7 @@ Possible Active Bounding Box Manipulations: rotation, translation, scaling
 """
 
 import logging
+import math
 from functools import wraps
 from typing import TYPE_CHECKING, List, Optional
 
@@ -17,6 +18,7 @@ from ..model.bbox import BBox
 from ..utils import oglhelper
 from .config_manager import config
 from .pcd_manager import PointCloudManger
+from .undo import BBoxState, FrameState, UndoStack
 from PyQt5.QtCore import QCoreApplication
 
 if TYPE_CHECKING:
@@ -37,6 +39,28 @@ def has_active_bbox_decorator(func):
             logging.warning("There is currently no active bounding box to manipulate.")
 
     return wrapper
+
+
+def undoable(description: str, coalesce: Optional[str] = None):
+    """Record the state before an edit, but only when the edit changed something.
+
+    Comparing before/after keeps refused operations (locked dimensions, blocked
+    tilt, no active box) off the undo stack, so Ctrl+Z always undoes something the
+    user actually did.
+    """
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            before = self.history_capture(description)
+            result = func(self, *args, **kwargs)
+            if not before.same_as(self.history_capture("")):
+                self.history.record(before, description, coalesce)
+            return result
+
+        return wrapper
+
+    return decorator
 
 
 def only_zrotation_decorator(func):
@@ -71,6 +95,11 @@ class BoundingBoxController(object):
         self.pcd_manager: PointCloudManger
         self.bboxes: List[BBox] = []
         self.active_bbox_id = -1  # -1 means zero bboxes
+        #: Undo/redo history of the current frame (cleared on frame change).
+        self.history = UndoStack()
+        #: Copied box, kept across frames on purpose: pasting a pole or wire into
+        #: the next frame is the fastest way to label a sequence.
+        self.clipboard: Optional[BBoxState] = None
 
     # GETTERS
     def has_active_bbox(self) -> bool:
@@ -91,6 +120,7 @@ class BoundingBoxController(object):
     def set_view(self, view: "GUI") -> None:
         self.view = view
 
+    @undoable("Add bounding box")
     def add_bbox(self, bbox: BBox) -> None:
         if isinstance(bbox, BBox):
             self.bboxes.append(bbox)
@@ -109,6 +139,7 @@ class BoundingBoxController(object):
             self.bboxes[bbox_id] = bbox
             self.update_label_list()
 
+    @undoable("Delete bounding box")
     def delete_bbox(self, bbox_id: int) -> None:
         if 0 <= bbox_id < len(self.bboxes):
             del self.bboxes[bbox_id]
@@ -133,17 +164,20 @@ class BoundingBoxController(object):
         else:
             self.deselect_bbox()
 
+    @undoable("Change class")
     @has_active_bbox_decorator
     def set_classname(self, new_class: str) -> None:
         self.get_active_bbox().set_classname(new_class)  # type: ignore
         self.update_label_list()
 
+    @undoable("Move bounding box", coalesce="translate")
     @has_active_bbox_decorator
     def set_center(self, cx: float, cy: float, cz: float) -> None:
         self.get_active_bbox().center = (cx, cy, cz)  # type: ignore
 
     def set_bboxes(self, bboxes: List[BBox]) -> None:
         self.bboxes = bboxes
+        self.history.clear()  # never undo across a frame boundary
         self.deselect_bbox()
         self.update_label_list()
 
@@ -157,6 +191,7 @@ class BoundingBoxController(object):
         self.view.status_manager.set_mode(Mode.NAVIGATION)
 
     # MANIPULATORS
+    @undoable("Edit position")
     @has_active_bbox_decorator
     def update_position(self, axis: str, value: float) -> None:
         if axis == "pos_x":
@@ -168,6 +203,7 @@ class BoundingBoxController(object):
         else:
             raise Exception("Wrong axis describtion.")
 
+    @undoable("Edit dimension")
     @has_active_bbox_decorator
     def update_dimension(self, dimension: str, value: float) -> None:
         if dimension == "length":
@@ -179,6 +215,7 @@ class BoundingBoxController(object):
         else:
             raise Exception("Wrong dimension describtion.")
 
+    @undoable("Edit rotation")
     @has_active_bbox_decorator
     def update_rotation(self, axis: str, value: float) -> None:
         if axis == "rot_x":
@@ -191,6 +228,7 @@ class BoundingBoxController(object):
             raise Exception("Wrong axis describtion.")
 
     @only_zrotation_decorator
+    @undoable("Rotate around x", coalesce="rotate")
     @has_active_bbox_decorator
     def rotate_around_x(
         self, dangle: Optional[float] = None, clockwise: bool = False
@@ -203,6 +241,7 @@ class BoundingBoxController(object):
         )
 
     @only_zrotation_decorator
+    @undoable("Rotate around y", coalesce="rotate")
     @has_active_bbox_decorator
     def rotate_around_y(
         self, dangle: Optional[float] = None, clockwise: bool = False
@@ -214,6 +253,7 @@ class BoundingBoxController(object):
             self.get_active_bbox().get_y_rotation() + dangle  # type: ignore
         )
 
+    @undoable("Rotate around z", coalesce="rotate")
     @has_active_bbox_decorator
     def rotate_around_z(
         self,
@@ -249,6 +289,7 @@ class BoundingBoxController(object):
         self.rotate_around_y(y_angle * bbox_sinz)
         self.rotate_around_z(x_angle)
 
+    @undoable("Move along x", coalesce="translate")
     @has_active_bbox_decorator
     def translate_along_x(
         self, distance: Optional[float] = None, left: bool = False
@@ -263,6 +304,7 @@ class BoundingBoxController(object):
         active_bbox.set_x_translation(active_bbox.center[0] + distance * cosz)
         active_bbox.set_y_translation(active_bbox.center[1] + distance * sinz)
 
+    @undoable("Move along y", coalesce="translate")
     @has_active_bbox_decorator
     def translate_along_y(
         self, distance: Optional[float] = None, forward: bool = False
@@ -277,6 +319,7 @@ class BoundingBoxController(object):
         active_bbox.set_x_translation(active_bbox.center[0] + distance * bu * -sinz)
         active_bbox.set_y_translation(active_bbox.center[1] + distance * bu * cosz)
 
+    @undoable("Move along z", coalesce="translate")
     @has_active_bbox_decorator
     def translate_along_z(
         self, distance: Optional[float] = None, down: bool = False
@@ -288,6 +331,7 @@ class BoundingBoxController(object):
         active_bbox: Bbox = self.get_active_bbox()  # type: ignore
         active_bbox.set_z_translation(active_bbox.center[2] + distance)
 
+    @undoable("Scale bounding box", coalesce="scale")
     @has_active_bbox_decorator
     def scale(
         self, length_increase: Optional[float] = None, decrease: bool = False
@@ -298,6 +342,9 @@ class BoundingBoxController(object):
         :param decrease: if True, reverses the length_increasee (* -1)
         :return: None
         """
+        if self.is_active_locked():
+            self.warn_dimensions_locked()
+            return
         length_increase = length_increase or config.getfloat("LABEL", "std_scaling")
         if decrease:
             length_increase *= -1
@@ -311,10 +358,14 @@ class BoundingBoxController(object):
 
         self.get_active_bbox().set_dimensions(new_length, new_width, new_height)  # type: ignore
 
+    @undoable("Scale length", coalesce="scale")
     @has_active_bbox_decorator
     def scale_along_length(
         self, step: Optional[float] = None, decrease: bool = False
     ) -> None:
+        if self.is_active_locked():
+            self.warn_dimensions_locked()
+            return
         step = step or config.getfloat("LABEL", "std_scaling")
         if decrease:
             step *= -1
@@ -324,10 +375,14 @@ class BoundingBoxController(object):
         new_length = length + step
         active_bbox.set_dimensions(new_length, width, height)
 
+    @undoable("Scale width", coalesce="scale")
     @has_active_bbox_decorator
     def scale_along_width(
         self, step: Optional[float] = None, decrease: bool = False
     ) -> None:
+        if self.is_active_locked():
+            self.warn_dimensions_locked()
+            return
         step = step or config.getfloat("LABEL", "std_scaling")
         if decrease:
             step *= -1
@@ -337,10 +392,14 @@ class BoundingBoxController(object):
         new_width = width + step
         active_bbox.set_dimensions(length, new_width, height)
 
+    @undoable("Scale height", coalesce="scale")
     @has_active_bbox_decorator
     def scale_along_height(
         self, step: Optional[float] = None, decrease: bool = False
     ) -> None:
+        if self.is_active_locked():
+            self.warn_dimensions_locked()
+            return
         step = step or config.getfloat("LABEL", "std_scaling")
         if decrease:
             step *= -1
@@ -361,6 +420,161 @@ class BoundingBoxController(object):
         if intersected_bbox_id is not None:
             self.set_active_bbox(intersected_bbox_id)
             logging.info("Selected bounding box %s." % intersected_bbox_id)
+
+
+    # UNDO / REDO
+
+    def history_capture(self, description: str = "") -> FrameState:
+        return FrameState.capture(self.bboxes, self.active_bbox_id, description)
+
+    def _restore(self, state: FrameState) -> None:
+        self.bboxes = [bbox_state.to_bbox() for bbox_state in state.bboxes]
+        self.active_bbox_id = (
+            state.active_id if 0 <= state.active_id < len(self.bboxes) else -1
+        )
+        self.update_all()
+        if not self.bboxes:
+            self.view.status_manager.set_mode(Mode.NAVIGATION)
+
+    def undo(self) -> bool:
+        """Restore the state before the last edit. Returns True if anything changed."""
+        target = self.history.undo(self.history_capture())
+        if target is None:
+            return False
+        self._restore(target)
+        return True
+
+    def redo(self) -> bool:
+        target = self.history.redo(self.history_capture())
+        if target is None:
+            return False
+        self._restore(target)
+        return True
+
+    # COPY / PASTE / DUPLICATE
+
+    @has_active_bbox_decorator
+    def copy_current_bbox(self) -> None:
+        """Keep a copy of the active box; it survives switching frames."""
+        self.clipboard = BBoxState.from_bbox(self.get_active_bbox())  # type: ignore[arg-type]
+        logging.info("Copied bounding box for pasting (also in the next frame).")
+
+    def paste_bbox(self) -> bool:
+        """Paste the copied box next to the active one (or as the only box)."""
+        if self.clipboard is None:
+            logging.warning("Nothing to paste: copy a bounding box first.")
+            return False
+
+        before = self.history_capture("Paste bounding box")
+        pasted = self.clipboard.to_bbox()
+        self.bboxes.append(pasted)
+        self.active_bbox_id = len(self.bboxes) - 1
+        self.update_all()
+        self.view.current_class_dropdown.setCurrentText(pasted.get_classname())
+        self.history.record(before, "Paste bounding box")
+        return True
+
+    @has_active_bbox_decorator
+    def duplicate_current_bbox(self) -> None:
+        """Copy + paste in place, ready to be nudged to the next object."""
+        active = self.get_active_bbox()
+        self.clipboard = BBoxState.from_bbox(active)  # type: ignore[arg-type]
+        self.paste_bbox()
+
+    # DIMENSION LOCK + CLASS TEMPLATE
+
+    @undoable("Toggle dimension lock")
+    @has_active_bbox_decorator
+    def toggle_dimension_lock(self) -> None:
+        bbox = self.get_active_bbox()
+        bbox.locked = not bbox.locked  # type: ignore[union-attr]
+        logging.info(
+            "Dimensions of the active bounding box are now %s.",
+            "locked" if bbox.locked else "unlocked",  # type: ignore[union-attr]
+        )
+
+    def is_active_locked(self) -> bool:
+        bbox = self.get_active_bbox()
+        return bool(bbox is not None and getattr(bbox, "locked", False))
+
+    @undoable("Apply class template")
+    @has_active_bbox_decorator
+    def apply_template(self) -> None:
+        """Apply the class's size template and upright orientation.
+
+        A missing dimension in the template keeps the current value, so a pole
+        template can fix the cross-section while the height stays whatever the
+        structure needs.
+        """
+        bbox = self.get_active_bbox()
+        classname = bbox.get_classname()  # type: ignore[union-attr]
+        template = LabelConfig().get_default_dimensions(classname)
+        if not template:
+            logging.warning("Class '%s' has no size template defined.", classname)
+            return
+
+        length, width, height = bbox.get_dimensions()  # type: ignore[union-attr]
+        if template.get("length"):
+            length = float(template["length"])
+        if template.get("width"):
+            width = float(template["width"])
+        if template.get("height"):
+            height = float(template["height"])
+        bbox.set_dimensions(length, width, height)  # type: ignore[union-attr]
+
+        if LabelConfig().is_z_rotation_only(classname):
+            bbox.set_x_rotation(0)  # type: ignore[union-attr]
+            bbox.set_y_rotation(0)  # type: ignore[union-attr]
+        logging.info(
+            "Applied template %s to '%s': L%.2f W%.2f H%.2f.",
+            template,
+            classname,
+            length,
+            width,
+            height,
+        )
+
+    # LOCAL-AXIS TRANSLATION (the box's own frame, not the view's)
+
+    @undoable("Move along local axis", coalesce="translate")
+    @has_active_bbox_decorator
+    def translate_local(
+        self,
+        axis: str,
+        distance: Optional[float] = None,
+        negative: bool = False,
+        factor: float = 1.0,
+    ) -> None:
+        """Move the box along its own x/y axis.
+
+        The view-aligned WASD keys become useless as soon as a box is rotated;
+        poles and wires are usually long and rotated, so nudging has to follow the
+        box, not the camera.
+        """
+        distance = distance or config.getfloat("LABEL", "std_translation")
+        distance *= factor
+        if negative:
+            distance *= -1
+
+        bbox = self.get_active_bbox()
+        yaw = math.radians(bbox.get_z_rotation())  # type: ignore[union-attr]
+        if axis == "x":
+            dx, dy = math.cos(yaw), math.sin(yaw)
+        elif axis == "y":
+            dx, dy = -math.sin(yaw), math.cos(yaw)
+        else:
+            raise Exception("Local translation only supports the x- and y-axis.")
+
+        bbox.set_x_translation(bbox.center[0] + distance * dx)  # type: ignore[union-attr]
+        bbox.set_y_translation(bbox.center[1] + distance * dy)  # type: ignore[union-attr]
+
+    def warn_dimensions_locked(self) -> None:
+        logging.warning("Dimensions are locked; press Ctrl+L to unlock them.")
+        self.view.status_manager.set_message(
+            QCoreApplication.translate(
+                "labelCloud", "The box size is locked (Ctrl+L unlocks it)."
+            )
+        )
 
     # HELPER
 

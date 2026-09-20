@@ -1590,6 +1590,7 @@
     <addaction name="act_align_pcd"/>
     <addaction name="act_color_with_label"/>
     <addaction name="act_change_settings"/>
+    <addaction name="act_show_shortcuts"/>
     <addaction name="menuLanguage"/>
    </widget>
    <addaction name="menuFile"/>
@@ -1728,6 +1729,14 @@ when opening that point cloud again.</string>
    <property name="toolTip">
     <string>Propagate Labels to the next Point Cloud
 if it does not have labels yet.</string>
+   </property>
+  </action>
+  <action name="act_show_shortcuts">
+   <property name="text">
+    <string>Keyboard Shortcuts ...</string>
+   </property>
+   <property name="toolTip">
+    <string>Shows every keyboard shortcut. [F1]</string>
    </property>
   </action>
   <action name="act_language_system">

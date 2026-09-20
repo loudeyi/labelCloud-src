@@ -36,6 +36,10 @@ class ClassConfig:
     #: Poles are upright and only need yaw; wires sag and need roll/pitch too,
     #: so the two classes want opposite answers.
     z_rotation_only: Optional[bool] = None
+    #: Per-class size template applied by "apply template" (Ctrl+T). A ``None``
+    #: entry means "keep the current value", so a pole template can fix the
+    #: cross-section while leaving the structure-dependent height alone.
+    default_dimensions: Optional[Dict[str, Optional[float]]] = None
 
     @classmethod
     def from_dict(cls, data: dict, fallback_id: int = 0) -> "ClassConfig":
@@ -47,11 +51,20 @@ class ClassConfig:
         name = data["name"]
         color = data.get("color")
         z_rotation_only = data.get("z_rotation_only")
+        dimensions = data.get("default_dimensions")
+        if isinstance(dimensions, dict):
+            dimensions = {
+                key: (None if dimensions.get(key) is None else float(dimensions[key]))
+                for key in ("length", "width", "height")
+            }
+        else:
+            dimensions = None
         return cls(
             name=name,
             id=int(data.get("id", fallback_id)),
             color=hex_to_rgb(color) if color else LabelConfig.auto_color(fallback_id),
             z_rotation_only=None if z_rotation_only is None else bool(z_rotation_only),
+            default_dimensions=dimensions,
         )
 
     def to_dict(self) -> dict:
@@ -62,6 +75,8 @@ class ClassConfig:
         }
         if self.z_rotation_only is not None:
             data["z_rotation_only"] = self.z_rotation_only
+        if self.default_dimensions is not None:
+            data["default_dimensions"] = self.default_dimensions
         return data
 
 
@@ -249,6 +264,11 @@ class LabelConfig(object, metaclass=SingletonABCMeta):
         class_config.z_rotation_only = value
         self.save_config()
         return True
+
+    def get_default_dimensions(self, class_name: str) -> Optional[Dict[str, Optional[float]]]:
+        """Size template of a class, or ``None`` when it has none."""
+        class_config = self.get_classes().get(class_name)
+        return class_config.default_dimensions if class_config is not None else None
 
     def get_class_color(self, class_name: str) -> Color3f:
         try:

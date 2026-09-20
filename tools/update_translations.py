@@ -77,6 +77,38 @@ def run_pylupdate() -> None:
     subprocess.run(cmd, check=True, cwd=REPO)
 
 
+def ensure_extra_messages(root, context_name: str, sources) -> None:
+    """Add messages pylupdate5 cannot discover.
+
+    The F1 dialog translates the labels of the binding table in
+    ``control/keymap.py``. They live in a data structure rather than in a
+    ``tr()`` call, so the extractor never sees them and they are injected here.
+    """
+    context = None
+    for candidate in root.findall("context"):
+        name = candidate.find("name")
+        if name is not None and name.text == context_name:
+            context = candidate
+            break
+    if context is None:
+        context = ET.SubElement(root, "context")
+        ET.SubElement(context, "name").text = context_name
+
+    existing = {
+        (message.find("source").text or "")
+        for message in context.findall("message")
+    }
+    for source in sources:
+        if not source or source in existing:
+            continue
+        message = ET.SubElement(context, "message")
+        ET.SubElement(message, "source").text = source
+        translation = ET.SubElement(message, "translation")
+        translation.set("type", "unfinished")
+        translation.text = ""
+        existing.add(source)  # a source may be listed by several bindings
+
+
 def merge_translations(translations: dict) -> tuple[int, int, list[str]]:
     tree = ET.parse(TS_FILE)
     root = tree.getroot()
@@ -107,6 +139,17 @@ def merge_translations(translations: dict) -> tuple[int, int, list[str]]:
     return total, translated, missing
 
 
+def add_keymap_messages() -> None:
+    """Register the binding labels and group names of the F1 dialog."""
+    from labelCloud.control.keymap import BINDINGS
+
+    tree = ET.parse(TS_FILE)
+    labels = [binding.label for binding in BINDINGS]
+    groups = [binding.group for binding in BINDINGS]
+    ensure_extra_messages(tree.getroot(), "keymap", labels + groups)
+    tree.write(TS_FILE, encoding="utf-8", xml_declaration=True)
+
+
 def run_lrelease() -> None:
     subprocess.run(
         [find_tool("lrelease"), str(TS_FILE), "-qm", str(QM_FILE)],
@@ -126,6 +169,7 @@ def main() -> int:
 
     translations = load_translations()
     run_pylupdate()
+    add_keymap_messages()
     total, translated, missing = merge_translations(translations)
     run_lrelease()
 

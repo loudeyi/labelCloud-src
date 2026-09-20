@@ -572,6 +572,256 @@ def test_per_class_tilt_permission():
     check("F-07 tilt allowed for wire, blocked for pole, persisted", ok, detail)
 
 
+# --------------------------------------------------------------------------- #
+# Phase 1: keymap, undo, copy/paste, lock, template, local-axis movement
+# --------------------------------------------------------------------------- #
+KEYMAP_SNIPPET = """
+import json
+from PyQt5.QtCore import Qt
+from labelCloud.control.keymap import KeyMap
+
+km = KeyMap()
+
+def resolve(mods, key):
+    binding, factor = km.resolve(mods, key)
+    return [binding.command if binding else None, factor]
+
+result = {
+    "ctrl_v": resolve(Qt.ControlModifier, Qt.Key_V),
+    "ctrl_c": resolve(Qt.ControlModifier, Qt.Key_C),
+    "ctrl_z": resolve(Qt.ControlModifier, Qt.Key_Z),
+    "ctrl_shift_z": resolve(Qt.ControlModifier | Qt.ShiftModifier, Qt.Key_Z),
+    "plain_v": resolve(Qt.NoModifier, Qt.Key_V),
+    "shift_w": resolve(Qt.ShiftModifier, Qt.Key_W),
+    "alt_i": resolve(Qt.AltModifier, Qt.Key_I),
+    "plain_semicolon": resolve(Qt.NoModifier, Qt.Key_Semicolon),
+    "f1": resolve(Qt.NoModifier, Qt.Key_F1),
+    "conflicts": len(km.bindings) - len(km.by_sequence),
+}
+print(json.dumps(result))
+"""
+
+KEYMAP_OVERRIDE_SNIPPET = """
+import json
+from PyQt5.QtCore import Qt
+from labelCloud.control.keymap import KeyMap
+
+km = KeyMap()
+binding, factor = km.resolve(Qt.ControlModifier | Qt.ShiftModifier, Qt.Key_C)
+overridden = binding.command if binding else None
+binding, factor = km.resolve(Qt.ControlModifier, Qt.Key_C)
+still_default = binding.command if binding else None
+print(json.dumps({"overridden": overridden, "default_still_free": still_default}))
+"""
+
+CONTROLLER_SNIPPET = """
+import json
+import math
+from labelCloud.control.bbox_controller import BoundingBoxController
+from labelCloud.model.bbox import BBox
+
+class FakeStatus:
+    def set_message(self, *a, **k): pass
+    def update_status(self, *a, **k): pass
+    def set_mode(self, *a, **k): pass
+
+class FakeWidget:
+    def __init__(self): self.value = 0
+    def blockSignals(self, *a): pass
+    def setValue(self, v): self.value = v
+
+class FakeDropdown:
+    def setCurrentText(self, *a): pass
+
+class FakeList:
+    def blockSignals(self, *a): pass
+    def clear(self): pass
+    def addItem(self, *a): pass
+    def setCurrentRow(self, *a): pass
+    def currentItem(self): return None
+
+class FakePcdManager:
+    def get_perspective(self): return (1.0, 0.0, 1.0)   # cosz, sinz, bu
+    def populate_class_dropdown(self): pass
+
+class FakeView:
+    def __init__(self):
+        self.status_manager = FakeStatus()
+        self.current_class_dropdown = FakeDropdown()
+        self.label_list = FakeList()
+        self.dial_bbox_z_rotation = FakeWidget()
+        self.controller = type("C", (), {"pcd_manager": FakePcdManager()})()
+    def update_bbox_stats(self, bbox): pass
+
+control = BoundingBoxController()
+control.set_view(FakeView())
+control.pcd_manager = FakePcdManager()
+
+out = {}
+
+# --- undo / redo, with coalescing of a key burst ---
+box = BBox(0.0, 0.0, 0.0, 2.0, 3.0, 4.0)
+box.set_classname("pole")
+control.add_bbox(box)
+control.translate_along_x(1.0)
+control.translate_along_x(1.0)
+out["center_after_two_moves"] = control.get_active_bbox().center[0]
+
+control.undo()
+out["center_after_undo"] = control.get_active_bbox().center[0]     # burst merged: back to 0
+out["boxes_after_undo"] = len(control.bboxes)
+control.undo()
+out["boxes_after_second_undo"] = len(control.bboxes)               # add undone
+control.redo()
+out["boxes_after_redo"] = len(control.bboxes)
+control.redo()
+out["center_after_redo"] = control.get_active_bbox().center[0]
+out["can_undo_at_end"] = control.history.can_undo
+
+# --- locked dimensions refuse scaling, and leave no undo entry ---
+control.bboxes[0].locked = True
+before_dims = control.get_active_bbox().get_dimensions()
+control.scale_along_length(1.0)
+out["dims_unchanged_when_locked"] = control.get_active_bbox().get_dimensions() == before_dims
+control.bboxes[0].locked = False
+control.scale_along_length(1.0)
+out["dims_changed_when_unlocked"] = control.get_active_bbox().get_dimensions()[0] == before_dims[0] + 1.0
+
+# --- class template: fixes the cross-section, keeps height, straightens a pole ---
+pole = control.get_active_bbox()
+pole.set_rotations(5.0, -3.0, 30.0)
+control.apply_template()
+out["template_dims"] = [round(v, 3) for v in pole.get_dimensions()]
+out["template_rotations"] = [round(v, 3) for v in pole.get_rotations()]
+
+# --- copy / paste ---
+control.copy_current_bbox()
+out["paste_ok"] = control.paste_bbox()
+out["boxes_after_paste"] = len(control.bboxes)
+out["pasted_matches"] = (
+    control.bboxes[1].get_dimensions() == control.bboxes[0].get_dimensions()
+    and control.bboxes[1].get_classname() == "pole"
+)
+
+# --- clipboard survives a frame change, history does not ---
+control.set_bboxes([])
+out["history_cleared_on_frame_change"] = not control.history.can_undo
+out["clipboard_survives"] = control.clipboard is not None
+out["paste_into_next_frame"] = control.paste_bbox()
+out["boxes_in_next_frame"] = len(control.bboxes)
+
+# --- local-axis movement follows the box, not the camera ---
+tilted = control.get_active_bbox()
+tilted.set_z_rotation(90.0)
+tilted.center = (0.0, 0.0, 0.0)
+control.translate_local("y", distance=1.0)
+out["local_y_at_90deg"] = [round(v, 3) for v in tilted.center]     # local +y -> world (-1, 0)
+
+print(json.dumps(out))
+"""
+
+
+def test_keymap_bindings():
+    """Ctrl combinations must not fall through to the plain-key commands."""
+    proc = run_snippet("keymap", KEYMAP_SNIPPET)
+    ok = proc.returncode == 0
+    detail = proc.stderr.strip().splitlines()[-1] if not ok else ""
+    if ok:
+        data = json.loads(proc.stdout.strip().splitlines()[-1])
+        ok = (
+            data["ctrl_v"] == ["paste_box", 1.0]
+            and data["ctrl_c"] == ["copy_box", 1.0]
+            and data["ctrl_z"] == ["undo", 1.0]
+            and data["ctrl_shift_z"] == ["redo", 1.0]
+            and data["plain_v"] == ["rotate_y_cw", 1.0]
+            and data["shift_w"] == ["translate_backward", 10.0]
+            and data["alt_i"] == ["scale_length_up", 0.1]
+            and data["plain_semicolon"] == ["translate_local_y_neg", 1.0]
+            and data["f1"] == ["show_shortcuts", 1.0]
+            and data["conflicts"] == 0
+        )
+        detail = json.dumps(data)
+    check("F-15 keymap: Ctrl+V pastes, Shift x10, Alt x0.1, no conflicts", ok, detail)
+
+
+def test_keymap_config_override():
+    proc = run_snippet(
+        "keymap-override",
+        KEYMAP_OVERRIDE_SNIPPET,
+        extra_config="[SHORTCUTS]\ncopy_box = Ctrl+Shift+C\n",
+    )
+    ok = proc.returncode == 0
+    detail = proc.stderr.strip().splitlines()[-1] if not ok else ""
+    if ok:
+        data = json.loads(proc.stdout.strip().splitlines()[-1])
+        ok = data["overridden"] == "copy_box" and data["default_still_free"] is None
+        detail = json.dumps(data)
+    check("F-15 shortcut can be rebound from config.ini", ok, detail)
+
+
+def test_editing_commands():
+    """Undo/redo coalescing, lock, template, copy/paste and local-axis movement."""
+    classes = {
+        "classes": [
+            {
+                "name": "pole",
+                "id": 1,
+                "color": "#00ff7f",
+                "z_rotation_only": True,
+                "default_dimensions": {"length": 2.6, "width": 4.0, "height": None},
+            },
+            {
+                "name": "wire",
+                "id": 2,
+                "color": "#00aaff",
+                "z_rotation_only": False,
+                "default_dimensions": {"length": 2.5, "width": None, "height": 2.0},
+            },
+        ],
+        "default": 1,
+        "type": "object_detection",
+        "format": "centroid_abs",
+    }
+    with tempfile.TemporaryDirectory() as tmp:
+        cwd = Path(tmp)
+        classes_path = cwd / "_classes.json"
+        classes_path.write_text(json.dumps(classes))
+        (cwd / "config.ini").write_text(BASE_CONFIG.format(cwd=cwd, classes=classes_path))
+        proc = subprocess.run(
+            [PYTHON, "-c", textwrap.dedent(CONTROLLER_SNIPPET)],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+        )
+    ok = proc.returncode == 0
+    detail = proc.stderr.strip().splitlines()[-1] if not ok else ""
+    if ok:
+        data = json.loads(proc.stdout.strip().splitlines()[-1])
+        ok = (
+            data["center_after_two_moves"] == 2.0
+            and data["center_after_undo"] == 0.0  # the burst coalesced
+            and data["boxes_after_undo"] == 1
+            and data["boxes_after_second_undo"] == 0
+            and data["boxes_after_redo"] == 1
+            and data["center_after_redo"] == 2.0
+            and data["can_undo_at_end"] is True
+            and data["dims_unchanged_when_locked"] is True
+            and data["dims_changed_when_unlocked"] is True
+            and data["template_dims"] == [2.6, 4.0, 4.0]
+            and data["template_rotations"] == [0.0, 0.0, 30.0]
+            and data["paste_ok"] is True
+            and data["boxes_after_paste"] == 2
+            and data["pasted_matches"] is True
+            and data["history_cleared_on_frame_change"] is True
+            and data["clipboard_survives"] is True
+            and data["paste_into_next_frame"] is True
+            and data["boxes_in_next_frame"] == 1
+            and data["local_y_at_90deg"] == [-1.0, 0.0, 0.0]
+        )
+        detail = json.dumps(data)
+    check("F-10/11/12/13 undo, lock, template, paste, local axes", ok, detail)
+
+
 if __name__ == "__main__":
     print(f"python: {PYTHON}")
     print(f"repo:   {REPO}\n")
@@ -589,6 +839,9 @@ if __name__ == "__main__":
     test_language_switches_at_runtime()
     test_language_selection_is_persisted()
     test_per_class_tilt_permission()
+    test_keymap_bindings()
+    test_keymap_config_override()
+    test_editing_commands()
 
     failed = [name for name, ok, _ in RESULTS if not ok]
     print(f"\n{len(RESULTS) - len(failed)}/{len(RESULTS)} checks passed")

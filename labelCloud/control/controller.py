@@ -13,6 +13,7 @@ from ..view.gui import GUI
 from .alignmode import AlignMode
 from .bbox_controller import BoundingBoxController
 from .config_manager import config
+from .keymap import KeyMap
 from .drawing_manager import DrawingManager
 from .pcd_manager import PointCloudManger
 from PyQt5.QtCore import QCoreApplication
@@ -40,6 +41,13 @@ class Controller:
         # Correction states
         self.side_mode = False
         self.selected_side: Optional[str] = None
+
+        # Keyboard shortcuts (rebindable through the [SHORTCUTS] config section)
+        self.keymap = KeyMap()
+
+        # Focus view: shows only the points inside the active box
+        self.focus_active = False
+        self._focus_backup = None
 
     def startup(self, view: "GUI") -> None:
         """Sets the view in all controllers and dependent modules; Loads labels from file."""
@@ -103,8 +111,61 @@ class Controller:
             assert self.pcd_manager.pointcloud is not None
             self.pcd_manager.pointcloud.save_segmentation_labels()
 
+    def activate_focus(self) -> None:
+        """Show only the points inside the active box (helps in dense clouds)."""
+        if self.focus_active:
+            return
+        pointcloud = self.pcd_manager.pointcloud
+        bbox = self.bbox_controller.get_active_bbox()
+        if pointcloud is None or bbox is None:
+            self.view.status_manager.set_message(
+                QCoreApplication.translate(
+                    "labelCloud", "Select a box first to focus on its points."
+                )
+            )
+            return
+        inside = bbox.is_inside(pointcloud.points)
+        if not inside.any():
+            self.view.status_manager.set_message(
+                QCoreApplication.translate(
+                    "labelCloud", "No points inside the active box to focus on."
+                )
+            )
+            return
+        colors = pointcloud.colors
+        self._focus_backup = (
+            pointcloud.points,
+            None if colors is None else colors.copy(),
+        )
+        pointcloud.points = pointcloud.points[inside]
+        if colors is not None:
+            pointcloud.colors = colors[inside]
+        pointcloud.create_buffers()
+        self.focus_active = True
+        self.view.status_manager.set_message(
+            QCoreApplication.translate(
+                "labelCloud", "Focus on the active box (Ctrl+F shows everything again)."
+            )
+        )
+
+    def clear_focus(self) -> None:
+        """Restore the full point cloud."""
+        pointcloud = self.pcd_manager.pointcloud
+        if self._focus_backup is not None and pointcloud is not None:
+            points, colors = self._focus_backup
+            pointcloud.points = points
+            if colors is not None:
+                pointcloud.colors = colors
+            pointcloud.create_buffers()
+        self._focus_backup = None
+        self.focus_active = False
+
     def reset(self) -> None:
         """Resets the controllers and bounding boxes from the current screen."""
+        # the point cloud object is replaced on a frame change, so drop the focus
+        # backup instead of writing it back into a discarded object
+        self._focus_backup = None
+        self.focus_active = False
         self.bbox_controller.reset()
         self.drawing_mode.reset()
         self.align_mode.reset()
@@ -246,10 +307,60 @@ class Controller:
             self.pcd_manager.zoom_into(a0.angleDelta().y())
             self.scroll_mode = True
 
-    def key_press_event(self, a0: QtGui.QKeyEvent) -> None:
-        """Triggers actions when the user presses a key."""
+    # KEY DISPATCH
 
-        # Reset position to intial value
+    #: command name from the keymap -> method on this controller
+    COMMANDS = {
+        "prev_pcd": "cmd_prev_pcd",
+        "next_pcd": "cmd_next_pcd",
+        "reset_view": "cmd_reset_view",
+        "save": "cmd_save",
+        "translate_backward": "cmd_translate_backward",
+        "translate_forward": "cmd_translate_forward",
+        "translate_left": "cmd_translate_left",
+        "translate_right": "cmd_translate_right",
+        "translate_up": "cmd_translate_up",
+        "translate_down": "cmd_translate_down",
+        "translate_local_x": "cmd_translate_local_x",
+        "translate_local_x_neg": "cmd_translate_local_x_neg",
+        "translate_local_y": "cmd_translate_local_y",
+        "translate_local_y_neg": "cmd_translate_local_y_neg",
+        "rotate_z_ccw": "cmd_rotate_z_ccw",
+        "rotate_z_cw": "cmd_rotate_z_cw",
+        "rotate_y_ccw": "cmd_rotate_y_ccw",
+        "rotate_y_cw": "cmd_rotate_y_cw",
+        "rotate_x_ccw": "cmd_rotate_x_ccw",
+        "rotate_x_cw": "cmd_rotate_x_cw",
+        "scale_length_up": "cmd_scale_length_up",
+        "scale_length_down": "cmd_scale_length_down",
+        "scale_width_up": "cmd_scale_width_up",
+        "scale_width_down": "cmd_scale_width_down",
+        "scale_height_up": "cmd_scale_height_up",
+        "scale_height_down": "cmd_scale_height_down",
+        "select_prev_bbox": "cmd_select_prev_bbox",
+        "select_next_bbox": "cmd_select_next_bbox",
+        "class_prev": "cmd_class_prev",
+        "class_next": "cmd_class_next",
+        "delete_bbox": "cmd_delete_bbox",
+        "escape": "cmd_escape",
+        "undo": "cmd_undo",
+        "redo": "cmd_redo",
+        "copy_box": "cmd_copy_box",
+        "paste_box": "cmd_paste_box",
+        "duplicate_box": "cmd_duplicate_box",
+        "toggle_dimension_lock": "cmd_toggle_dimension_lock",
+        "apply_template": "cmd_apply_template",
+        "toggle_focus": "cmd_toggle_focus",
+        "show_shortcuts": "cmd_show_shortcuts",
+    }
+
+    def key_press_event(self, a0: QtGui.QKeyEvent) -> None:
+        """Dispatch a key press through the shortcut table.
+
+        See ``control/keymap.py``: bindings are matched with their modifiers, so
+        Ctrl combinations no longer fall through to the single-key commands, and
+        Shift/Alt act as coarse/fine step multipliers.
+        """
         if a0.key() == Keys.Key_Control:
             self.ctrl_pressed = True
             self.view.status_manager.set_message(
@@ -259,105 +370,209 @@ class Controller:
                 ),
                 context=Context.CONTROL_PRESSED,
             )
-        # Reset point cloud pose to intial rotation and translation
-        elif a0.key() in [Keys.Key_P, Keys.Key_Home]:
-            self.pcd_manager.reset_transformations()
-            logging.info("Reseted position to default.")
+            return
 
-        elif a0.key() == Keys.Key_Delete:  # Delete active bbox
-            self.bbox_controller.delete_current_bbox()
+        # 1-9 jump straight to a box
+        digit = a0.key() - Keys.Key_0
+        if (
+            1 <= digit <= 9
+            and not a0.modifiers() & (Keys.ControlModifier | Keys.AltModifier)
+        ):
+            self.bbox_controller.set_active_bbox(digit - 1)
+            return
 
-        # Save labels to file
-        elif a0.key() == Keys.Key_S and self.ctrl_pressed:
-            self.save()
+        binding, factor = self.keymap.resolve(a0.modifiers(), a0.key())
+        if binding is None:
+            return
+        handler_name = self.COMMANDS.get(binding.command)
+        if handler_name is None:
+            logging.warning("No handler implemented for command '%s'.", binding.command)
+            return
+        getattr(self, handler_name)(factor)
 
-        elif a0.key() == Keys.Key_Escape:
-            if self.drawing_mode.is_active():
-                self.drawing_mode.reset()
-                logging.info("Resetted drawn points!")
-            elif self.align_mode.is_active:
-                self.align_mode.reset()
-                logging.info("Resetted selected points!")
+    # COMMAND HANDLERS (all take the step multiplier so Shift/Alt work everywhere)
 
-        # BBOX MANIPULATION
-        elif a0.key() == Keys.Key_Z:
-            # z rotate counterclockwise
-            self.bbox_controller.rotate_around_z()
-        elif a0.key() == Keys.Key_X:
-            # z rotate clockwise
-            self.bbox_controller.rotate_around_z(clockwise=True)
-        elif a0.key() == Keys.Key_C:
-            # y rotate counterclockwise
-            self.bbox_controller.rotate_around_y()
-        elif a0.key() == Keys.Key_V:
-            # y rotate clockwise
-            self.bbox_controller.rotate_around_y(clockwise=True)
-        elif a0.key() == Keys.Key_B:
-            # x rotate counterclockwise
-            self.bbox_controller.rotate_around_x()
-        elif a0.key() == Keys.Key_N:
-            # x rotate clockwise
-            self.bbox_controller.rotate_around_x(clockwise=True)
-        elif a0.key() == Keys.Key_W:
-            # move backward
-            self.bbox_controller.translate_along_y()
-        elif a0.key() == Keys.Key_S:
-            # move forward
-            self.bbox_controller.translate_along_y(forward=True)
-        elif a0.key() == Keys.Key_A:
-            # move left
-            self.bbox_controller.translate_along_x(left=True)
-        elif a0.key() == Keys.Key_D:
-            # move right
-            self.bbox_controller.translate_along_x()
-        elif a0.key() == Keys.Key_Q:
-            # move up
-            self.bbox_controller.translate_along_z()
-        elif a0.key() == Keys.Key_E:
-            # move down
-            self.bbox_controller.translate_along_z(down=True)
+    def cmd_prev_pcd(self, factor: float = 1.0) -> None:
+        self.prev_pcd()
 
-        # BBOX Scaling
-        elif a0.key() == Keys.Key_I:
-            # increase length
-            self.bbox_controller.scale_along_length()
-        elif a0.key() == Keys.Key_O:
-            # decrease length
-            self.bbox_controller.scale_along_length(decrease=True)
-        elif a0.key() == Keys.Key_K:
-            # increase width
-            self.bbox_controller.scale_along_width()
-        elif a0.key() == Keys.Key_L:
-            # decrease width
-            self.bbox_controller.scale_along_width(decrease=True)
-        elif a0.key() == Keys.Key_Comma:
-            # increase height
-            self.bbox_controller.scale_along_height()
-        elif a0.key() == Keys.Key_Period:
-            # decrease height
-            self.bbox_controller.scale_along_height(decrease=True)
+    def cmd_next_pcd(self, factor: float = 1.0) -> None:
+        self.next_pcd()
 
-        elif a0.key() in [Keys.Key_R, Keys.Key_Left]:
-            # load previous sample
-            self.prev_pcd()
-        elif a0.key() in [Keys.Key_F, Keys.Key_Right]:
-            # load next sample
-            self.next_pcd()
-        elif a0.key() in [Keys.Key_T, Keys.Key_Up]:
-            # select previous bbox
-            self.select_relative_bbox(-1)
-        elif a0.key() in [Keys.Key_G, Keys.Key_Down]:
-            # select previous bbox
-            self.select_relative_bbox(1)
-        elif a0.key() == Keys.Key_Y:
-            # change bbox class to previous available class
-            self.select_relative_class(-1)
-        elif a0.key() == Keys.Key_H:
-            # change bbox class to next available class
-            self.select_relative_class(1)
-        elif a0.key() in list(range(49, 58)):
-            # select bboxes with 1-9 digit keys
-            self.bbox_controller.set_active_bbox(int(a0.key()) - 49)
+    def cmd_reset_view(self, factor: float = 1.0) -> None:
+        self.pcd_manager.reset_transformations()
+        logging.info("Reseted position to default.")
+
+    def cmd_save(self, factor: float = 1.0) -> None:
+        self.save()
+
+    def _translation_step(self, factor: float) -> float:
+        return config.getfloat("LABEL", "std_translation") * factor
+
+    def _rotation_step(self, factor: float) -> float:
+        return config.getfloat("LABEL", "std_rotation") * factor
+
+    def _scaling_step(self, factor: float) -> float:
+        return config.getfloat("LABEL", "std_scaling") * factor
+
+    def cmd_translate_backward(self, factor: float = 1.0) -> None:
+        self.bbox_controller.translate_along_y(self._translation_step(factor))
+
+    def cmd_translate_forward(self, factor: float = 1.0) -> None:
+        self.bbox_controller.translate_along_y(self._translation_step(factor), forward=True)
+
+    def cmd_translate_left(self, factor: float = 1.0) -> None:
+        self.bbox_controller.translate_along_x(self._translation_step(factor), left=True)
+
+    def cmd_translate_right(self, factor: float = 1.0) -> None:
+        self.bbox_controller.translate_along_x(self._translation_step(factor))
+
+    def cmd_translate_up(self, factor: float = 1.0) -> None:
+        self.bbox_controller.translate_along_z(self._translation_step(factor))
+
+    def cmd_translate_down(self, factor: float = 1.0) -> None:
+        self.bbox_controller.translate_along_z(self._translation_step(factor), down=True)
+
+    def cmd_translate_local_x(self, factor: float = 1.0) -> None:
+        self.bbox_controller.translate_local("x", factor=factor)
+
+    def cmd_translate_local_x_neg(self, factor: float = 1.0) -> None:
+        self.bbox_controller.translate_local("x", negative=True, factor=factor)
+
+    def cmd_translate_local_y(self, factor: float = 1.0) -> None:
+        self.bbox_controller.translate_local("y", factor=factor)
+
+    def cmd_translate_local_y_neg(self, factor: float = 1.0) -> None:
+        self.bbox_controller.translate_local("y", negative=True, factor=factor)
+
+    def cmd_rotate_z_ccw(self, factor: float = 1.0) -> None:
+        self.bbox_controller.rotate_around_z(self._rotation_step(factor))
+
+    def cmd_rotate_z_cw(self, factor: float = 1.0) -> None:
+        self.bbox_controller.rotate_around_z(self._rotation_step(factor), clockwise=True)
+
+    def cmd_rotate_y_ccw(self, factor: float = 1.0) -> None:
+        self.bbox_controller.rotate_around_y(self._rotation_step(factor))
+
+    def cmd_rotate_y_cw(self, factor: float = 1.0) -> None:
+        self.bbox_controller.rotate_around_y(self._rotation_step(factor), clockwise=True)
+
+    def cmd_rotate_x_ccw(self, factor: float = 1.0) -> None:
+        self.bbox_controller.rotate_around_x(self._rotation_step(factor))
+
+    def cmd_rotate_x_cw(self, factor: float = 1.0) -> None:
+        self.bbox_controller.rotate_around_x(self._rotation_step(factor), clockwise=True)
+
+    def cmd_scale_length_up(self, factor: float = 1.0) -> None:
+        self.bbox_controller.scale_along_length(self._scaling_step(factor))
+
+    def cmd_scale_length_down(self, factor: float = 1.0) -> None:
+        self.bbox_controller.scale_along_length(self._scaling_step(factor), decrease=True)
+
+    def cmd_scale_width_up(self, factor: float = 1.0) -> None:
+        self.bbox_controller.scale_along_width(self._scaling_step(factor))
+
+    def cmd_scale_width_down(self, factor: float = 1.0) -> None:
+        self.bbox_controller.scale_along_width(self._scaling_step(factor), decrease=True)
+
+    def cmd_scale_height_up(self, factor: float = 1.0) -> None:
+        self.bbox_controller.scale_along_height(self._scaling_step(factor))
+
+    def cmd_scale_height_down(self, factor: float = 1.0) -> None:
+        self.bbox_controller.scale_along_height(self._scaling_step(factor), decrease=True)
+
+    def cmd_select_prev_bbox(self, factor: float = 1.0) -> None:
+        self.select_relative_bbox(-1)
+
+    def cmd_select_next_bbox(self, factor: float = 1.0) -> None:
+        self.select_relative_bbox(1)
+
+    def cmd_class_prev(self, factor: float = 1.0) -> None:
+        self.select_relative_class(-1)
+
+    def cmd_class_next(self, factor: float = 1.0) -> None:
+        self.select_relative_class(1)
+
+    def cmd_delete_bbox(self, factor: float = 1.0) -> None:
+        self.bbox_controller.delete_current_bbox()
+
+    def cmd_escape(self, factor: float = 1.0) -> None:
+        if self.drawing_mode.is_active():
+            self.drawing_mode.reset()
+            logging.info("Resetted drawn points!")
+        elif self.align_mode.is_active:
+            self.align_mode.reset()
+            logging.info("Resetted selected points!")
+        else:
+            self.bbox_controller.deselect_bbox()
+
+    # EDITING COMMANDS
+
+    def cmd_undo(self, factor: float = 1.0) -> None:
+        if self.bbox_controller.undo():
+            self.view.status_manager.set_message(
+                QCoreApplication.translate("labelCloud", "Undone the last change.")
+            )
+            self.view.update_bbox_stats(self.bbox_controller.get_active_bbox())
+        else:
+            self.view.status_manager.set_message(
+                QCoreApplication.translate("labelCloud", "Nothing to undo.")
+            )
+
+    def cmd_redo(self, factor: float = 1.0) -> None:
+        if self.bbox_controller.redo():
+            self.view.status_manager.set_message(
+                QCoreApplication.translate("labelCloud", "Redone the last change.")
+            )
+            self.view.update_bbox_stats(self.bbox_controller.get_active_bbox())
+        else:
+            self.view.status_manager.set_message(
+                QCoreApplication.translate("labelCloud", "Nothing to redo.")
+            )
+
+    def cmd_copy_box(self, factor: float = 1.0) -> None:
+        self.bbox_controller.copy_current_bbox()
+        if self.bbox_controller.clipboard is not None:
+            self.view.status_manager.set_message(
+                QCoreApplication.translate(
+                    "labelCloud", "Copied the box; Ctrl+V pastes it (also in the next frame)."
+                )
+            )
+
+    def cmd_paste_box(self, factor: float = 1.0) -> None:
+        if self.bbox_controller.paste_bbox():
+            self.view.status_manager.set_message(
+                QCoreApplication.translate("labelCloud", "Pasted the box.")
+            )
+        else:
+            self.view.status_manager.set_message(
+                QCoreApplication.translate("labelCloud", "Nothing to paste: copy a box first.")
+            )
+
+    def cmd_duplicate_box(self, factor: float = 1.0) -> None:
+        self.bbox_controller.duplicate_current_bbox()
+
+    def cmd_toggle_dimension_lock(self, factor: float = 1.0) -> None:
+        self.bbox_controller.toggle_dimension_lock()
+        locked = self.bbox_controller.is_active_locked()
+        self.view.status_manager.set_message(
+            QCoreApplication.translate("labelCloud", "Box size locked (Ctrl+L).")
+            if locked
+            else QCoreApplication.translate("labelCloud", "Box size unlocked (Ctrl+L).")
+        )
+
+    def cmd_apply_template(self, factor: float = 1.0) -> None:
+        self.bbox_controller.apply_template()
+
+    def cmd_toggle_focus(self, factor: float = 1.0) -> None:
+        if self.focus_active:
+            self.clear_focus()
+        else:
+            self.activate_focus()
+
+    def cmd_show_shortcuts(self, factor: float = 1.0) -> None:
+        from ..view.shortcut_dialog import ShortcutDialog
+
+        ShortcutDialog(self.view, self.keymap).exec_()
 
     def select_relative_class(self, step: int):
         if step == 0:
