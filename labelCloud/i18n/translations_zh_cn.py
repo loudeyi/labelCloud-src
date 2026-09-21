@@ -562,6 +562,7 @@ TRANSLATIONS.update({
 })
 
 TRANSLATIONS.update({
+    "%s proposals waiting for Enter": "还有 %s 个候选框待确认（回车确认）",
     # the standard dialog buttons: Qt's own translation files are not shipped
     "Close": "关闭",
     "OK": "确定",

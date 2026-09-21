@@ -3,66 +3,66 @@
 <context>
     <name>GUI</name>
     <message>
-        <location filename="../view/gui.py" line="999" />
+        <location filename="../view/gui.py" line="1005" />
         <source>labelCloud</source>
         <translation>labelCloud</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="810" />
+        <location filename="../view/gui.py" line="816" />
         <source>No 2D Image File</source>
         <translation>没有对应的二维图像</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="810" />
+        <location filename="../view/gui.py" line="816" />
         <source>Could not find a related image in the image folder (%s).
 Check your path to the folder or if an image for this point cloud exists.</source>
         <translation>在图像目录（%s）里找不到对应图像。
 请检查目录路径，或确认这帧点云是否有对应图像。</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="826" />
+        <location filename="../view/gui.py" line="832" />
         <source>2D Image (%s)</source>
         <translation>二维图像（%s）</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="835" />
+        <location filename="../view/gui.py" line="841" />
         <source>&lt;b&gt;labelCloud could not find any valid point cloud files inside the specified folder.&lt;/b&gt;</source>
         <translation>&lt;b&gt;labelCloud 在指定目录里没有找到任何有效的点云文件。&lt;/b&gt;</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="841" />
+        <location filename="../view/gui.py" line="847" />
         <source>Please copy all your point clouds into &lt;code&gt;%s&lt;/code&gt; or update the point cloud folder location. labelCloud supports the following point cloud file formats:
  %s.</source>
         <translation>请把点云复制到 &lt;code&gt;%s&lt;/code&gt;，或修改点云目录。labelCloud 支持以下点云格式：
  %s。</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="849" />
+        <location filename="../view/gui.py" line="855" />
         <source>No Point Clouds Found</source>
         <translation>未找到点云文件</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="855" />
+        <location filename="../view/gui.py" line="861" />
         <source>Current: &lt;em&gt;%s&lt;/em&gt;</source>
         <translation>当前：&lt;em&gt;%s&lt;/em&gt;</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="939" />
+        <location filename="../view/gui.py" line="945" />
         <source>Change Point Cloud Folder</source>
         <translation>更改点云目录</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="955" />
+        <location filename="../view/gui.py" line="961" />
         <source>Change Label Folder</source>
         <translation>更改标注目录</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="1000" />
+        <location filename="../view/gui.py" line="1006" />
         <source>Insert Point Cloud number: ()</source>
         <translation>输入点云序号：()</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="1009" />
+        <location filename="../view/gui.py" line="1015" />
         <source>Insert Point Cloud number: %s</source>
         <translation>输入点云序号：%s</translation>
     </message>
@@ -77,17 +77,17 @@ Check your path to the folder or if an image for this point cloud exists.</sourc
         <translation>— 未载入点云</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="643" />
+        <location filename="../view/gui.py" line="642" />
         <source>loaded</source>
         <translation>载入</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="643" />
+        <location filename="../view/gui.py" line="642" />
         <source>saved</source>
         <translation>已保存</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="645" />
+        <location filename="../view/gui.py" line="644" />
         <source>Recent:</source>
         <translation>最近：</translation>
     </message>
@@ -97,17 +97,17 @@ Check your path to the folder or if an image for this point cloud exists.</sourc
         <translation>第 %s/%s 帧 · &lt;b&gt;%s&lt;/b&gt;</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="630" />
+        <location filename="../view/gui.py" line="629" />
         <source>✓ saved · %s</source>
         <translation>✓ 已保存 · %s</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="653" />
+        <location filename="../view/gui.py" line="659" />
         <source>Keyframe: none (Ctrl+Shift+I sets one)</source>
         <translation>关键帧：未设置（Ctrl+Shift+I 设置）</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="655" />
+        <location filename="../view/gui.py" line="661" />
         <source>Keyframe: frame %s · %s</source>
         <translation>关键帧：第 %s 帧 · %s</translation>
     </message>
@@ -125,6 +125,11 @@ Check your path to the folder or if an image for this point cloud exists.</sourc
         <location filename="../view/gui.py" line="267" />
         <source>Save points inside as</source>
         <translation>把框内点另存为</translation>
+    </message>
+    <message>
+        <location filename="../view/gui.py" line="652" />
+        <source>%s proposals waiting for Enter</source>
+        <translation>还有 %s 个候选框待确认（回车确认）</translation>
     </message>
 <message><source>X position</source><translation>X 位置</translation></message><message><source>Y position</source><translation>Y 位置</translation></message><message><source>Z position</source><translation>Z 位置</translation></message><message><source>Length</source><translation>长</translation></message><message><source>Width</source><translation>宽</translation></message><message><source>Height</source><translation>高</translation></message><message><source>Rotation X</source><translation>绕 X 旋转</translation></message><message><source>Rotation Y</source><translation>绕 Y 旋转</translation></message><message><source>Rotation Z</source><translation>绕 Z 旋转</translation></message></context>
 <context>
@@ -1487,17 +1492,17 @@ Bounding Box Parameter</source>
         <translation>无效的语义分割标注</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="1023" />
+        <location filename="../view/gui.py" line="1029" />
         <source>Point Cloud File (%s)</source>
         <translation>点云文件（%s）</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="1026" />
+        <location filename="../view/gui.py" line="1032" />
         <source>Select a file name to save the point cloud</source>
         <translation>选择点云保存的文件名</translation>
     </message>
     <message>
-        <location filename="../view/gui.py" line="1044" />
+        <location filename="../view/gui.py" line="1050" />
         <source>Failed to save a point cloud</source>
         <translation>保存点云失败</translation>
     </message>

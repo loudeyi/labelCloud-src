@@ -62,6 +62,7 @@ single keystroke; rejecting is one keystroke for the whole batch.
 | **Session card** | right panel, above *Current BBox* | The same information at a glance: frame `2/1292`, the save state with its time, the last two events, the prediction state, and buttons for the activity log and the prediction settings |
 | **Next-frame prediction** | *Labels → Predict Boxes for the Next Frame*, or `Ctrl+Shift+P` | Carries the boxes of the current frame into the next one: size and heading are kept, the position follows the points, and an object whose points are gone stops being predicted |
 | **Autosave** | every 60 s (`LABEL/autosave_interval_seconds`) | Writes only when something was actually edited. A frame you merely browsed past is **not written at all** — press `Ctrl+S` to record it as "checked, and it is empty" |
+| **Proposals stay unwritten** | until `Enter` confirms them | Pre-annotation candidates and dashed predictions are memory only: an edit elsewhere in the frame cannot drag them into the file. A refused write (another format on disk) is reported as a **failure**, so the frame stays unsaved instead of looking saved |
 | **Group editing** | `Shift`+click boxes | Move/rotate/scale/class/delete/flip act on the whole group |
 | **Undo/redo** | `Ctrl+Z` / `Ctrl+Shift+Z` | One step per gesture: a whole drag, or a burst of key presses, undoes as a single action |
 | **Dimension lock + templates** | `Ctrl+L` / `Ctrl+T` | Protects a fitted size; templates fix the pole cross-section and the wire section |
@@ -578,7 +579,9 @@ Adding a translatable string: wrap it in `self.tr(...)` (or
 
 * Label files stay byte-compatible with upstream labelCloud (`centroid_abs`, degrees).
 * `centroid_rel` (radians), 8-corner `vertices` and KITTI label folders are read correctly, and a
-  folder in another encoding is not overwritten by accident.
+  folder in another encoding is not overwritten by accident. A folder whose angles can only be
+  degrees while the session reads radians says so once per session, instead of quietly rotating
+  every box wrongly.
 * Rotations are only reported as degrees/radians when that can be *proven* from the values; an
   ambiguous file keeps the configured format instead of guessing.
 * Fitting is geometric: it needs no trained model, and it does not try to be one. Dense scenes where

@@ -98,6 +98,9 @@ The label file format is unchanged: `folder` / `filename` / `path` /
   actions work without clicking one first.
 * File names are elided from the front (`…083316023.pcd`) because every frame shares
   the same timestamp prefix.
+* The session card also counts the **unconfirmed proposals** of the frame
+  (`3 proposals waiting for Enter`), so a pre-annotated frame is never left half
+  reviewed by accident.
 
 ### Next-frame prediction
 
@@ -179,11 +182,71 @@ The label file format is unchanged: `folder` / `filename` / `path` /
   created and no existing file is rewritten; `Ctrl+S` forces a write, which is how a
   frame gets marked as deliberately checked and empty. The status bar shows
   `— unchanged, nothing to write` in that case.
+* **Unconfirmed proposals are never written**: pre-annotation candidates and dashed
+  orange predictions stay in memory until `Enter` confirms them, and only confirmed
+  boxes are saved (also when the frame is dirty because of another edit).
+
+### Whole-project review (correctness and data safety)
+
+Everything below came out of a review of the complete code base, not of one feature.
+
+* **A refused write is a failure now.** The format guard refuses to convert a file that
+  holds another encoding, but the refusal only logged: the controller still marked the
+  frame as saved and cleared the dirty flag, so the edits stayed in memory until the
+  session ended and autosave never retried. `export_labels`/`save_labels_into_file`
+  return whether anything was written, and the status bar, the activity log and the
+  dirty flag all report the truth.
+* **Unconfirmed proposals can no longer leak into a file.** They live in the box list so
+  they can be reviewed; the save path now writes confirmed boxes only
+  (`BoundingBoxController.confirmed_boxes`), at the command level *and* at the single
+  write choke point, and predictions are made from confirmed boxes only.
+* **KITTI folders load again.** The encoding detector only understood JSON, so every
+  `.txt` file was classified "unknown", the guard refused every frame and a KITTI
+  session could not read a single one of its own labels. It now recognises KITTI
+  (JSON first, so a renamed JSON document is still recognised), skips blank and short
+  lines instead of raising `IndexError`, keeps each box's KITTI columns on the box
+  instead of keying them by `id()`, and caches the calibration per frame.
+* **A `null` object entry** in a hand-edited label file raised `AttributeError` inside
+  the frame-change slot; it is skipped now.
+* The rotation unit that the detector computed and threw away is used: a folder whose
+  angles can *only* be degrees while the session reads radians now warns once per
+  session instead of silently rotating every box wrongly.
+* The quality check writes nothing at all any more (it used to register class names it
+  met, which rewrote `_classes.json`), reads `[QUALITY] min_points`, and refuses a
+  format it cannot parse with a message instead of calling every frame unreadable.
+* Fitting: only a *successful* fit finishes, so a click that found nothing no longer
+  hands `None` to the controller; fitting without a loaded cloud says so.
+* Esc leaves the drawing mode with the buttons following it (the Pick/Span button used
+  to stay checked after Esc).
+* Dataset statistics counts the extensions the handlers support (not just `*.pcd`) and
+  reads KITTI folders through the label manager, where a refused file is reported as
+  unreadable instead of being counted as an empty frame.
+
+### Tests and tooling
+
+* `tests/check_assist.py` grew to 31 checks (KITTI/centroid/vertices formats, the
+  refusal path, the two translation checks, the quality rules, keyframe interpolation),
+  and `tools/smoke_gui.py` drives the **real windows offscreen** for the three flows
+  where the wiring rather than the logic breaks: keyframe interpolation, the quality
+  check (including "it writes nothing") and a Chinese session.
+* Dead code removed (`use_template_for_wire`, `MODIFIER_NOTE`/`MULTIPLIER_NOTE`,
+  `UNIT_AMBIGUOUS_BELOW`, a filter in the translation tool that could never be true),
+  `_already_there` became the public `already_there`, the two background workers share
+  one `LabelPassWorker` base instead of duplicating their readers, and the launcher
+  check no longer depends on a dataset outside the repository.
 
 ### Interface language
 
 * Switchable **English / Simplified Chinese** (`Settings → Language`), including the
   system-locale option; the switch takes effect immediately without a restart.
+* The catalogue is verified instead of trusted: a check walks the AST for every literal
+  passed to `tr()`/`translate()` and fails when one never reached the catalogue, and a
+  second check fails when a translated entry is missing from
+  `labelCloud/i18n/translations_zh_cn.py`. Both traps were real: `pylupdate5` silently
+  ignores a call whose text is followed by a trailing comma, and table-driven strings
+  (the parameter stepper, the quality-check wording) are invisible to it. The standard
+  OK / Cancel / Close buttons are named explicitly, because Qt's own catalogue is not
+  shipped with the application.
 * Dialogs, message boxes and status messages are translated (309 strings); log
   messages stay English on purpose.
 * `tools/update_translations.py` rebuilds the `.ts`/`.qm` from one reviewable

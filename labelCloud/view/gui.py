@@ -616,13 +616,12 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
             self.session_frame_label.setToolTip(str(pcd_path))
 
         state = self.status_manager.current_save_state()
-        style = {
-            "saved": "color: #1a7f37;",
-            "dirty": "color: #c07000;",
-            "failed": "color: #c0392b;",
-            "unchanged": "color: #888;",
-        }.get(state, "color: #888;")
-        self.session_save_label.setStyleSheet(style)
+        # one colour table for the whole window (StatusManager.SAVE_STYLES)
+        self.session_save_label.setStyleSheet(
+            self.status_manager.SAVE_STYLES.get(
+                state, self.status_manager.SAVE_STYLES["unknown"]
+            )
+        )
         # the panel already lists the times in "recent", so keep this line short
         save_text = self.status_manager.save_label.text()
         saved_state = self.status_manager.current_save_state()
@@ -648,6 +647,13 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
         if lines:
             self.session_recent_label.setToolTip("\n".join(str(e[2]) for e in entries))
 
+        pending = controller.bbox_controller.candidate_count()
+        if pending:
+            self.session_predict_label.setText(
+                self.session_predict_label.text()
+                + "<br/>"
+                + self.tr("%s proposals waiting for Enter") % pending
+            )
         anchor = getattr(controller, "interpolation_anchor", None)
         if anchor is None:
             anchor_text = self.tr("Keyframe: none (Ctrl+Shift+I sets one)")

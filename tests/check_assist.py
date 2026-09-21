@@ -1358,7 +1358,12 @@ def test_launcher_preserves_user_config():
     with tempfile.TemporaryDirectory() as tmp:
         workdir = Path(tmp) / "work"
         env = {**os.environ, "LABELCLOUD_WORKDIR": str(workdir), "DRY_RUN": "1"}
-        dataset = str(REPO.parent / "datasets_y40" / "2026_04131(未标)")
+        # a throwaway "dataset" instead of a real one: the launcher only needs the
+        # two folders to exist, and a test must not depend on a path outside the repo
+        dataset_dir = Path(tmp) / "2026_04131(未标)"
+        (dataset_dir / "images").mkdir(parents=True)
+        (dataset_dir / "labels_lc").mkdir()
+        dataset = str(dataset_dir)
         first = subprocess.run(
             ["bash", str(launcher), dataset, "labels_lc"],
             capture_output=True, text=True, env=env,
@@ -1371,7 +1376,10 @@ def test_launcher_preserves_user_config():
         config.write_text(text)
 
         second = subprocess.run(
-            ["bash", str(launcher)], capture_output=True, text=True, env=env
+            ["bash", str(launcher), dataset, "labels_lc"],
+            capture_output=True,
+            text=True,
+            env=env,
         )
         after = config.read_text() if config.is_file() else ""
         ok = (

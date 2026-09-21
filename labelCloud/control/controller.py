@@ -1715,6 +1715,7 @@ class Controller:
 
         boxes = to_bboxes(proposals)
         added = self.bbox_controller.add_candidates(boxes)
+        self.view.update_session_panel()
         self.view.status_manager.set_message(
             QCoreApplication.translate(
                 "labelCloud",
@@ -1735,6 +1736,7 @@ class Controller:
         if self.bbox_controller.accept_candidate():
             remaining = self.bbox_controller.candidate_count()
             self.bbox_controller.select_relative_candidate(1)
+            self.view.update_session_panel()
             self.view.status_manager.set_message(
                 QCoreApplication.translate(
                     "labelCloud", "Confirmed. %s proposals left in this frame."
@@ -1745,6 +1747,7 @@ class Controller:
     def cmd_reject_candidates(self, factor: float = 1.0) -> None:
         rejected = self.bbox_controller.reject_all_candidates()
         if rejected:
+            self.view.update_session_panel()
             self.view.status_manager.set_message(
                 QCoreApplication.translate(
                     "labelCloud", "Rejected %s proposals in this frame."
