@@ -177,6 +177,9 @@ class StatisticsDialog(QtWidgets.QDialog):
         layout.addWidget(frame_info)
 
         buttons = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Close, self)
+        # the standard button's text comes from Qt's own catalogue, which this
+        # application does not ship: name it here so a Chinese session is complete
+        buttons.button(QtWidgets.QDialogButtonBox.Close).setText(self.tr("Close"))
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
         logging.info("Dataset statistics: %s", statistics)

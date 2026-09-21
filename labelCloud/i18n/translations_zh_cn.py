@@ -562,6 +562,10 @@ TRANSLATIONS.update({
 })
 
 TRANSLATIONS.update({
+    # the standard dialog buttons: Qt's own translation files are not shipped
+    "Close": "关闭",
+    "OK": "确定",
+    "Cancel": "取消",
     "Load a point cloud before fitting a box.": "请先加载点云，再拟合检测框。",
     "These label files store rotations in degrees, but this session reads radians: the boxes are rotated wrongly. Check the class configuration.": (
         "这些标注文件里的角度是「度」，但当前会话按「弧度」读取：框的朝向是错的。"

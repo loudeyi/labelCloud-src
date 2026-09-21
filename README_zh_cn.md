@@ -484,14 +484,24 @@ pole_profile = recall
 
 ```bash
 # 回归检查（不需要 pytest，每条用例在独立工作目录里跑）
-.venv/bin/python tests/check_assist.py
+python tests/check_assist.py
+
+# 同样三条流程，但走真实窗口（offscreen + 临时数据集）：
+# 关键帧插值、质检、中文会话
+python tools/smoke_gui.py
 
 # 新增文案后重建中文翻译
-.venv/bin/python tools/update_translations.py
+python tools/update_translations.py
 ```
 
-`tests/check_assist.py` 覆盖：类别配置兼容性、逐文件编码识别与防误覆盖、语言切换、快捷键表、
-撤销与合并、模板与锁定、合成数据上的杆/线拟合、候选队列、数据集统计、保存失败处理。
+装好依赖的解释器都能跑（`check_assist.py` 会用 `sys.executable` 再起子进程）；
+开发时用的虚拟环境是 `/home/tyy/DSH-WS/labelcloud-hzh/bin/python`。
+
+`tests/check_assist.py`（31 条）覆盖：类别配置兼容性、逐文件编码识别与防误覆盖（含 KITTI /
+centroid / vertices 三种格式）、语言切换与「每条 `tr()` 文案都必须进目录」的检查、快捷键表、
+撤销与合并、模板与锁定、合成数据上的杆/线拟合、候选队列、数据集统计、保存失败处理、
+带到后续帧、关键帧插值与质检。`tools/smoke_gui.py` 则用 offscreen 真实窗口跑三条流程 ——
+插值、质检、中文会话 —— 因为出问题的地方往往是"接线"而不是算法。
 
 新增可翻译文案的做法：在 `QObject` 里用 `self.tr(...)`，非 `QObject` 用
 `QCoreApplication.translate("labelCloud", ...)`；把中文写进

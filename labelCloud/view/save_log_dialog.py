@@ -64,5 +64,6 @@ class SaveLogDialog(QtWidgets.QDialog):
         layout.addWidget(hint)
 
         buttons = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Close, self)
+        buttons.button(QtWidgets.QDialogButtonBox.Close).setText(self.tr("Close"))
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)

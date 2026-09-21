@@ -84,6 +84,7 @@ class ShortcutDialog(QtWidgets.QDialog):
         layout.addWidget(hint)
 
         buttons = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Close, self)
+        buttons.button(QtWidgets.QDialogButtonBox.Close).setText(self.tr("Close"))
         buttons.rejected.connect(self.reject)
         buttons.accepted.connect(self.accept)
         layout.addWidget(buttons)

@@ -735,6 +735,16 @@ in the wrong field and boxes that cover no points.</source>
         <source>Carry forward writes this many frames:</source>
         <translation>一键向后带多少帧：</translation>
     </message>
+    <message>
+        <location filename="../view/prediction_dialog.py" line="169" />
+        <source>OK</source>
+        <translation>确定</translation>
+    </message>
+    <message>
+        <location filename="../view/prediction_dialog.py" line="170" />
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
 </context>
 <context>
     <name>QualityDialog</name>
@@ -799,22 +809,22 @@ in the wrong field and boxes that cover no points.</source>
         <translation>跳到该帧</translation>
     </message>
     <message>
-        <location filename="../view/quality_dialog.py" line="202" />
+        <location filename="../view/quality_dialog.py" line="204" />
         <source>The check failed: %s</source>
         <translation>检查失败：%s</translation>
     </message>
     <message>
-        <location filename="../view/quality_dialog.py" line="210" />
+        <location filename="../view/quality_dialog.py" line="212" />
         <source>%s of %s frames hold boxes (%s boxes)</source>
         <translation>%s / %s 帧有标注（共 %s 个框）</translation>
     </message>
     <message>
-        <location filename="../view/quality_dialog.py" line="217" />
+        <location filename="../view/quality_dialog.py" line="219" />
         <source>Double-click a row (or press Go to Frame) to open that frame. The check never edits your labels.</source>
         <translation>双击一行（或按“跳到该帧”）即可打开那一帧。质检只读，绝不改动你的标注。</translation>
     </message>
     <message>
-        <location filename="../view/quality_dialog.py" line="211" />
+        <location filename="../view/quality_dialog.py" line="213" />
         <source>Frames with at least one issue: %s</source>
         <translation>至少有一处问题的帧数：%s</translation>
     </message>
@@ -822,6 +832,11 @@ in the wrong field and boxes that cover no points.</source>
         <location filename="../view/quality_dialog.py" line="95" />
         <source>the quality check reads 'centroid' JSON labels; this session uses '%s'</source>
         <translation>质检只能读 'centroid' JSON 标注，当前会话用的是 '%s'</translation>
+    </message>
+    <message>
+        <location filename="../view/quality_dialog.py" line="186" />
+        <source>Close</source>
+        <translation>关闭</translation>
     </message>
 <message><source>Class not in _classes.json</source><translation>类别不在 _classes.json 里</translation></message><message><source>Impossible size</source><translation>尺寸不可能是真的</translation></message><message><source>Tilted although the class is upright</source><translation>类别要求竖直，但框是斜的</translation></message><message><source>Long axis in length instead of width</source><translation>长轴写进了 length 而不是 width</translation></message><message><source>Size far from the usual size of its class</source><translation>尺寸和同类别的常见尺寸差太多</translation></message><message><source>Duplicate or overlapping box</source><translation>重复或重叠的框</translation></message><message><source>Covers (almost) no points</source><translation>框里（几乎）没有点</translation></message><message><source>Label file cannot be read</source><translation>标注文件读不出来</translation></message><message><source>not one of the configured classes</source><translation>不属于已配置的类别</translation></message><message><source>size %(length).2f x %(width).2f x %(height).2f m is not a real object</source><translation>尺寸 %(length).2f × %(width).2f × %(height).2f m 不可能是真实目标</translation></message><message><source>tilted by %(tilt).1f deg, but this class is always upright</source><translation>歪了 %(tilt).1f°，但该类别要求始终竖直</translation></message><message><source>long axis is in length (%(length).2f m) instead of width (%(width).2f m)</source><translation>长轴写进了 length（%(length).2f m），应该在 width（%(width).2f m）</translation></message><message><source>%(axis)s %(value).2f m is %(ratio).1fx the usual %(expected).2f m</source><translation>%(axis)s 为 %(value).2f m，是同类别常见值 %(expected).2f m 的 %(ratio).1f 倍</translation></message><message><source>two %(name)s boxes %(distance).2f m apart</source><translation>两个 %(name)s 框相距只有 %(distance).2f m</translation></message><message><source>overlaps the next %(name)s box by %(share).0f %%</source><translation>与下一个 %(name)s 框重叠 %(share).0f%%</translation></message><message><source>only %(count)s point(s) inside</source><translation>框内只有 %(count)s 个点</translation></message><message><source>cannot be read: %(error)s</source><translation>读不出来：%(error)s</translation></message></context>
 <context>
@@ -870,6 +885,16 @@ in the wrong field and boxes that cover no points.</source>
         <location filename="../view/refit_dialog.py" line="98" />
         <source>Restore defaults</source>
         <translation>恢复默认</translation>
+    </message>
+    <message>
+        <location filename="../view/refit_dialog.py" line="109" />
+        <source>OK</source>
+        <translation>确定</translation>
+    </message>
+    <message>
+        <location filename="../view/refit_dialog.py" line="110" />
+        <source>Cancel</source>
+        <translation>取消</translation>
     </message>
 </context>
 <context>
@@ -928,6 +953,11 @@ in the wrong field and boxes that cover no points.</source>
         <location filename="../view/save_log_dialog.py" line="56" />
         <source>Loading a frame, and every write of an edited frame, is listed here. The status bar shows the most recent of each.</source>
         <translation>每次载入点云、以及每次写出修改过的帧都会记在这里；状态栏显示最近的一条。</translation>
+    </message>
+    <message>
+        <location filename="../view/save_log_dialog.py" line="67" />
+        <source>Close</source>
+        <translation>关闭</translation>
     </message>
 </context>
 <context>
@@ -1239,6 +1269,11 @@ Bounding Box Parameter</source>
         <source>Any binding can be changed in the [SHORTCUTS] section of config.ini, for example "copy_box = Ctrl+C".</source>
         <translation>所有快捷键都可以在 config.ini 的 [SHORTCUTS] 段里改，例如 "copy_box = Ctrl+C"。</translation>
     </message>
+    <message>
+        <location filename="../view/shortcut_dialog.py" line="87" />
+        <source>Close</source>
+        <translation>关闭</translation>
+    </message>
 </context>
 <context>
     <name>StartupDialog</name>
@@ -1354,6 +1389,11 @@ Bounding Box Parameter</source>
         <location filename="../view/statistics_dialog.py" line="173" />
         <source>This frame: %s boxes, %s of them unconfirmed proposals.</source>
         <translation>本帧：%s 个检测框，其中 %s 个是未确认的候选框。</translation>
+    </message>
+    <message>
+        <location filename="../view/statistics_dialog.py" line="182" />
+        <source>Close</source>
+        <translation>关闭</translation>
     </message>
 </context>
 <context>

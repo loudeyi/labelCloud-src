@@ -104,6 +104,10 @@ class RefitSettingsDialog(QtWidgets.QDialog):
         buttons = QtWidgets.QDialogButtonBox(
             QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel, self
         )
+        # Qt's own catalogue is not shipped with the application, so the standard
+        # buttons are named here (otherwise a Chinese session shows OK / Cancel)
+        buttons.button(QtWidgets.QDialogButtonBox.Ok).setText(self.tr("OK"))
+        buttons.button(QtWidgets.QDialogButtonBox.Cancel).setText(self.tr("Cancel"))
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)

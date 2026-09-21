@@ -548,16 +548,26 @@ matched BEV IoU of 0.74) at 0.03–1.18 s per frame, off the UI thread.
 
 ```bash
 # regression checks (no pytest needed, each case runs in its own working directory)
-.venv/bin/python tests/check_assist.py
+python tests/check_assist.py
+
+# the same three flows, but through real windows (offscreen, throwaway dataset):
+# keyframe interpolation, the quality check, and a Chinese session
+python tools/smoke_gui.py
 
 # rebuild the Chinese translation catalogue after adding strings
-.venv/bin/python tools/update_translations.py
+python tools/update_translations.py
 ```
 
-`tests/check_assist.py` covers class-config compatibility, per-file label encodings and the
-overwrite guard, language switching, the shortcut table, undo/coalescing, templates and locks, the
-fitting engine on synthetic pole/wire scenes, the proposal queue, dataset statistics and save
-failure handling.
+Any interpreter with the dependencies installed works (`check_assist.py` re-runs itself
+with `sys.executable`). The development venv is `/home/tyy/DSH-WS/labelcloud-hzh/bin/python`.
+
+`tests/check_assist.py` (31 checks) covers class-config compatibility, per-file label encodings,
+the overwrite guard and the KITTI/centroid/vertices formats, language switching and the rule that
+every `tr()` literal reaches the catalogue, the shortcut table, undo/coalescing, templates and
+locks, the fitting engine on synthetic pole/wire scenes, the proposal queue, dataset statistics,
+save failures, carry-forward, keyframe interpolation and the quality check. `tools/smoke_gui.py`
+drives the real windows offscreen for the three flows where the wiring, not the logic, is what
+breaks.
 
 Adding a translatable string: wrap it in `self.tr(...)` (or
 `QCoreApplication.translate("labelCloud", ...)` outside a `QObject`), add the Chinese text to

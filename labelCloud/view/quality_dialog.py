@@ -182,7 +182,9 @@ class QualityDialog(QtWidgets.QDialog):
         )
         self.go_button.clicked.connect(self.go_to_selected)
         self.go_button.setEnabled(False)
-        buttons.addButton(QtWidgets.QDialogButtonBox.Close).clicked.connect(self.reject)
+        close_button = buttons.addButton(QtWidgets.QDialogButtonBox.Close)
+        close_button.setText(self.tr("Close"))
+        close_button.clicked.connect(self.reject)
         self.table.itemSelectionChanged.connect(
             lambda: self.go_button.setEnabled(bool(self.table.selectedItems()))
         )
