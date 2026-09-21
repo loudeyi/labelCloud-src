@@ -12,6 +12,18 @@ class CentroidFormat(BaseLabelFormat):
     FILE_ENDING = ".json"
     ENCODING = "centroid"
 
+    @staticmethod
+    def _read_rotations(rotations: Dict[str, float]) -> List[float]:
+        """(x, y, z) of a label entry, by name.
+
+        Reading ``rotations.values()`` made the three axes depend on the key order of
+        the file: a document written by another tool with ``z`` first would have loaded
+        with the axes swapped. Files that only carry bare numbers keep the old order.
+        """
+        if all(axis in rotations for axis in ("x", "y", "z")):
+            return [float(rotations["x"]), float(rotations["y"]), float(rotations["z"])]
+        return [float(value) for value in rotations.values()]
+
     def import_labels(self, pcd_path: Path) -> List[BBox]:
         labels = []
 
@@ -28,9 +40,9 @@ class CentroidFormat(BaseLabelFormat):
                 width = label["dimensions"]["width"]
                 height = label["dimensions"]["height"]
                 bbox = BBox(x, y, z, length, width, height)
-                rotations = label["rotations"].values()
+                rotations = self._read_rotations(label["rotations"])
                 if self.relative_rotation:
-                    rotations = map(rel2abs_rotation, rotations)
+                    rotations = [rel2abs_rotation(angle) for angle in rotations]
                 bbox.set_rotations(*rotations)
                 # A class that only exists in the label files must still show up in
                 # the dropdown and get a colour instead of falling back to red.

@@ -27,8 +27,6 @@ class BaseLabelFormat(ABC):
         logging.info("Set export strategy to %s." % self.__class__.__name__)
         self.export_precision = export_precision
         self.relative_rotation = relative_rotation
-        #: kept for backwards compatibility with the code that read this attribute
-        self.file_ending = ".json"
         if relative_rotation:
             self.ROTATION_UNIT = "radians"
 

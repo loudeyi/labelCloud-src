@@ -647,13 +647,6 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
         if lines:
             self.session_recent_label.setToolTip("\n".join(str(e[2]) for e in entries))
 
-        pending = controller.bbox_controller.candidate_count()
-        if pending:
-            self.session_predict_label.setText(
-                self.session_predict_label.text()
-                + "<br/>"
-                + self.tr("%s proposals waiting for Enter") % pending
-            )
         anchor = getattr(controller, "interpolation_anchor", None)
         if anchor is None:
             anchor_text = self.tr("Keyframe: none (Ctrl+Shift+I sets one)")
@@ -662,9 +655,12 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
                 anchor[0] + 1,
                 anchor[1].classname,
             )
-        self.session_predict_label.setText(
-            controller.prediction_summary() + "<br/>" + anchor_text
-        )
+        summary = [controller.prediction_summary(), anchor_text]
+        pending = controller.bbox_controller.candidate_count()
+        if pending:
+            # a pre-annotated frame is easy to leave half reviewed by accident
+            summary.append(self.tr("%s proposals waiting for Enter") % pending)
+        self.session_predict_label.setText("<br/>".join(summary))
 
     def show_refit_settings(self) -> None:
         from .refit_dialog import RefitSettingsDialog
@@ -789,6 +785,8 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
         logging.info("Closing window after saving ...")
+        # a pass that is still writing labels would keep going after the window is gone
+        self.controller.cancel_background_passes()
         self.controller.save()
         self.autosave_timer.stop()
         self.timer.stop()

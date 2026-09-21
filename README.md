@@ -551,8 +551,8 @@ matched BEV IoU of 0.74) at 0.03–1.18 s per frame, off the UI thread.
 # regression checks (no pytest needed, each case runs in its own working directory)
 python tests/check_assist.py
 
-# the same three flows, but through real windows (offscreen, throwaway dataset):
-# keyframe interpolation, the quality check, and a Chinese session
+# the same flows, but through real windows (offscreen, throwaway dataset):
+# keyframe interpolation, the quality check, queued proposals, a Chinese session
 python tools/smoke_gui.py
 
 # rebuild the Chinese translation catalogue after adding strings

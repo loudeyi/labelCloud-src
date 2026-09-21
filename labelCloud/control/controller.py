@@ -646,6 +646,17 @@ class Controller:
             )
         self._last_save_state = "saved" if exists else "unchanged"
 
+    def cancel_background_passes(self) -> None:
+        """Ask every running background pass to stop (called when the window closes).
+
+        ``LabelPassWorker.cancel`` sets a flag the pass checks before each frame, so the
+        application stops writing labels instead of finishing the queue invisibly.
+        """
+        for name in ("propagate_worker", "preannotate_worker"):
+            worker = getattr(self, name, None)
+            if worker is not None and hasattr(worker, "cancel"):
+                worker.cancel()
+
     def cmd_toggle_predict_next_frame(self, factor: float = 1.0) -> None:
         self.toggle_predict_next_frame()
 

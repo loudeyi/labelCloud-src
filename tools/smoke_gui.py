@@ -11,13 +11,15 @@ checks three flows end to end:
   was written;
 * **quality check** — a folder with deliberate mistakes, the dialog's table, the
   jump-to-frame action, and the promise that the check writes nothing at all;
+* **queued proposals** — the session card counts the unconfirmed proposals, the count
+  follows confirm/reject, and queueing them writes no file;
 * **Chinese session** — the menus, the object list, the parameter stepper, the quality
   window and the standard dialog buttons all come out translated.
 
 Usage::
 
-    python tools/smoke_gui.py            # all three flows
-    python tools/smoke_gui.py interp     # one flow (interp | quality | zh)
+    python tools/smoke_gui.py            # every flow
+    python tools/smoke_gui.py interp     # one flow (interp | quality | proposals | zh)
 
 Every flow works in its own temporary directory and deletes it afterwards; nothing
 outside the temporary directory is read or written.
@@ -311,6 +313,48 @@ def flow_quality() -> bool:
         shutil.rmtree(root, ignore_errors=True)
 
 
+def flow_proposals() -> bool:
+    """Queued proposals show up in the session card, and write nothing by themselves."""
+    root = Path(tempfile.mkdtemp(prefix="lc-smoke-proposals-"))
+    try:
+        make_project(root)
+        write_pcd(root / "pointclouds/frame_000.pcd", blob(np.random.default_rng(2), 0.0, 0.0, 30))
+        app, control, gui = boot()
+        from labelCloud.model.bbox import BBox
+
+        def box(x: float, y: float) -> BBox:
+            candidate = BBox(x, y, 3.0, 2.6, 4.0, 6.0)
+            candidate.set_classname("pole")
+            return candidate
+
+        control.bbox_controller.set_active_bbox(-1)
+        added = control.bbox_controller.add_candidates([box(0.0, 0.0), box(5.0, 0.0)], 0.5)
+        gui.update_session_panel()
+        after_add = gui.session_predict_label.text()
+        control.bbox_controller.set_active_bbox(0)
+        control.cmd_accept_candidate()
+        after_accept = gui.session_predict_label.text()
+        control.cmd_reject_candidates()
+        after_reject = gui.session_predict_label.text()
+
+        ok = (
+            added == 2
+            and "2" in after_add
+            and "1" in after_accept
+            and "0" not in after_reject
+            and "proposals waiting" in after_add
+            and not (root / "labels/frame_000.json").exists()
+        )
+        report(
+            "queued proposals are counted in the session card and stay off disk",
+            ok,
+            f"added={added} add={after_add!r} accept={after_accept!r} reject={after_reject!r}",
+        )
+        return ok
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
 def flow_chinese() -> bool:
     """A Chinese session: menus, object list, stepper, quality window, buttons."""
     root = Path(tempfile.mkdtemp(prefix="lc-smoke-zh-"))
@@ -369,6 +413,7 @@ def main() -> int:
     flows = {
         "interp": flow_interpolation,
         "quality": flow_quality,
+        "proposals": flow_proposals,
         "zh": flow_chinese,
     }
     wanted = sys.argv[1:] or list(flows)

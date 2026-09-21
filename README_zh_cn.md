@@ -487,8 +487,8 @@ pole_profile = recall
 # 回归检查（不需要 pytest，每条用例在独立工作目录里跑）
 python tests/check_assist.py
 
-# 同样三条流程，但走真实窗口（offscreen + 临时数据集）：
-# 关键帧插值、质检、中文会话
+# 同样几条流程，但走真实窗口（offscreen + 临时数据集）：
+# 关键帧插值、质检、候选框队列、中文会话
 python tools/smoke_gui.py
 
 # 新增文案后重建中文翻译
