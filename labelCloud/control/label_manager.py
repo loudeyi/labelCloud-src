@@ -54,7 +54,9 @@ class LabelManager(object):
         self.label_strategy = get_label_strategy(strategy, self.label_folder)
         #: Keeps label files whose encoding differs from what we write from being
         #: silently rewritten (see io/labels/detection.py).
-        self.format_guard = FormatGuard(self.label_folder)
+        self.format_guard = FormatGuard(
+            self.label_folder, self.label_strategy.FILE_ENDING
+        )
 
     def import_labels(self, pcd_path: Path) -> List[BBox]:
         label_path = self.label_folder.joinpath(
@@ -92,7 +94,14 @@ class LabelManager(object):
             )
             return []
 
-    def export_labels(self, pcd_path: Path, bboxes: List[BBox]) -> None:
+    def export_labels(self, pcd_path: Path, bboxes: List[BBox]) -> bool:
+        """Write the labels of one frame. Returns False when nothing was written.
+
+        The only reason not to write is the format guard refusing to convert a file
+        that holds a different encoding. Reporting that as a *failure* matters: the
+        caller used to mark the frame as saved and never retried, so the edits stayed
+        in memory until the session ended.
+        """
         label_path = self.label_folder.joinpath(
             pcd_path.stem + self.label_strategy.FILE_ENDING
         )
@@ -108,10 +117,11 @@ class LabelManager(object):
                 other_encoding,
                 self.label_strategy.ENCODING,
             )
-            return
+            return False
 
         backup = self.format_guard.backup(label_path)
         if backup is not None:
             logging.info("Backed up %s to %s before overwriting.", label_path.name, backup)
 
         self.label_strategy.export_labels(bboxes, pcd_path)
+        return True

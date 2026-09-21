@@ -6,7 +6,6 @@
 
 import logging
 import math
-from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -72,9 +71,8 @@ class KittiFormat(BaseLabelFormat):
         self.T_v2c: Optional[npt.ArrayLike] = None
         self.T_c2v: Optional[npt.ArrayLike] = None
 
-        self.bboxes_meta: Dict[int, Dict] = defaultdict(
-            lambda: TEMPLATE_META
-        )  # id: meta
+        #: which frame the cached calibration belongs to (see ``_get_transforms``)
+        self._calib_stem: Optional[str] = None
 
     def import_labels(self, pcd_path: Path) -> List[BBox]:
         bboxes = []
@@ -86,6 +84,17 @@ class KittiFormat(BaseLabelFormat):
 
             for line in label_lines:
                 line_elements = line.split()
+                if not line_elements:
+                    # a blank (or whitespace-only) line at the end of the file used to
+                    # raise IndexError outside any handler, inside the frame-change slot
+                    continue
+                if len(line_elements) < 15:
+                    logging.warning(
+                        "Skipping a short label line in %s: %r",
+                        label_path.name,
+                        line.strip(),
+                    )
+                    continue
                 meta = {
                     "type": line_elements[0],
                     "truncated": line_elements[1],
@@ -123,7 +132,10 @@ class KittiFormat(BaseLabelFormat):
                     )  # centroid in KITTI located on bottom face of bbox
 
                 bbox = BBox(*centroid, length, width, height)  # type: ignore
-                self.bboxes_meta[id(bbox)] = meta
+                # The KITTI columns that have no place in a BBox travel with the box
+                # itself. Keying them by ``id(bbox)`` lost them as soon as an address
+                # was reused (a deleted box, then a new one) and the map grew forever.
+                bbox.kitti_meta = dict(meta)
 
                 rotation = (
                     -float(meta["rotation_y"]) + math.pi / 2
@@ -135,7 +147,7 @@ class KittiFormat(BaseLabelFormat):
                 bbox.set_classname(meta["type"])
                 bboxes.append(bbox)
 
-            logging.info("Imported %s labels from %s." % (len(label_lines), label_path))
+            logging.info("Imported %s labels from %s." % (len(bboxes), label_path))
         return bboxes
 
     def export_labels(self, bboxes: List[BBox], pcd_path: Path) -> None:
@@ -175,7 +187,9 @@ class KittiFormat(BaseLabelFormat):
             location_str = " ".join([str(self.round_dec(v)) for v in centroid])
             dimensions_str = " ".join([str(self.round_dec(v)) for v in dimensions])
 
-            out_str = list(self.bboxes_meta[id(bbox)].values())
+            out_str = list(
+                getattr(bbox, "kitti_meta", TEMPLATE_META).values()
+            )
             if obj_type != "DontCare":
                 out_str[0] = obj_type
                 out_str[5] = dimensions_str
@@ -198,7 +212,8 @@ class KittiFormat(BaseLabelFormat):
     # ---------------------------------------------------------------------------- #
 
     def _get_transforms(self, pcd_path: Path) -> None:
-        if self.T_v2c is None or self.T_c2v is None:
+        if self.T_v2c is None or self.T_c2v is None or self._calib_stem != pcd_path.stem:
+            self._calib_stem = pcd_path.stem
             calib_path = self.calib_folder.joinpath(pcd_path.stem + self.FILE_ENDING)
 
             if not calib_path.is_file():

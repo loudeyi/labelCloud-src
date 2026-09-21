@@ -704,6 +704,15 @@ class BoundingBoxController(object):
     def candidate_count(self) -> int:
         return len(self.candidate_ids())
 
+    def confirmed_boxes(self) -> List[BBox]:
+        """The boxes that are labels: everything the user has accepted.
+
+        Unconfirmed proposals sit in the same list so they can be reviewed, but they
+        are not labels yet — the save path must not turn a dashed orange prediction
+        into a written object just because the frame was edited for another reason.
+        """
+        return [bbox for bbox in self.bboxes if not getattr(bbox, "candidate", False)]
+
     def add_candidates(self, candidates: List[BBox], min_distance: float = 0.6) -> int:
         """Append proposals, skipping ones that duplicate a box already here."""
         if not candidates:

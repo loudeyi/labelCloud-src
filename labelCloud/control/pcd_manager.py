@@ -162,14 +162,27 @@ class PointCloudManger(object):
             set(LabelConfig().get_classes().keys())
         )  # TODO: Move to better location
 
-    def save_labels_into_file(self, bboxes: List[BBox]) -> None:
-        if self.pcds:
-            self.label_manager.export_labels(self.pcd_path, bboxes)
-            self.collected_object_classes.update(
-                {bbox.get_classname() for bbox in bboxes}
-            )
-        else:
+    def save_labels_into_file(self, bboxes: List[BBox]) -> bool:
+        """Write the labels of the current frame. Returns False when nothing was written.
+
+        Unconfirmed proposals — pre-annotation candidates and the dashed orange
+        predictions — live in the same list as the labels so they can be reviewed,
+        but nothing has been decided about them yet: they are never written. This is
+        the single point every normal save goes through, so a frame that was edited
+        for some other reason cannot leak the proposals that happened to sit in it.
+        Confirming a proposal clears its ``candidate`` flag, which is what puts it
+        into the file.
+        """
+        if not self.pcds:
             logging.warning("No point clouds to save labels for!")
+            return False
+        labels = [bbox for bbox in bboxes if not getattr(bbox, "candidate", False)]
+        written = self.label_manager.export_labels(self.pcd_path, labels)
+        if written:
+            self.collected_object_classes.update(
+                {bbox.get_classname() for bbox in labels}
+            )
+        return bool(written)
 
     def save_current_perspective(self) -> None:
         if config.getboolean("USER_INTERFACE", "KEEP_PERSPECTIVE") and self.pointcloud:

@@ -269,7 +269,9 @@ class Controller:
         if pointcloud is None:
             return []
         sources = []
-        for bbox in self.bbox_controller.bboxes:
+        # only decided boxes are a basis for the next frame: predicting from an
+        # unconfirmed proposal would build a guess on top of a guess
+        for bbox in self.bbox_controller.confirmed_boxes():
             try:
                 count = int(bbox.is_inside(pointcloud.points).sum())
             except Exception:  # noqa: BLE001 - prediction must never break loading
@@ -462,7 +464,29 @@ class Controller:
             return True
 
         try:
-            self.pcd_manager.save_labels_into_file(self.bbox_controller.bboxes)
+            written = self.pcd_manager.save_labels_into_file(
+                self.bbox_controller.confirmed_boxes()
+            )
+            if written is False:
+                # the format guard refused: the file holds another encoding, so
+                # nothing was written. Reporting "saved" here (and clearing the dirty
+                # flag) used to lose the edits silently.
+                self.save_error_count += 1
+                self.record_save(
+                    self.label_file_path(), False, "another label format on disk"
+                )
+                self.view.status_manager.set_message(
+                    QCoreApplication.translate(
+                        "labelCloud",
+                        "NOT saved: this file holds labels in another format "
+                        "(see the log). Nothing was written.",
+                    )
+                )
+                logging.error(
+                    "Refused to overwrite %s: it holds another label format.",
+                    self.label_file_path(),
+                )
+                return False
 
             if LabelConfig().type == LabelingMode.SEMANTIC_SEGMENTATION:
                 assert self.pcd_manager.pointcloud is not None
@@ -604,8 +628,6 @@ class Controller:
     def cmd_show_save_log(self, factor: float = 1.0) -> None:
         from ..view.save_log_dialog import SaveLogDialog
 
-        if not self.save_log:
-            self.record_save(self.label_file_path(), True, "")
         SaveLogDialog(
             self.view,
             self.save_log,

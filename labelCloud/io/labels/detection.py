@@ -62,6 +62,10 @@ def detect_rotation_unit(data: dict) -> str:
         return UNKNOWN
     angles = []
     for obj in data["objects"]:
+        if not isinstance(obj, dict):
+            # a hand-edited file can contain a ``null`` entry; it must not take the
+            # frame-change slot down with an AttributeError
+            continue
         rotations = obj.get("rotations")
         if isinstance(rotations, dict):
             angles.extend(
@@ -75,7 +79,13 @@ def detect_rotation_unit(data: dict) -> str:
 
 
 def describe_label_file(path: Path) -> Dict[str, object]:
-    """Inspect one label file. Missing/unreadable files report ``exists: False``."""
+    """Inspect one label file. Missing/unreadable files report ``exists: False``.
+
+    KITTI labels are ``.txt`` (one object per line, no JSON): they are recognised by
+    their ending here, because everything else in this module works on parsed JSON.
+    Without it a KITTI session sees every one of its own files as "unknown encoding"
+    and refuses to load a single frame.
+    """
     info: Dict[str, object] = {
         "path": path,
         "exists": path.is_file(),
@@ -88,11 +98,25 @@ def describe_label_file(path: Path) -> Dict[str, object]:
         return info
     try:
         with path.open("r") as stream:
-            data = json.load(stream)
-    except (json.JSONDecodeError, OSError) as error:
-        logging.warning("Could not parse label file %s: %s", path, error)
+            text = stream.read()
+    except OSError as error:
+        logging.warning("Could not read label file %s: %s", path, error)
         return info
     info["readable"] = True
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        data = None
+    if data is None:
+        if path.suffix.lower() == ".txt":
+            # KITTI labels are plain text, one object per line. The ending decides,
+            # but only after JSON parsing failed, so a stray JSON document that was
+            # renamed to ``.txt`` is still recognised as what it holds.
+            info["encoding"] = KITTI
+            info["objects"] = sum(1 for line in text.splitlines() if line.strip())
+            return info
+        logging.warning("Could not parse label file %s: not valid JSON", path)
+        return info
     info["encoding"] = detect_encoding(data)
     info["rotation_unit"] = detect_rotation_unit(data)
     objects = data.get("objects") if isinstance(data, dict) else None
@@ -103,8 +127,9 @@ def describe_label_file(path: Path) -> Dict[str, object]:
 class FormatGuard:
     """Remember what was read and refuse writes that would change the encoding."""
 
-    def __init__(self, label_folder: Path) -> None:
+    def __init__(self, label_folder: Path, file_ending: str = ".json") -> None:
         self.label_folder = label_folder
+        self.file_ending = file_ending
         self.backup_folder = label_folder.joinpath(".bak")
         self.read_encodings: Dict[str, str] = {}
         self.mismatches: Set[str] = set()
@@ -123,7 +148,7 @@ class FormatGuard:
         stored = self.read_encodings.get(pcd_stem)
         if stored is None:
             info = describe_label_file(
-                self.label_folder.joinpath(pcd_stem + ".json")
+                self.label_folder.joinpath(pcd_stem + self.file_ending)
             )
             stored = str(info["encoding"])
             self.read_encodings[pcd_stem] = stored

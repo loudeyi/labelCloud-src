@@ -1751,6 +1751,25 @@ out["label_file_written"] = (labels / "frame.json").is_file()
 doc = json.loads((labels / "frame.json").read_text())
 out["written_objects"] = [o["name"] for o in doc["objects"]]
 
+# --- a frame edited for another reason must not leak the proposals -----------
+control.pcd_manager = FakePcd(labels, pole_points(10.0, 2.0))
+hand = BBox(10.0, 2.0, 3.0, 2.6, 4.0, 6.0)
+hand.set_classname("pole")
+control.bbox_controller.set_bboxes([hand])
+proposal = BBox(30.0, 5.0, 3.0, 2.6, 4.0, 6.0)      # a queued pre-annotation proposal
+proposal.set_classname("pole")
+out["proposals_added"] = control.bbox_controller.add_candidates([proposal], 0.5)
+control.bbox_controller.set_active_bbox(0)          # the hand label, not the proposal
+control.bbox_controller.nudge_position("pos_x", 0.5)  # an edit of its own
+out["dirty_after_other_edit"] = control.bbox_controller.dirty
+control.save(quiet=True)
+doc = json.loads((labels / "frame.json").read_text())
+out["written_after_other_edit"] = len(doc["objects"])
+out["proposal_still_pending"] = control.bbox_controller.candidate_count()
+out["hand_label_kept"] = [o["name"] for o in doc["objects"]]
+control.bbox_controller.set_bboxes([])   # the next block starts from a clean frame
+
+
 # --- the drop rule: halving, and the adaptive variant ------------------------
 from labelCloud.control.prediction import PointHistory, decide
 
@@ -1769,7 +1788,13 @@ out["adaptive_drops_collapse"] = decide(5, occluded, 0.5, 5, 1.5, True)[0]
 # --- switching it off stops the collection ----------------------------------
 from labelCloud.control.config_manager import config
 out["setting_after"] = config.getboolean("LABEL", "predict_next_frame", fallback=False)
+control.pcd_manager = FakePcd(labels, pole_points(10.0, 2.0))
+control.bbox_controller.set_bboxes([hand])
 out["sources_when_enabled"] = len(control.capture_prediction_sources())
+# ... and a proposal sitting in the frame is not a source for the next prediction
+proposal.candidate = True
+control.bbox_controller.bboxes.append(proposal)
+out["sources_with_proposal"] = len(control.capture_prediction_sources())
 out["toggle_off"] = control.toggle_predict_next_frame(False)
 out["sources_when_disabled"] = len(control.capture_prediction_sources())
 print(json.dumps(out))
@@ -1808,11 +1833,18 @@ def test_next_frame_prediction():
             and data["save_result"] is True
             and data["label_file_written"] is True
             and data["written_objects"] == ["pole"]
+            # an edit of another box does not drag the proposals into the file
+            and data["proposals_added"] == 1
+            and data["dirty_after_other_edit"] is True
+            and data["written_after_other_edit"] == 1
+            and data["proposal_still_pending"] == 1
+            and data["hand_label_kept"] == ["pole"]
             and data["setting_before"] is False
             and data["toggle_on"] is True
             and data["written_to_file"] is True
             and data["setting_after"] is True
             and data["sources_when_enabled"] == 1
+            and data["sources_with_proposal"] == 1   # unconfirmed boxes are not sources
             and data["toggle_off"] is False
             and data["sources_when_disabled"] == 0
             and data["half_dropped"] is False       # 100 -> 49 points: gone
@@ -2373,6 +2405,98 @@ def test_quality_check():
         detail = json.dumps(data)
     check("quality check: sizes, duplicates, tilt, axis, points, unreadable", ok, detail)
 
+KITTI_SNIPPET = """
+import json
+from pathlib import Path
+from labelCloud.control.label_manager import LabelManager
+from labelCloud.io.labels.detection import describe_label_file, detect_encoding, detect_rotation_unit
+
+labels = Path("labels"); labels.mkdir(exist_ok=True)
+pcd_dir = Path("pointclouds"); pcd_dir.mkdir(exist_ok=True)
+frame = pcd_dir / "frame.pcd"; frame.write_text("")
+
+# KITTI line: type truncated occluded alpha bbox(4) dimensions(h w l) location(3) ry
+line = "pole 0.00 0 0.00 0.0 0.0 0.0 0.0 10.0 2.6 4.0 12.0 3.0 -0.2 1.57"
+label_file = labels / "frame.txt"
+label_file.write_text(line + "\\n" + "   " + "\\n")   # trailing blank/whitespace line
+
+info = describe_label_file(label_file)
+manager = LabelManager(strategy="kitti_untransformed", path_to_label_folder=labels)
+boxes = manager.import_labels(frame)
+
+out = {
+    "encoding": info["encoding"],
+    "readable": info["readable"],
+    "objects_seen": info["objects"],
+    "imported": len(boxes),
+    "name": boxes[0].get_classname() if boxes else None,
+    "size": [round(v, 2) for v in boxes[0].get_dimensions()] if boxes else None,
+    "centre_x": round(boxes[0].get_center()[0], 2) if boxes else None,
+}
+
+# exporting again must be allowed (the guard must not see "unknown" for its own
+# format) and must keep the KITTI file a KITTI file
+out["export_allowed"] = manager.export_labels(frame, boxes)
+out["lines_after"] = len([l for l in label_file.read_text().splitlines() if l.strip()])
+out["still_txt"] = label_file.is_file() and not (labels / "frame.json").exists()
+out["backup"] = (labels / ".bak" / "frame.txt").is_file()
+
+# ... and a file of another encoding under the same name is still refused
+centroid = labels / "other.txt"
+centroid.write_text(json.dumps({"objects": [{"name": "pole",
+    "centroid": {"x": 0, "y": 0, "z": 0},
+    "dimensions": {"length": 1, "width": 1, "height": 1},
+    "rotations": {"x": 0, "y": 0, "z": 90.0}}]}))
+other = pcd_dir / "other.pcd"; other.write_text("")
+out["centroid_imported"] = len(manager.import_labels(other))
+out["centroid_write_refused"] = manager.export_labels(other, boxes) is False
+out["centroid_untouched"] = "rotations" in centroid.read_text()
+
+# a hand-edited file with a null object must not crash the detector
+null_file = labels / "null.json"
+null_file.write_text('{"objects": [null, {"name": "pole", "centroid": {"x": 0, "y": 0, "z": 0},'
+                     ' "dimensions": {"length": 1, "width": 1, "height": 1},'
+                     ' "rotations": {"x": 0, "y": 0, "z": 90.0}}]}')
+out["null_encoding"] = detect_encoding(json.loads(null_file.read_text()))
+out["null_unit"] = detect_rotation_unit(json.loads(null_file.read_text()))
+out["null_describe"] = describe_label_file(null_file)["objects"]
+
+print(json.dumps(out))
+"""
+
+
+def test_kitti_labels_and_guard_reporting():
+    """KITTI folders load their own labels, and a refused write says so."""
+    proc = run_snippet("kitti-guard", KITTI_SNIPPET)
+    ok = proc.returncode == 0
+    detail = proc.stderr.strip().splitlines()[-1] if not ok else ""
+    if ok:
+        data = json.loads(proc.stdout.strip().splitlines()[-1])
+        ok = (
+            data["encoding"] == "kitti"
+            and data["readable"] is True
+            and data["objects_seen"] == 1          # the blank line is not an object
+            and data["imported"] == 1              # ... but not parsed as an object
+            and data["name"] == "pole"
+            and data["size"] == [4.0, 2.6, 10.0]   # KITTI stores height, width, length
+            and data["centre_x"] == 12.0
+            # its own format is not refused, and the file stays KITTI
+            and data["export_allowed"] is True
+            and data["lines_after"] == 1
+            and data["still_txt"] is True
+            and data["backup"] is True
+            # another encoding is still refused, and reported as such
+            and data["centroid_imported"] == 0
+            and data["centroid_write_refused"] is True
+            and data["centroid_untouched"] is True
+            # a null entry is skipped instead of raising
+            and data["null_encoding"] == "centroid"
+            and data["null_unit"] == "degrees"
+            and data["null_describe"] == 2
+        )
+        detail = json.dumps(data)
+    check("KITTI labels load; a refused write reports failure; null entries survive", ok, detail)
+
 
 if __name__ == "__main__":
     print(f"python: {PYTHON}")
@@ -2404,6 +2528,7 @@ if __name__ == "__main__":
     test_refit_tuning()
     test_propagate_to_end()
     test_keyframe_interpolation()
+    test_kitti_labels_and_guard_reporting()
     test_quality_check()
 
     failed = [name for name, ok, _ in RESULTS if not ok]
