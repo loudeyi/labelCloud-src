@@ -333,11 +333,9 @@ def _fit_pole(
         z_values, max_gap, params.min_cluster_points if params else DEFAULT_MIN_CLUSTER_POINTS
     )
     if run is not None:
-        start, end, order = run
-        run_z = np.sort(z_values)[start:end] if len(order) == len(z_values) else None
-        if run_z is None:
-            ordered = z_values[order]
-            run_z = ordered[start:end]
+        start, end, _order = run
+        # the run is a slice of the *sorted* heights, so it is its own sorted array
+        run_z = np.sort(z_values)[start:end]
         top = float(run_z.max())
         run_bottom = float(run_z.min())
         # only keep the ground as the bottom when the object really starts there;
@@ -428,7 +426,9 @@ def _fit_wire(
 
     span_along = float(along.max() - along.min())
     span_across = float(sideways.max() - sideways.min())
-    center_xy = xy.mean(axis=0)
+    # the centre follows the points the extent was measured from: taking it from the
+    # unfiltered set let one outlier across the cable pull the box sideways
+    center_xy = points[:, :2].mean(axis=0)
 
     length = float(template.get("length") or max(span_across, 1.5))
     width = float(template.get("width") or max(span_along, 3.0))
@@ -469,8 +469,6 @@ class RefitParams:
     min_cluster_points: int = DEFAULT_MIN_CLUSTER_POINTS
     #: False keeps the length/width the user set and only moves the box.
     refit_cross_section: bool = False
-    #: False keeps the object's own size for wires instead of the class template.
-    use_template_for_wire: bool = False
 
 
 def _largest_contiguous_run(

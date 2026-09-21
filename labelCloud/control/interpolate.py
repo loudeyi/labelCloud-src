@@ -82,7 +82,7 @@ def interpolate_between(
 ) -> InterpolationOutcome:
     """Fill the frames between two keyframes (``frames`` excludes both keyframes)."""
     from . import assist
-    from .propagate import _already_there
+    from .propagate import already_there
 
     outcome = InterpolationOutcome()
     span = len(frames) + 1
@@ -117,7 +117,7 @@ def interpolate_between(
                 final = refitted
 
         existing = read_boxes(frame)
-        if _already_there(existing, final):
+        if already_there(existing, final):
             outcome.frames_already_labelled += 1
             continue
         write_boxes(frame, existing + [final])

@@ -29,8 +29,6 @@ UNKNOWN = "unknown"
 
 #: Angles above this can only be degrees (radians never leave (-pi, pi]).
 DEGREES_MIN_ABS = 6.30  # 2*pi + margin
-#: Below this, an angle is too small to tell the two units apart.
-UNIT_AMBIGUOUS_BELOW = 0.6
 
 
 def detect_encoding(data: dict) -> str:
@@ -132,7 +130,11 @@ class FormatGuard:
         self.file_ending = file_ending
         self.backup_folder = label_folder.joinpath(".bak")
         self.read_encodings: Dict[str, str] = {}
+        #: frames that could only be read with a different encoding (see below)
         self.mismatches: Set[str] = set()
+        #: frames whose *read* was refused, so the caller knows an empty frame is
+        #: really "another format on disk" and not "no objects"
+        self.refusals: Set[str] = set()
         self._backed_up: Set[str] = set()
 
     # -- read side ---------------------------------------------------------- #

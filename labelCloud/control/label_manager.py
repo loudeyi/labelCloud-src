@@ -75,7 +75,24 @@ class LabelManager(object):
                 info["encoding"],
                 self.label_strategy.ENCODING,
             )
+            self.format_guard.refusals.add(label_path.stem)
             return []
+
+        if (
+            info["rotation_unit"] == "degrees"
+            and getattr(self.label_strategy, "ROTATION_UNIT", "degrees") == "radians"
+        ):
+            # Provable mismatch: the file holds an angle outside (-pi, pi], so it is in
+            # degrees, while this session converts radians on read. The boxes load with
+            # the wrong heading — say so once, loudly, instead of showing them silently.
+            self.format_guard.mismatches.add(label_path.stem)
+            logging.error(
+                "Label file %s stores rotations in degrees, but this session reads "
+                "radians (%s). The boxes of this folder are rotated wrongly; point "
+                "FILE/class_definitions at a class config with format 'centroid_abs'.",
+                label_path.name,
+                self.label_strategy.__class__.__name__,
+            )
 
         try:
             return self.label_strategy.import_labels(pcd_path)

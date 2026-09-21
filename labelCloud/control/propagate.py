@@ -126,7 +126,7 @@ def propagate_box(
         history.observe(count, final)
 
         existing = read_boxes(frame)
-        if _already_there(existing, final):
+        if already_there(existing, final):
             outcome.frames_skipped += 1
         else:
             write_boxes(frame, existing + [final])
@@ -153,7 +153,7 @@ def _copy_box(box: BBox) -> BBox:
     return clone
 
 
-def _already_there(existing: List[BBox], candidate: BBox) -> bool:
+def already_there(existing: List[BBox], candidate: BBox) -> bool:
     """True when the frame already has this object (same class, near the centre)."""
     centre = np.asarray(candidate.get_center())
     for other in existing:

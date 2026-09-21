@@ -97,6 +97,9 @@ class Controller:
         # Interpolation anchor: (frame index, box state) of the first keyframe
         self.interpolation_anchor = None
 
+        #: the rotation-unit warning is shown once per session
+        self.rotation_unit_warned = False
+
         # Points of the previous frames, drawn dimmed as a viewing aid
         self.ghost_cloud = None
         self._ghost_source_id = None
@@ -244,6 +247,26 @@ class Controller:
 
     # FRAME LOADING: STATUS, CLASS PIN, PREDICTION
 
+    def warn_about_rotation_unit(self) -> None:
+        """Tell the user once when a folder's label files can only be in degrees.
+
+        ``LabelManager`` flags the frames it reads; a mismatch means every box of the
+        folder is rotated wrongly, which is worth one loud sentence.
+        """
+        if self.rotation_unit_warned:
+            return
+        guard = getattr(
+            getattr(self.pcd_manager, "label_manager", None), "format_guard", None
+        )
+        if not getattr(guard, "mismatches", None):
+            return
+        self.rotation_unit_warned = True
+        self.view.status_manager.set_message(
+            QCoreApplication.translate(
+                "labelCloud", "These label files store rotations in degrees, but this session reads radians: the boxes are rotated wrongly. Check the class configuration."
+            )
+        )
+
     def on_frame_loaded(self, prediction_sources, previous_bboxes) -> None:
         """Common work after a frame was loaded."""
         pcd_path = getattr(self.pcd_manager, "pcd_path", None)
@@ -256,6 +279,7 @@ class Controller:
         self.apply_next_class_to_view()
         self.predict_into_current_frame(prediction_sources, previous_bboxes)
         self.refresh_ghost_cloud(force=True)
+        self.warn_about_rotation_unit()
 
     def capture_prediction_sources(self):
         """Boxes of the current frame plus how many points each one holds.

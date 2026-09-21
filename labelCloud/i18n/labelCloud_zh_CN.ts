@@ -1286,72 +1286,72 @@ Bounding Box Parameter</source>
 <context>
     <name>StatisticsDialog</name>
     <message>
-        <location filename="../view/statistics_dialog.py" line="73" />
+        <location filename="../view/statistics_dialog.py" line="109" />
         <source>Dataset Statistics</source>
         <translation>数据集统计</translation>
     </message>
     <message>
-        <location filename="../view/statistics_dialog.py" line="80" />
+        <location filename="../view/statistics_dialog.py" line="116" />
         <source>Scanning %s ...</source>
         <translation>正在统计 %s …</translation>
     </message>
     <message>
-        <location filename="../view/statistics_dialog.py" line="86" />
+        <location filename="../view/statistics_dialog.py" line="136" />
         <source>Frames found</source>
         <translation>点云帧数</translation>
     </message>
     <message>
-        <location filename="../view/statistics_dialog.py" line="87" />
+        <location filename="../view/statistics_dialog.py" line="137" />
         <source>Frames with boxes</source>
         <translation>有标注框的帧</translation>
     </message>
     <message>
-        <location filename="../view/statistics_dialog.py" line="88" />
+        <location filename="../view/statistics_dialog.py" line="138" />
         <source>Frames confirmed empty</source>
         <translation>确认无目标的帧</translation>
     </message>
     <message>
-        <location filename="../view/statistics_dialog.py" line="89" />
+        <location filename="../view/statistics_dialog.py" line="139" />
         <source>Frames not labelled yet</source>
         <translation>尚未标注的帧</translation>
     </message>
     <message>
-        <location filename="../view/statistics_dialog.py" line="90" />
+        <location filename="../view/statistics_dialog.py" line="140" />
         <source>Unreadable label files</source>
         <translation>无法解析的标注文件</translation>
     </message>
     <message>
-        <location filename="../view/statistics_dialog.py" line="91" />
+        <location filename="../view/statistics_dialog.py" line="141" />
         <source>Boxes in total</source>
         <translation>检测框总数</translation>
     </message>
     <message>
-        <location filename="../view/statistics_dialog.py" line="95" />
+        <location filename="../view/statistics_dialog.py" line="145" />
         <source>Item</source>
         <translation>项目</translation>
     </message>
     <message>
-        <location filename="../view/statistics_dialog.py" line="95" />
+        <location filename="../view/statistics_dialog.py" line="145" />
         <source>Count</source>
         <translation>数量</translation>
     </message>
     <message>
-        <location filename="../view/statistics_dialog.py" line="104" />
+        <location filename="../view/statistics_dialog.py" line="154" />
         <source>Boxes per class</source>
         <translation>各类别检测框数</translation>
     </message>
     <message>
-        <location filename="../view/statistics_dialog.py" line="113" />
+        <location filename="../view/statistics_dialog.py" line="163" />
         <source>Class</source>
         <translation>类别</translation>
     </message>
     <message>
-        <location filename="../view/statistics_dialog.py" line="113" />
+        <location filename="../view/statistics_dialog.py" line="163" />
         <source>Boxes</source>
         <translation>检测框数</translation>
     </message>
     <message>
-        <location filename="../view/statistics_dialog.py" line="123" />
+        <location filename="../view/statistics_dialog.py" line="173" />
         <source>This frame: %s boxes, %s of them unconfirmed proposals.</source>
         <translation>本帧：%s 个检测框，其中 %s 个是未确认的候选框。</translation>
     </message>
@@ -1417,7 +1417,7 @@ Bounding Box Parameter</source>
         <translation>已按所选地面对齐点云。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="744" />
+        <location filename="../control/controller.py" line="768" />
         <source>Scroll to change the bounding box dimension.</source>
         <translation>滚动滚轮可修改检测框尺寸。</translation>
     </message>
@@ -1482,7 +1482,7 @@ Bounding Box Parameter</source>
         <translation>已选中检测框，可以开始修正。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1110" />
+        <location filename="../control/controller.py" line="1134" />
         <source>Hold right mouse button to translate or left mouse button to rotate the bounding box.</source>
         <translation>按住鼠标右键平移、按住左键旋转检测框。</translation>
     </message>
@@ -1507,157 +1507,157 @@ Bounding Box Parameter</source>
         <translation>检测框尺寸已锁定（Ctrl+L 解锁）。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="653" />
+        <location filename="../control/controller.py" line="677" />
         <source>Select a box first to focus on its points.</source>
         <translation>请先选中一个检测框，再聚焦显示框内点。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="661" />
+        <location filename="../control/controller.py" line="685" />
         <source>No points inside the active box to focus on.</source>
         <translation>当前检测框内没有点，无法聚焦。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="677" />
+        <location filename="../control/controller.py" line="701" />
         <source>Focus on the active box (Ctrl+F shows everything again).</source>
         <translation>已聚焦到当前检测框（Ctrl+F 恢复显示全部点）。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1300" />
+        <location filename="../control/controller.py" line="1324" />
         <source>Undone the last change.</source>
         <translation>已撤销上一步操作。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1305" />
+        <location filename="../control/controller.py" line="1329" />
         <source>Nothing to undo.</source>
         <translation>没有可撤销的操作。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1311" />
+        <location filename="../control/controller.py" line="1335" />
         <source>Redone the last change.</source>
         <translation>已重做。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1316" />
+        <location filename="../control/controller.py" line="1340" />
         <source>Nothing to redo.</source>
         <translation>没有可重做的操作。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1323" />
+        <location filename="../control/controller.py" line="1347" />
         <source>Copied the box; Ctrl+V pastes it (also in the next frame).</source>
         <translation>已复制检测框；Ctrl+V 粘贴（切到下一帧也能粘贴）。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1331" />
+        <location filename="../control/controller.py" line="1355" />
         <source>Pasted the box.</source>
         <translation>已粘贴检测框。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1335" />
+        <location filename="../control/controller.py" line="1359" />
         <source>Nothing to paste: copy a box first.</source>
         <translation>没有可粘贴的检测框，请先复制。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1345" />
+        <location filename="../control/controller.py" line="1369" />
         <source>Box size locked (Ctrl+L).</source>
         <translation>检测框尺寸已锁定（Ctrl+L）。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1345" />
+        <location filename="../control/controller.py" line="1369" />
         <source>Box size unlocked (Ctrl+L).</source>
         <translation>检测框尺寸已解锁（Ctrl+L）。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="498" />
+        <location filename="../control/controller.py" line="522" />
         <source>Saving failed - your edits are NOT on disk (see the log).</source>
         <translation>保存失败——你的修改还没写进磁盘（详见日志）。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="509" />
+        <location filename="../control/controller.py" line="533" />
         <source>Saving failed</source>
         <translation>保存失败</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="642" />
+        <location filename="../control/controller.py" line="666" />
         <source>Autosaved.</source>
         <translation>已自动保存。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1393" />
+        <location filename="../control/controller.py" line="1417" />
         <source>Move the mouse over an object first.</source>
         <translation>请先把鼠标移到目标上。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1408" />
+        <location filename="../control/controller.py" line="1432" />
         <source>Could not fit a box here - click closer to the object.</source>
         <translation>这里拟合不出检测框——请点得离目标更近。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1416" />
+        <location filename="../control/controller.py" line="1440" />
         <source>Fitted a %s box.</source>
         <translation>已拟合一个 %s 检测框。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1423" />
+        <location filename="../control/controller.py" line="1447" />
         <source>Select a box first, then refit it.</source>
         <translation>请先选中一个检测框，再重新拟合。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1445" />
+        <location filename="../control/controller.py" line="1469" />
         <source>Not enough points inside the box to refit it.</source>
         <translation>框内点太少，无法重新拟合。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1656" />
+        <location filename="../control/controller.py" line="1680" />
         <source>Snapped the box onto the ground.</source>
         <translation>已把检测框吸附到地面。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1660" />
+        <location filename="../control/controller.py" line="1684" />
         <source>The box already sits on the ground.</source>
         <translation>检测框已经贴在地面上了。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1669" />
+        <location filename="../control/controller.py" line="1693" />
         <source>Pre-annotation is still running ...</source>
         <translation>预标注还在运行中 …</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1682" />
+        <location filename="../control/controller.py" line="1706" />
         <source>Running pre-annotation in the background ...</source>
         <translation>正在后台运行预标注 …</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1703" />
+        <location filename="../control/controller.py" line="1727" />
         <source>Pre-annotation failed - see the log for details.</source>
         <translation>预标注失败，详见日志。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1714" />
+        <location filename="../control/controller.py" line="1738" />
         <source>Confirmed. %s proposals left in this frame.</source>
         <translation>已确认。本帧还剩 %s 个候选框。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1724" />
+        <location filename="../control/controller.py" line="1748" />
         <source>Rejected %s proposals in this frame.</source>
         <translation>已拒绝本帧 %s 个候选框。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="793" />
+        <location filename="../control/controller.py" line="817" />
         <source>Group selection: %s boxes.</source>
         <translation>已选中 %s 个检测框（成组操作）。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1158" />
+        <location filename="../control/controller.py" line="1182" />
         <source>Changed %s boxes.</source>
         <translation>已同时修改 %s 个检测框。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1276" />
+        <location filename="../control/controller.py" line="1300" />
         <source>Deleted %s boxes.</source>
         <translation>已删除 %s 个检测框。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1285" />
+        <location filename="../control/controller.py" line="1309" />
         <source>Cleared the group selection.</source>
         <translation>已清空成组选择。</translation>
     </message>
@@ -1667,147 +1667,147 @@ Bounding Box Parameter</source>
         <translation>点击查看标注保存到了哪里。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="298" />
+        <location filename="../control/controller.py" line="322" />
         <source>Predicted %s boxes from the previous frame (%s dropped).</source>
         <translation>已从上一帧预测 %s 个检测框（丢弃 %s 个）。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="306" />
+        <location filename="../control/controller.py" line="330" />
         <source>No box predicted: the objects are no longer there.</source>
         <translation>没有可预测的检测框：目标已经不在视野里。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="436" />
+        <location filename="../control/controller.py" line="460" />
         <source>Next-frame prediction enabled.</source>
         <translation>已开启下一帧预测。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="436" />
+        <location filename="../control/controller.py" line="460" />
         <source>Next-frame prediction disabled.</source>
         <translation>已关闭下一帧预测。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="406" />
+        <location filename="../control/controller.py" line="430" />
         <source>Prediction: off</source>
         <translation>预测：关</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="411" />
+        <location filename="../control/controller.py" line="435" />
         <source>adaptive %s%%</source>
         <translation>自适应 %s%%</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="411" />
+        <location filename="../control/controller.py" line="435" />
         <source>fixed %s%%</source>
         <translation>固定 %s%%</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="416" />
+        <location filename="../control/controller.py" line="440" />
         <source>Prediction: on · %s</source>
         <translation>预测：开 · %s</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1454" />
+        <location filename="../control/controller.py" line="1478" />
         <source>Refit: length %.2f -&gt; %.2f, height %.2f -&gt; %.2f m.</source>
         <translation>重拟合：长度 %.2f → %.2f，高度 %.2f → %.2f 米。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="184" />
+        <location filename="../control/controller.py" line="187" />
         <source>Overlaying the %s previous frames.</source>
         <translation>已叠加前 %s 帧。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="191" />
+        <location filename="../control/controller.py" line="194" />
         <source>Overlay off.</source>
         <translation>已关闭叠加。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1573" />
+        <location filename="../control/controller.py" line="1597" />
         <source>Propagation is still running ...</source>
         <translation>传播还在运行中 …</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1581" />
+        <location filename="../control/controller.py" line="1605" />
         <source>Select a box first: it will be carried forward.</source>
         <translation>请先选中一个检测框，程序会把它带到后续帧。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1591" />
+        <location filename="../control/controller.py" line="1615" />
         <source>There are no later frames.</source>
         <translation>后面没有帧了。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1611" />
+        <location filename="../control/controller.py" line="1635" />
         <source>Carrying the box forward through the next frames ...</source>
         <translation>正在把检测框带到后续帧 …</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1619" />
+        <location filename="../control/controller.py" line="1643" />
         <source>Propagating: frame %s/%s, %s written.</source>
         <translation>传播中：第 %s/%s 帧，已写入 %s 帧。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1631" />
+        <location filename="../control/controller.py" line="1655" />
         <source>Propagated to %s frames (%s skipped): %s.</source>
         <translation>已向后写入 %s 帧（跳过 %s）：%s。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1639" />
+        <location filename="../control/controller.py" line="1663" />
         <source>Propagation failed - see the log for details.</source>
         <translation>传播失败，详见日志。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1472" />
+        <location filename="../control/controller.py" line="1496" />
         <source>Select a box first: it becomes the first keyframe.</source>
         <translation>请先选中一个检测框，它将成为第一个关键帧。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1482" />
+        <location filename="../control/controller.py" line="1506" />
         <source>Keyframe 1 set on frame %s (%s).</source>
         <translation>已把第 %s 帧的 %s 设为关键帧 1。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1504" />
+        <location filename="../control/controller.py" line="1528" />
         <source>A fill job is still running ...</source>
         <translation>已有填充任务正在运行……</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1513" />
+        <location filename="../control/controller.py" line="1537" />
         <source>Select the box of the second keyframe in this frame.</source>
         <translation>请在本帧选中第二个关键帧的检测框。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1520" />
+        <location filename="../control/controller.py" line="1544" />
         <source>The second keyframe must be a later frame.</source>
         <translation>第二个关键帧必须在更后面的帧上。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1529" />
+        <location filename="../control/controller.py" line="1553" />
         <source>The two keyframes are adjacent: nothing to fill.</source>
         <translation>两个关键帧相邻，中间没有需要填充的帧。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1547" />
+        <location filename="../control/controller.py" line="1571" />
         <source>Interpolating %s frames between the keyframes ...</source>
         <translation>正在插值两个关键帧之间的 %s 帧……</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1557" />
+        <location filename="../control/controller.py" line="1581" />
         <source>Interpolation: %s</source>
         <translation>插值：%s</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1755" />
+        <location filename="../control/controller.py" line="1779" />
         <source>There is no frame %s.</source>
         <translation>没有第 %s 帧。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="478" />
+        <location filename="../control/controller.py" line="502" />
         <source>NOT saved: this file holds labels in another format (see the log). Nothing was written.</source>
         <translation>未保存：该文件里是另一种格式的标注（见日志），本次没有写入任何内容。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="509" />
+        <location filename="../control/controller.py" line="533" />
         <source>The labels could not be written:
 
 %s
@@ -1820,17 +1820,17 @@ The frame stays marked as unsaved; check the folder permissions and free space.<
 当前帧仍标记为未保存，请检查目录权限与磁盘空间。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="614" />
+        <location filename="../control/controller.py" line="638" />
         <source>This frame was not edited, so nothing is written to %s.</source>
         <translation>这一帧没有改动，因此不会写入 %s。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1496" />
+        <location filename="../control/controller.py" line="1520" />
         <source>Set a keyframe first (Ctrl+Shift+I) in the earlier frame.</source>
         <translation>请先在前面的一帧按 Ctrl+Shift+I 设置关键帧。</translation>
     </message>
     <message>
-        <location filename="../control/controller.py" line="1694" />
+        <location filename="../control/controller.py" line="1718" />
         <source>%s proposals added; Enter confirms one, Ctrl+Right jumps to the next.</source>
         <translation>已加入 %s 个候选框；Enter 确认，Ctrl+→ 跳到下一个。</translation>
     </message>
@@ -1840,9 +1840,19 @@ The frame stays marked as unsaved; check the folder permissions and free space.<
         <translation>在电线杆或电线上点一下，自动拟合出检测框。</translation>
     </message>
     <message>
-        <location filename="../labeling_strategies/fitting.py" line="70" />
+        <location filename="../labeling_strategies/fitting.py" line="84" />
         <source>Could not fit a box here - try clicking directly on the object.</source>
         <translation>这里拟合不出检测框——请点在目标本体上。</translation>
+    </message>
+    <message>
+        <location filename="../control/controller.py" line="264" />
+        <source>These label files store rotations in degrees, but this session reads radians: the boxes are rotated wrongly. Check the class configuration.</source>
+        <translation>这些标注文件里的角度是「度」，但当前会话按「弧度」读取：框的朝向是错的。请检查类别配置。</translation>
+    </message>
+    <message>
+        <location filename="../labeling_strategies/fitting.py" line="64" />
+        <source>Load a point cloud before fitting a box.</source>
+        <translation>请先加载点云，再拟合检测框。</translation>
     </message>
 </context>
 <context><name>keymap</name><message><source>Load previous point cloud</source><translation>加载上一帧点云</translation></message><message><source>Load next point cloud</source><translation>加载下一帧点云</translation></message><message><source>Reset the point cloud view</source><translation>重置点云视角</translation></message><message><source>Save labels</source><translation>保存标注</translation></message><message><source>Move bounding box backward</source><translation>检测框后移</translation></message><message><source>Move bounding box forward</source><translation>检测框前移</translation></message><message><source>Move bounding box left</source><translation>检测框左移</translation></message><message><source>Move bounding box right</source><translation>检测框右移</translation></message><message><source>Move bounding box up</source><translation>检测框上移</translation></message><message><source>Move bounding box down</source><translation>检测框下移</translation></message><message><source>Move along the box's own x-axis</source><translation>沿检测框自身 x 轴正向移动</translation></message><message><source>Move against the box's own x-axis</source><translation>沿检测框自身 x 轴负向移动</translation></message><message><source>Move along the box's own y-axis</source><translation>沿检测框自身 y 轴正向移动</translation></message><message><source>Move against the box's own y-axis</source><translation>沿检测框自身 y 轴负向移动</translation></message><message><source>Rotate around z-axis counterclockwise</source><translation>绕 Z 轴逆时针旋转</translation></message><message><source>Rotate around z-axis clockwise</source><translation>绕 Z 轴顺时针旋转</translation></message><message><source>Rotate around y-axis counterclockwise</source><translation>绕 Y 轴逆时针旋转</translation></message><message><source>Rotate around y-axis clockwise</source><translation>绕 Y 轴顺时针旋转</translation></message><message><source>Rotate around x-axis counterclockwise</source><translation>绕 X 轴逆时针旋转</translation></message><message><source>Rotate around x-axis clockwise</source><translation>绕 X 轴顺时针旋转</translation></message><message><source>Increase length</source><translation>增大长度</translation></message><message><source>Decrease length</source><translation>减小长度</translation></message><message><source>Increase width</source><translation>增大宽度</translation></message><message><source>Decrease width</source><translation>减小宽度</translation></message><message><source>Increase height</source><translation>增大高度</translation></message><message><source>Decrease height</source><translation>减小高度</translation></message><message><source>Select previous bounding box</source><translation>选中上一个检测框</translation></message><message><source>Select next bounding box</source><translation>选中下一个检测框</translation></message><message><source>Assign previous class</source><translation>切换为上一个类别</translation></message><message><source>Assign next class</source><translation>切换为下一个类别</translation></message><message><source>Delete the active bounding box</source><translation>删除当前检测框</translation></message><message><source>Cancel drawing / deselect</source><translation>取消绘制 / 取消选中</translation></message><message><source>Undo</source><translation>撤销</translation></message><message><source>Redo</source><translation>重做</translation></message><message><source>Copy the active bounding box</source><translation>复制当前检测框</translation></message><message><source>Paste the copied bounding box</source><translation>粘贴检测框</translation></message><message><source>Duplicate the active bounding box in place</source><translation>原地复制当前检测框</translation></message><message><source>Lock/unlock the box dimensions</source><translation>锁定/解锁检测框尺寸</translation></message><message><source>Apply the class template (dimensions + upright)</source><translation>套用类别模板（尺寸 + 竖直朝向）</translation></message><message><source>Fit a box around the object under the cursor</source><translation>在光标处的目标上拟合检测框</translation></message><message><source>Refit the active box to the points inside it</source><translation>把当前检测框重新拟合到框内点</translation></message><message><source>Pre-annotate this frame and queue the proposals</source><translation>自动预标注本帧，候选框排队待确认</translation></message><message><source>Confirm the proposal under review</source><translation>确认当前候选框</translation></message><message><source>Next unconfirmed proposal</source><translation>下一个未确认的候选框</translation></message><message><source>Previous unconfirmed proposal</source><translation>上一个未确认的候选框</translation></message><message><source>Reject all proposals in this frame</source><translation>拒绝本帧全部候选框</translation></message><message><source>Flip the box by 180 degrees</source><translation>把检测框翻转 180°</translation></message><message><source>Show dataset statistics</source><translation>显示数据集统计</translation></message><message><source>Show the activity log</source><translation>显示活动日志</translation></message><message><source>Toggle next-frame prediction</source><translation>开关下一帧预测</translation></message><message><source>Snap the active box onto the ground</source><translation>把当前检测框吸附到地面</translation></message><message><source>Check the labels of the whole folder for mistakes</source><translation>检查整个文件夹里的标注有没有问题</translation></message><message><source>Set the first keyframe for interpolation</source><translation>设置插值的第一个关键帧</translation></message><message><source>Fill the frames between the keyframe and here</source><translation>填充关键帧到当前帧之间的所有帧</translation></message><message><source>Carry the box forward through the next frames</source><translation>把当前框带到后续帧</translation></message><message><source>Refit again after changing the refit settings</source><translation>用新的设置再拟合一次</translation></message><message><source>Show only the points inside the active box</source><translation>只显示当前框内的点</translation></message><message><source>Show this shortcut list</source><translation>显示本快捷键表</translation></message><message><source>Point Cloud</source><translation>点云</translation></message><message><source>Bounding Box</source><translation>检测框</translation></message><message><source>Labels</source><translation>标注</translation></message><message><source>Assist</source><translation>辅助</translation></message><message><source>Help</source><translation>帮助</translation></message><message><source>View</source><translation>视图</translation></message></context></TS>

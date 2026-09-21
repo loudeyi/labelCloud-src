@@ -139,8 +139,6 @@ BINDINGS: Tuple[Binding, ...] = (
 BOX_SELECTION_KEYS = tuple("123456789")
 
 #: Commands reachable from the menu/help but bound to a modifier-held pseudo key.
-MODIFIER_NOTE = "Ctrl"
-MULTIPLIER_NOTE = "Shift (x10) / Alt (x0.1)"
 
 
 def event_sequence(modifiers, key) -> str:

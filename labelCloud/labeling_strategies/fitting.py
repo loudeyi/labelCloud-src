@@ -47,11 +47,25 @@ class FittingStrategy(BaseLabelingStrategy):
         self.points_registered += 1
         self._fit(new_point)
 
+    def is_bbox_finished(self) -> bool:
+        """Only a *successful* fit finishes.
+
+        The base class counts clicks (``POINTS_NEEDED = 1``), so a click that found
+        no object still reported a finished box and the drawing manager handed
+        ``None`` to the controller — a silent no-op where the user expected feedback.
+        """
+        return self.fitted_bbox is not None
+
     def _fit(self, point: Point3D) -> None:
         controller = self.view.controller
         pointcloud = controller.pcd_manager.pointcloud
         if pointcloud is None:
             self.failed = True
+            self.view.status_manager.set_message(
+                QCoreApplication.translate(
+                    "labelCloud", "Load a point cloud before fitting a box."
+                )
+            )
             return
 
         classname = (

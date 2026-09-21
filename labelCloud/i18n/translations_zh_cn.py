@@ -562,6 +562,11 @@ TRANSLATIONS.update({
 })
 
 TRANSLATIONS.update({
+    "Load a point cloud before fitting a box.": "请先加载点云，再拟合检测框。",
+    "These label files store rotations in degrees, but this session reads radians: the boxes are rotated wrongly. Check the class configuration.": (
+        "这些标注文件里的角度是「度」，但当前会话按「弧度」读取：框的朝向是错的。"
+        "请检查类别配置。"
+    ),
     # the parameter stepper's combo box (``Controller.STEP_PARAMETERS``)
     "X position": "X 位置",
     "Y position": "Y 位置",

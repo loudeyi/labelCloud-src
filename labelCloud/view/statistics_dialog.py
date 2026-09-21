@@ -11,24 +11,44 @@ labelCloud's file-per-frame storage makes easy to confuse:
 """
 from __future__ import annotations
 
-import json
 import logging
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Set, Tuple
 
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import QCoreApplication
 
 from ..control.config_manager import config
+from ..control.quality import read_label_file
 from ..io.labels.config import LabelConfig
+from ..io.pointclouds import BasePointCloudHandler
 
 
 def collect_statistics(
-    pointcloud_folder: Path, label_folder: Path, limit: int = 20000
+    pointcloud_folder: Path,
+    label_folder: Path,
+    limit: int = 20000,
+    extensions: Optional[set] = None,
+    label_ending: str = ".json",
+    read_labels=None,
 ) -> Dict[str, object]:
-    """Scan both folders and summarise the labelling progress."""
-    pcd_files = sorted(pointcloud_folder.glob("*.pcd"))[:limit]
-    label_files = {path.stem: path for path in label_folder.glob("*.json")}
+    """Scan both folders and summarise the labelling progress.
+
+    The point cloud extensions come from the handlers rather than being hard-coded, so
+    a folder of ``.ply`` clouds is counted like one of ``.pcd`` files. ``read_labels``
+    defaults to the plain JSON reader the quality check also uses; a KITTI (``.txt``)
+    session passes the label manager instead, because its files are not JSON.
+    """
+    suffixes = extensions or BasePointCloudHandler.get_supported_extensions()
+    pcd_files = sorted(
+        path for path in pointcloud_folder.rglob("*") if path.suffix in suffixes
+    )[:limit]
+
+    reader = read_labels or (
+        lambda pcd_path: read_label_file(
+            label_folder.joinpath(pcd_path.stem + label_ending)
+        )
+    )
 
     with_boxes = 0
     empty = 0
@@ -36,21 +56,19 @@ def collect_statistics(
     unreadable = 0
 
     for pcd in pcd_files:
-        label_file = label_files.get(pcd.stem)
-        if label_file is None:
-            continue
+        if not label_folder.joinpath(pcd.stem + label_ending).is_file():
+            continue  # never opened: not labelled yet
         try:
-            with label_file.open("r") as stream:
-                objects = json.load(stream).get("objects", [])
-        except (OSError, json.JSONDecodeError):
+            boxes = reader(pcd)
+        except (OSError, ValueError, KeyError, TypeError):
             unreadable += 1
             continue
-        if not objects:
+        if not boxes:
             empty += 1
             continue
         with_boxes += 1
-        for obj in objects:
-            name = str(obj.get("name", "?"))
+        for box in boxes:
+            name = box.get_classname()
             per_class[name] = per_class.get(name, 0) + 1
 
     total = len(pcd_files)
@@ -67,6 +85,24 @@ def collect_statistics(
     }
 
 
+def manager_reader(label_manager):
+    """A reader for sessions whose labels are not the centroid JSON ones.
+
+    ``import_labels`` returns an empty list both for "nothing labelled here" and for
+    "this file holds another encoding" (the format guard refuses to convert it). The
+    statistics must not call the second case an empty frame, so a refusal is turned
+    into an error here.
+    """
+
+    def read(pcd_path: Path):
+        boxes = label_manager.import_labels(pcd_path)
+        if pcd_path.stem in label_manager.format_guard.refusals:
+            raise ValueError("another label format on disk")
+        return boxes
+
+    return read
+
+
 class StatisticsDialog(QtWidgets.QDialog):
     def __init__(self, parent, controller) -> None:
         super().__init__(parent)
@@ -81,7 +117,21 @@ class StatisticsDialog(QtWidgets.QDialog):
         layout.addWidget(summary)
         QtWidgets.QApplication.processEvents()
 
-        statistics = collect_statistics(pointcloud_folder, label_folder)
+        label_manager = controller.pcd_manager.label_manager
+        ending = label_manager.label_strategy.FILE_ENDING
+        # KITTI (.txt) and vertices folders need their own reader; centroid files are
+        # read directly (no class registration, nothing written)
+        reader = (
+            None
+            if LabelConfig().format in ("centroid_abs", "centroid_rel")
+            else manager_reader(label_manager)
+        )
+        statistics = collect_statistics(
+            pointcloud_folder,
+            label_folder,
+            label_ending=ending,
+            read_labels=reader,
+        )
         rows = [
             (self.tr("Frames found"), statistics["total"]),
             (self.tr("Frames with boxes"), statistics["labelled"]),

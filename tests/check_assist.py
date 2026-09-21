@@ -2466,6 +2466,20 @@ null_file = labels / "null.json"
 null_file.write_text('{"objects": [null, {"name": "pole", "centroid": {"x": 0, "y": 0, "z": 0},'
                      ' "dimensions": {"length": 1, "width": 1, "height": 1},'
                      ' "rotations": {"x": 0, "y": 0, "z": 90.0}}]}')
+# the statistics dialog counts a KITTI folder through the same label manager, and a
+# centroid folder through the plain JSON reader
+from labelCloud.view.statistics_dialog import collect_statistics, manager_reader
+out["stats_kitti"] = {
+    key: value for key, value in collect_statistics(
+        pcd_dir, labels, label_ending=".txt", read_labels=manager_reader(manager)
+    ).items() if key in ("total", "labelled", "empty", "unlabelled", "boxes", "unreadable")
+}
+out["stats_json"] = {
+    key: value for key, value in collect_statistics(
+        pcd_dir, labels, label_ending=".txt"
+    ).items() if key in ("total", "labelled", "unreadable")
+}
+
 out["null_encoding"] = detect_encoding(json.loads(null_file.read_text()))
 out["null_unit"] = detect_rotation_unit(json.loads(null_file.read_text()))
 out["null_describe"] = describe_label_file(null_file)["objects"]
@@ -2502,6 +2516,13 @@ def test_kitti_labels_and_guard_reporting():
             and data["null_encoding"] == "centroid"
             and data["null_unit"] == "degrees"
             and data["null_describe"] == 2
+            # statistics: one frame, one box, nothing unreadable in both modes
+            and data["stats_kitti"] == {
+                "total": 2, "labelled": 1, "empty": 0, "unlabelled": 0,
+                "boxes": 1, "unreadable": 1,   # other.txt holds another format
+            }
+            and data["stats_json"]["labelled"] == 1     # other.txt holds JSON
+            and data["stats_json"]["unreadable"] == 1   # frame.txt is KITTI, not JSON
         )
         detail = json.dumps(data)
     check("KITTI labels load; a refused write reports failure; null entries survive", ok, detail)

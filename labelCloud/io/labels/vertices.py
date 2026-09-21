@@ -14,6 +14,8 @@ from ...utils import math3d
 class VerticesFormat(BaseLabelFormat):
     FILE_ENDING = ".json"
     ENCODING = "vertices"
+    #: no explicit angles: the eight corners carry the orientation
+    ROTATION_UNIT = "none"
 
     def import_labels(self, pcd_path: Path) -> List[BBox]:
         labels = []

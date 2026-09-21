@@ -56,6 +56,8 @@ TEMPLATE_META = {
 class KittiFormat(BaseLabelFormat):
     FILE_ENDING = ".txt"
     ENCODING = "kitti"
+    #: KITTI stores ``rotation_y`` in radians
+    ROTATION_UNIT = "radians"
 
     def __init__(
         self,

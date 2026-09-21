@@ -16,6 +16,9 @@ class BaseLabelFormat(ABC):
     FILE_ENDING = ".json"
     #: Encoding name this reader/writer produces (see detection.py).
     ENCODING = "unknown"
+    #: Unit the angles are stored in ("degrees", "radians" or "none"). Used to warn
+    #: when a folder's files can *only* be degrees but this session reads radians.
+    ROTATION_UNIT = "degrees"
 
     def __init__(
         self, label_folder: Path, export_precision: int, relative_rotation: bool = False
@@ -24,7 +27,10 @@ class BaseLabelFormat(ABC):
         logging.info("Set export strategy to %s." % self.__class__.__name__)
         self.export_precision = export_precision
         self.relative_rotation = relative_rotation
+        #: kept for backwards compatibility with the code that read this attribute
         self.file_ending = ".json"
+        if relative_rotation:
+            self.ROTATION_UNIT = "radians"
 
         if relative_rotation:
             logging.info(
