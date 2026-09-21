@@ -205,7 +205,7 @@ lists what looks wrong:
 | --- | --- |
 | **Size far from the usual size of its class** | the dimension differs from the median of that class in *this* folder by more than `size_ratio` (1.6x) — the person who labelled 200 poles is the best definition of how big a pole is here |
 | **Duplicate or overlapping box** | two boxes of one class whose centres are closer than `duplicate_distance` (0.35 m) or whose footprints overlap by more than `duplicate_iou` (55 %) |
-| **Tilted although the class is upright** | a class marked `z_rotation_only` in `_classes.json` with roll or pitch |
+| **Tilted although the class is upright** | a class the configuration keeps upright (`z_rotation_only`, per class in `_classes.json` or globally) with roll or pitch |
 | **Long axis in length instead of width** | a cable-shaped class template (`width > length`) whose boxes ended up with the long axis in `length` |
 | **Impossible size** | a dimension below 5 cm or above 60 m |
 | **Class not in `_classes.json`** | a typo in a class name that was added by a label file |

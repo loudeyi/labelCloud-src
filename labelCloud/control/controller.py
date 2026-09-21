@@ -479,7 +479,7 @@ class Controller:
                     QCoreApplication.translate(
                         "labelCloud",
                         "NOT saved: this file holds labels in another format "
-                        "(see the log). Nothing was written.",
+                        "(see the log). Nothing was written."
                     )
                 )
                 logging.error(
@@ -513,7 +513,7 @@ class Controller:
                         "labelCloud",
                         "The labels could not be written:\n\n%s\n\n"
                         "The frame stays marked as unsaved; check the folder "
-                        "permissions and free space.",
+                        "permissions and free space."
                     )
                     % error,
                 )
@@ -616,7 +616,7 @@ class Controller:
                 short,
                 tooltip=QCoreApplication.translate(
                     "labelCloud",
-                    "This frame was not edited, so nothing is written to %s.",
+                    "This frame was not edited, so nothing is written to %s."
                 )
                 % path,
             )
@@ -1285,12 +1285,11 @@ class Controller:
             self.view.status_manager.set_message(
                 QCoreApplication.translate("labelCloud", "Cleared the group selection.")
             )
-        elif self.drawing_mode.is_active():
-            self.drawing_mode.reset()
-            logging.info("Resetted drawn points!")
-        elif self.align_mode.is_active:
-            self.align_mode.reset()
-            logging.info("Resetted selected points!")
+        elif self.drawing_mode.is_active() or self.align_mode.is_active:
+            # Esc really leaves the drawing mode: the buttons follow, so the checked
+            # button always says which mode the next click starts
+            self.view.activate_pointer_mode()
+            logging.info("Resetted the active drawing mode!")
         else:
             self.bbox_controller.deselect_bbox()
 
@@ -1497,7 +1496,7 @@ class Controller:
             self.view.status_manager.set_message(
                 QCoreApplication.translate(
                     "labelCloud",
-                    "Set a keyframe first (Ctrl+Shift+I) in the earlier frame.",
+                    "Set a keyframe first (Ctrl+Shift+I) in the earlier frame."
                 )
             )
             return
@@ -1695,7 +1694,7 @@ class Controller:
         self.view.status_manager.set_message(
             QCoreApplication.translate(
                 "labelCloud",
-                "%s proposals added; Enter confirms one, Ctrl+Right jumps to the next.",
+                "%s proposals added; Enter confirms one, Ctrl+Right jumps to the next."
             )
             % added
         )

@@ -561,6 +561,29 @@ TRANSLATIONS.update({
     "Increase the selected parameter by one step.": "把所选参数增大一个步长。",
 })
 
+TRANSLATIONS.update({
+    # the parameter stepper's combo box (``Controller.STEP_PARAMETERS``)
+    "X position": "X 位置",
+    "Y position": "Y 位置",
+    "Z position": "Z 位置",
+    "Length": "长",
+    "Width": "宽",
+    "Height": "高",
+    "Rotation X": "绕 X 旋转",
+    "Rotation Y": "绕 Y 旋转",
+    "Rotation Z": "绕 Z 旋转",
+    # the label list's context menu
+    "Change class color": "修改类别颜色",
+    "Delete label": "删除标注",
+    "Save points inside as": "把框内点另存为",
+    "NOT saved: this file holds labels in another format (see the log). Nothing was written.": (
+        "未保存：该文件里是另一种格式的标注（见日志），本次没有写入任何内容。"
+    ),
+    "Set a keyframe first (Ctrl+Shift+I) in the earlier frame.": (
+        "请先在前面的一帧按 Ctrl+Shift+I 设置关键帧。"
+    ),
+})
+
 #: Keyframe interpolation (feature: fill the frames between two keyframes).
 TRANSLATIONS.update({
     "Keyframe: none (Ctrl+Shift+I sets one)": "关键帧：未设置（Ctrl+Shift+I 设置）",
@@ -615,6 +638,28 @@ TRANSLATIONS.update({
         "双击一行（或按“跳到该帧”）即可打开那一帧。质检只读，绝不改动你的标注。"
     ),
     "There is no frame %s.": "没有第 %s 帧。",
+    "not one of the configured classes": "不属于已配置的类别",
+    "size %(length).2f x %(width).2f x %(height).2f m is not a real object": (
+        "尺寸 %(length).2f × %(width).2f × %(height).2f m 不可能是真实目标"
+    ),
+    "tilted by %(tilt).1f deg, but this class is always upright": (
+        "歪了 %(tilt).1f°，但该类别要求始终竖直"
+    ),
+    "long axis is in length (%(length).2f m) instead of width (%(width).2f m)": (
+        "长轴写进了 length（%(length).2f m），应该在 width（%(width).2f m）"
+    ),
+    "%(axis)s %(value).2f m is %(ratio).1fx the usual %(expected).2f m": (
+        "%(axis)s 为 %(value).2f m，是同类别常见值 %(expected).2f m 的 %(ratio).1f 倍"
+    ),
+    "two %(name)s boxes %(distance).2f m apart": "两个 %(name)s 框相距只有 %(distance).2f m",
+    "overlaps the next %(name)s box by %(share).0f %%": (
+        "与下一个 %(name)s 框重叠 %(share).0f%%"
+    ),
+    "only %(count)s point(s) inside": "框内只有 %(count)s 个点",
+    "cannot be read: %(error)s": "读不出来：%(error)s",
+    "the quality check reads 'centroid' JSON labels; this session uses '%s'": (
+        "质检只能读 'centroid' JSON 标注，当前会话用的是 '%s'"
+    ),
     "Class not in _classes.json": "类别不在 _classes.json 里",
     "Impossible size": "尺寸不可能是真的",
     "Tilted although the class is upright": "类别要求竖直，但框是斜的",

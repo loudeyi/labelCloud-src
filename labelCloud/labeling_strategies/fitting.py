@@ -11,6 +11,8 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from PyQt5.QtCore import QCoreApplication
+
 from ..control import assist
 from ..definitions import Mode, Point3D
 from ..io.labels.config import LabelConfig
@@ -32,7 +34,10 @@ class FittingStrategy(BaseLabelingStrategy):
         super().__init__(view)
         logging.info("Enabled click-to-fit mode.")
         self.view.status_manager.update_status(
-            "Click a pole or a wire to fit a box around it.", mode=Mode.DRAWING
+            QCoreApplication.translate(
+                "labelCloud", "Click a pole or a wire to fit a box around it."
+            ),
+            mode=Mode.DRAWING,
         )
         self.fitted_bbox: BBox = None  # type: ignore[assignment]
         self.failed = False
@@ -63,7 +68,10 @@ class FittingStrategy(BaseLabelingStrategy):
         if fitted is None:
             self.failed = True
             self.view.status_manager.set_message(
-                "Could not fit a box here - try clicking directly on the object."
+                QCoreApplication.translate(
+                    "labelCloud",
+                    "Could not fit a box here - try clicking directly on the object."
+                )
             )
             return
         self.fitted_bbox = fitted

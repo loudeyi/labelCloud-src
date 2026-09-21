@@ -61,9 +61,7 @@ def find_tool(name: str) -> str:
 
 def run_pylupdate() -> None:
     sources = sorted(
-        str(p)
-        for p in PACKAGE.rglob("*.py")
-        if "__pycache__" not in p.parts and p != Path(__file__)
+        str(p) for p in PACKAGE.rglob("*.py") if "__pycache__" not in p.parts
     )
     ui_files = sorted(str(p) for p in (PACKAGE / "resources" / "interfaces").glob("*.ui"))
     cmd = [
@@ -156,10 +154,31 @@ def add_quality_messages() -> None:
     They are a dictionary in ``view/quality_dialog.py`` rather than ``tr()`` calls, so
     pylupdate5 cannot see them (same situation as the F1 dialog's binding labels).
     """
+    from labelCloud.control.quality import DETAIL_TEMPLATES
     from labelCloud.view.quality_dialog import KIND_LABELS
 
     tree = ET.parse(TS_FILE)
-    ensure_extra_messages(tree.getroot(), "QualityDialog", list(KIND_LABELS.values()))
+    ensure_extra_messages(
+        tree.getroot(),
+        "QualityDialog",
+        list(KIND_LABELS.values()) + list(DETAIL_TEMPLATES.values()),
+    )
+    tree.write(TS_FILE, encoding="utf-8", xml_declaration=True)
+
+
+def add_stepper_messages() -> None:
+    """Register the labels of the parameter stepper's combo box.
+
+    ``view/gui.py`` fills it from ``Controller.STEP_PARAMETERS``, so the nine labels
+    are translated through the table rather than through ``tr()`` literals and
+    pylupdate5 never sees them.
+    """
+    from labelCloud.control.controller import Controller
+
+    tree = ET.parse(TS_FILE)
+    ensure_extra_messages(
+        tree.getroot(), "GUI", [label for _value, label in Controller.STEP_PARAMETERS]
+    )
     tree.write(TS_FILE, encoding="utf-8", xml_declaration=True)
 
 
@@ -184,6 +203,7 @@ def main() -> int:
     run_pylupdate()
     add_keymap_messages()
     add_quality_messages()
+    add_stepper_messages()
     total, translated, missing = merge_translations(translations)
     run_lrelease()
 

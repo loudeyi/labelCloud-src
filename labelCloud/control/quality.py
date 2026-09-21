@@ -47,6 +47,51 @@ DEFAULT_MIN_POINTS = 5
 #: How many label files to read at most (a guard against a folder picked by mistake).
 DEFAULT_LIMIT = 20000
 
+@dataclass(frozen=True)
+class QualitySettings:
+    """The four numbers the check compares against (the ``[QUALITY]`` section)."""
+
+    size_ratio: float = DEFAULT_SIZE_RATIO
+    duplicate_iou: float = DEFAULT_DUPLICATE_IOU
+    duplicate_distance: float = DEFAULT_DUPLICATE_DISTANCE
+    min_points: int = DEFAULT_MIN_POINTS
+
+    @classmethod
+    def from_config(cls, config) -> "QualitySettings":
+        """Read the section, falling back to the defaults for missing options."""
+        return cls(
+            size_ratio=config.getfloat(
+                "QUALITY", "size_ratio", fallback=DEFAULT_SIZE_RATIO
+            ),
+            duplicate_iou=config.getfloat(
+                "QUALITY", "duplicate_iou", fallback=DEFAULT_DUPLICATE_IOU
+            ),
+            duplicate_distance=config.getfloat(
+                "QUALITY", "duplicate_distance", fallback=DEFAULT_DUPLICATE_DISTANCE
+            ),
+            min_points=config.getint(
+                "QUALITY", "min_points", fallback=DEFAULT_MIN_POINTS
+            ),
+        )
+
+
+#: One English template per :attr:`QualityIssue.detail_key`. The window translates
+#: them (``tools/update_translations.py`` injects them into the catalogue, because a
+#: dictionary is invisible to pylupdate5).
+DETAIL_TEMPLATES = {
+    "unknown_class": "not one of the configured classes",
+    "degenerate": "size %(length).2f x %(width).2f x %(height).2f m is not a real object",
+    "not_upright": "tilted by %(tilt).1f deg, but this class is always upright",
+    "axis_convention": (
+        "long axis is in length (%(length).2f m) instead of width (%(width).2f m)"
+    ),
+    "size_outlier": "%(axis)s %(value).2f m is %(ratio).1fx the usual %(expected).2f m",
+    "duplicate_close": "two %(name)s boxes %(distance).2f m apart",
+    "duplicate_overlap": "overlaps the next %(name)s box by %(share).0f %%",
+    "few_points": "only %(count)s point(s) inside",
+    "unreadable": "cannot be read: %(error)s",
+}
+
 KIND_ORDER = (
     "unknown_class",
     "degenerate",
@@ -61,18 +106,41 @@ KIND_ORDER = (
 
 @dataclass
 class QualityIssue:
-    """One suspicious box (or one unreadable label file)."""
+    """One suspicious box (or one unreadable label file).
+
+    ``detail`` is filled from :data:`DETAIL_TEMPLATES` for logging and for callers
+    that only want a string; the window prefers ``detail_key``/``params`` so the
+    sentence can be shown in the user's language.
+    """
 
     kind: str
     frame: int
     path: Path
     classname: str
-    detail: str
+    detail: str = ""
     box_index: int = -1
+    detail_key: str = ""
+    params: Dict[str, object] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if not self.detail and self.detail_key:
+            self.detail = describe_issue(self)
 
     @property
     def filename(self) -> str:
         return self.path.stem
+
+
+def describe_issue(issue: QualityIssue, templates: Optional[Dict[str, str]] = None) -> str:
+    """Render an issue in English (or with a caller-supplied template table)."""
+    table = templates or DETAIL_TEMPLATES
+    template = table.get(issue.detail_key or issue.kind)
+    if template is None:
+        return issue.detail or issue.kind
+    try:
+        return template % issue.params
+    except (KeyError, TypeError, ValueError):  # pragma: no cover - defensive
+        return issue.detail or issue.kind
 
 
 @dataclass
@@ -227,9 +295,7 @@ def check_frame_boxes(
     known_classes: Optional[Iterable[str]] = None,
     upright_classes: Iterable[str] = (),
     width_axis_classes: Iterable[str] = (),
-    size_ratio: float = DEFAULT_SIZE_RATIO,
-    duplicate_iou: float = DEFAULT_DUPLICATE_IOU,
-    duplicate_distance: float = DEFAULT_DUPLICATE_DISTANCE,
+    settings: QualitySettings = QualitySettings(),
 ) -> List[QualityIssue]:
     """Every rule that only needs the boxes of one frame."""
     issues: List[QualityIssue] = []
@@ -237,6 +303,9 @@ def check_frame_boxes(
     upright = set(upright_classes)
     width_axis = set(width_axis_classes)
     medians = medians or {}
+    size_ratio = settings.size_ratio
+    duplicate_iou = settings.duplicate_iou
+    duplicate_distance = settings.duplicate_distance
 
     for index, box in enumerate(boxes):
         name = box.get_classname()
@@ -249,8 +318,8 @@ def check_frame_boxes(
                     frame,
                     path,
                     name,
-                    "not one of the configured classes",
-                    index,
+                    box_index=index,
+                    detail_key="unknown_class",
                 )
             )
 
@@ -263,9 +332,9 @@ def check_frame_boxes(
                     frame,
                     path,
                     name,
-                    "size %.2f x %.2f x %.2f m is not a real object"
-                    % (length, width, height),
-                    index,
+                    box_index=index,
+                    detail_key="degenerate",
+                    params={"length": length, "width": width, "height": height},
                 )
             )
             continue  # the other rules cannot say anything useful about a broken box
@@ -279,8 +348,9 @@ def check_frame_boxes(
                         frame,
                         path,
                         name,
-                        "tilted by %.1f deg, but this class is always upright" % tilt,
-                        index,
+                        box_index=index,
+                        detail_key="not_upright",
+                        params={"tilt": tilt},
                     )
                 )
 
@@ -291,9 +361,9 @@ def check_frame_boxes(
                     frame,
                     path,
                     name,
-                    "long axis is in length (%.2f m) instead of width (%.2f m)"
-                    % (length, width),
-                    index,
+                    box_index=index,
+                    detail_key="axis_convention",
+                    params={"length": length, "width": width},
                 )
             )
 
@@ -311,9 +381,14 @@ def check_frame_boxes(
                             frame,
                             path,
                             name,
-                            "%s %.2f m is %.1fx the usual %.2f m"
-                            % (axis, value, ratio, expected),
-                            index,
+                            box_index=index,
+                            detail_key="size_outlier",
+                            params={
+                                "axis": axis,
+                                "value": value,
+                                "ratio": ratio,
+                                "expected": expected,
+                            },
                         )
                     )
                     break
@@ -329,8 +404,9 @@ def check_frame_boxes(
                         frame,
                         path,
                         name,
-                        "two %s boxes %.2f m apart" % (name, centre_distance(box, other)),
-                        index,
+                        box_index=index,
+                        detail_key="duplicate_close",
+                        params={"name": name, "distance": centre_distance(box, other)},
                     )
                 )
                 break
@@ -342,8 +418,9 @@ def check_frame_boxes(
                         frame,
                         path,
                         name,
-                        "overlaps the next %s box by %.0f %%" % (name, iou * 100.0),
-                        index,
+                        box_index=index,
+                        detail_key="duplicate_overlap",
+                        params={"name": name, "share": iou * 100.0},
                     )
                 )
                 break
@@ -374,15 +451,24 @@ def check_frame_points(
                     frame,
                     path,
                     box.get_classname(),
-                    "only %s point%s inside" % (count, "" if count == 1 else "s"),
-                    index,
+                    box_index=index,
+                    detail_key="few_points",
+                    params={"count": count},
                 )
             )
     return issues
 
 
-def read_label_file(path: Path) -> List[BBox]:
-    """Boxes of one label file; raises on unreadable files."""
+def read_label_file(path: Path, rotations_in_radians: bool = False) -> List[BBox]:
+    """Boxes of one label file; raises on unreadable files.
+
+    Reads the JSON directly (no class registration, no format guard, nothing written),
+    which is what a read-only check wants. ``rotations_in_radians`` converts the
+    angles of a ``centroid_rel`` folder, the one format this reader cannot tell apart
+    from ``centroid_abs`` by looking at it.
+    """
+    from ..io.labels import rel2abs_rotation
+
     with path.open("r", encoding="utf-8") as stream:
         data = json.load(stream)
     boxes: List[BBox] = []
@@ -398,11 +484,14 @@ def read_label_file(path: Path) -> List[BBox]:
             float(dimensions.get("width", 0.0)),
             float(dimensions.get("height", 0.0)),
         )
-        box.set_rotations(
+        angles = [
             float(rotations.get("x", 0.0)),
             float(rotations.get("y", 0.0)),
             float(rotations.get("z", 0.0)),
-        )
+        ]
+        if rotations_in_radians:
+            angles = [rel2abs_rotation(angle) for angle in angles]
+        box.set_rotations(*angles)
         box.set_classname(str(entry.get("name", "?")))
         boxes.append(box)
     return boxes
@@ -414,10 +503,7 @@ def check_dataset(
     known_classes: Optional[Iterable[str]] = None,
     upright_classes: Iterable[str] = (),
     width_axis_classes: Iterable[str] = (),
-    size_ratio: float = DEFAULT_SIZE_RATIO,
-    duplicate_iou: float = DEFAULT_DUPLICATE_IOU,
-    duplicate_distance: float = DEFAULT_DUPLICATE_DISTANCE,
-    min_points: int = DEFAULT_MIN_POINTS,
+    settings: QualitySettings = QualitySettings(),
     current_frame: Optional[int] = None,
     current_points: Optional[np.ndarray] = None,
     progress: Optional[Callable[[int, int], None]] = None,
@@ -440,7 +526,15 @@ def check_dataset(
             logging.warning("Quality check could not read %s: %s", path, error)
             report.unreadable.append(path)
             report.issues.append(
-                QualityIssue("unreadable", index, path, "?", "cannot be read: %s" % error)
+                QualityIssue(
+                    "unreadable",
+                    index,
+                    path,
+                    "?",
+                    box_index=-1,
+                    detail_key="unreadable",
+                    params={"error": error},
+                )
             )
             continue
         if not boxes:
@@ -465,14 +559,14 @@ def check_dataset(
                 known_classes=known_classes,
                 upright_classes=upright_classes,
                 width_axis_classes=width_axis_classes,
-                size_ratio=size_ratio,
-                duplicate_iou=duplicate_iou,
-                duplicate_distance=duplicate_distance,
+                settings=settings,
             )
         )
         if current_frame is not None and index == current_frame and current_points is not None:
             report.issues.extend(
-                check_frame_points(boxes, current_points, index, path, min_points=min_points)
+                check_frame_points(
+                    boxes, current_points, index, path, min_points=settings.min_points
+                )
             )
 
     def sort_key(issue: QualityIssue) -> Tuple[int, int]:

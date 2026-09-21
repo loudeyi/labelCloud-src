@@ -12,6 +12,7 @@ on demand so a fix can be verified immediately.
 from __future__ import annotations
 
 import logging
+from dataclasses import replace
 from typing import Dict, List, Optional
 
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -19,13 +20,12 @@ from PyQt5.QtCore import QCoreApplication
 
 from ..control.config_manager import config
 from ..control.quality import (
-    DEFAULT_DUPLICATE_DISTANCE,
-    DEFAULT_DUPLICATE_IOU,
-    DEFAULT_MIN_POINTS,
-    DEFAULT_SIZE_RATIO,
+    DETAIL_TEMPLATES,
     KIND_ORDER,
     QualityReport,
+    QualitySettings,
     check_dataset,
+    read_label_file,
 )
 from ..io.labels.config import LabelConfig
 
@@ -64,29 +64,62 @@ def class_rules() -> Dict[str, object]:
     }
 
 
-def scan(controller, min_points: int = DEFAULT_MIN_POINTS) -> QualityReport:
+#: Label folders the check can read. Everything else is refused with a message
+#: instead of reporting every frame as unreadable.
+READABLE_FORMATS = ("centroid_abs", "centroid_rel")
+
+
+def make_reader(label_folder, relative_rotation: bool):
+    """A read-only reader for the ``centroid`` JSON files of a folder.
+
+    Deliberately *not* ``LabelManager.import_labels``: that one registers class names
+    it meets, which rewrites ``_classes.json`` — and the quality check promises to
+    change nothing at all. Reading the JSON directly also keeps a broken file an
+    error (reported as *unreadable*) instead of a silently empty frame.
+    """
+    ending = ".json"
+
+    def read(pcd_path):
+        label_path = label_folder.joinpath(pcd_path.stem + ending)
+        if not label_path.is_file():
+            return []
+        return read_label_file(label_path, rotations_in_radians=relative_rotation)
+
+    return read
+
+
+def scan(controller, check_points: bool = True) -> QualityReport:
     """Check the folder that is open in the application."""
+    label_config = LabelConfig()
+    if label_config.format not in READABLE_FORMATS:
+        raise ValueError(
+            QCoreApplication.translate(
+                "QualityDialog",
+                "the quality check reads 'centroid' JSON labels; this session uses "
+                "'%s'"
+            )
+            % label_config.format
+        )
     rules = class_rules()
     frames = list(controller.pcd_manager.pcds)
     current = controller.pcd_manager.current_id
     points = None
-    if 0 <= current < len(frames):
+    if check_points and 0 <= current < len(frames):
         pointcloud = getattr(controller.pcd_manager, "pointcloud", None)
         points = getattr(pointcloud, "points", None)
+    settings = QualitySettings.from_config(config)
+    if not check_points:
+        settings = replace(settings, min_points=0)
     return check_dataset(
         frames,
-        controller.pcd_manager.label_manager.import_labels,
+        make_reader(
+            controller.pcd_manager.label_manager.label_folder,
+            relative_rotation=label_config.format == "centroid_rel",
+        ),
         known_classes=rules["known_classes"],
         upright_classes=rules["upright_classes"],
         width_axis_classes=rules["width_axis_classes"],
-        size_ratio=config.getfloat("QUALITY", "size_ratio", fallback=DEFAULT_SIZE_RATIO),
-        duplicate_iou=config.getfloat(
-            "QUALITY", "duplicate_iou", fallback=DEFAULT_DUPLICATE_IOU
-        ),
-        duplicate_distance=config.getfloat(
-            "QUALITY", "duplicate_distance", fallback=DEFAULT_DUPLICATE_DISTANCE
-        ),
-        min_points=min_points,
+        settings=settings,
         current_frame=current,
         current_points=points,
     )
@@ -162,10 +195,7 @@ class QualityDialog(QtWidgets.QDialog):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         try:
             self.report = scan(
-                self.controller,
-                min_points=(
-                    DEFAULT_MIN_POINTS if self.points_checkbox.isChecked() else 0
-                ),
+                self.controller, check_points=self.points_checkbox.isChecked()
             )
         except Exception as error:  # noqa: BLE001 - the dialog stays usable
             logging.error("Quality check failed: %s", error, exc_info=True)
@@ -209,9 +239,21 @@ class QualityDialog(QtWidgets.QDialog):
             self.table.setItem(
                 row, 3, QtWidgets.QTableWidgetItem(self.tr(KIND_LABELS[issue.kind]))
             )
-            self.table.setItem(row, 4, QtWidgets.QTableWidgetItem(issue.detail))
+            self.table.setItem(
+                row, 4, QtWidgets.QTableWidgetItem(self.describe(issue))
+            )
         self.table.resizeColumnsToContents()
         self.kind_combo.setEnabled(True)
+
+    def describe(self, issue) -> str:
+        """The issue in the user's language (the module builds the numbers only)."""
+        template = DETAIL_TEMPLATES.get(issue.detail_key or issue.kind)
+        if template is None:
+            return issue.detail
+        try:
+            return self.tr(template) % issue.params
+        except (KeyError, TypeError, ValueError):  # pragma: no cover - defensive
+            return issue.detail
 
     def go_to_selected(self) -> None:
         items = self.table.selectedItems()

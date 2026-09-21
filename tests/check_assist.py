@@ -7,7 +7,11 @@ current directory at import time), so each check runs in a fresh subprocess.
 
 Usage::
 
-    /home/tyy/DSH-WS/labelcloud-hzh/bin/python tests/check_assist.py
+    python tests/check_assist.py
+
+Any interpreter with the dependencies installed works (the checks spawn themselves
+with ``sys.executable``); the venv used during development is
+``/home/tyy/DSH-WS/labelcloud-hzh/bin/python``.
 """
 from __future__ import annotations
 
@@ -2283,8 +2287,10 @@ out["sorted_by_frame"] = [issue.frame for issue in report.issues] == sorted(
     issue.frame for issue in report.issues
 )
 out["size_detail"] = [
-    issue.detail for issue in report.issues if issue.kind == "size_outlier"
+    [issue.detail_key, issue.params] for issue in report.issues
+    if issue.kind == "size_outlier"
 ]
+out["details_rendered"] = all(issue.detail for issue in report.issues)
 
 # a clean dataset reports nothing at all
 clean_report = check_dataset(
@@ -2389,7 +2395,10 @@ def test_quality_check():
             and data["frames_with_issues"] == 4
             and data["clean_boxes_untouched"] is True
             and data["sorted_by_frame"] is True
-            and "height" in data["size_detail"][0]
+            and data["size_detail"][0][0] == "size_outlier"
+            and data["size_detail"][0][1]["axis"] == "height"
+            and abs(data["size_detail"][0][1]["ratio"] - 3.0) < 0.01
+            and data["details_rendered"] is True
             and data["wire_median"] == [20.0, 0.2, 0.2]
             and data["clean_report"] == 0
             and data["unreadable"] == ["unreadable"]
@@ -2498,6 +2507,93 @@ def test_kitti_labels_and_guard_reporting():
     check("KITTI labels load; a refused write reports failure; null entries survive", ok, detail)
 
 
+def test_source_strings_reach_the_catalogue():
+    """Every literal passed to tr()/translate() must be in the .ts catalogue.
+
+    ``pylupdate5`` silently ignores a call when the text is followed by a trailing
+    comma, and it cannot see strings that live in a table instead of a literal call.
+    Both traps leave a Chinese session with English sentences, and the .qm looks
+    perfectly complete. This walks the AST (so implicit concatenation is seen as the
+    one string it is) and compares with the catalogue; the table-driven strings are
+    injected by ``tools/update_translations.py``, which is where they must be added.
+    """
+    import ast
+    import xml.etree.ElementTree as ET
+
+    catalogue = ET.parse(REPO / "labelCloud/i18n/labelCloud_zh_CN.ts").getroot()
+    known = set()
+    for context in catalogue.findall("context"):
+        for message in context.findall("message"):
+            source = message.find("source")
+            if source is not None and source.text:
+                known.add(source.text)
+
+    def literal(node):
+        try:
+            value = ast.literal_eval(node)
+        except (ValueError, SyntaxError):
+            return None
+        return value if isinstance(value, str) else None
+
+    missing = []
+    for path in sorted((REPO / "labelCloud").rglob("*.py")):
+        if "__pycache__" in path.parts:
+            continue
+        for node in ast.walk(ast.parse(path.read_text())):
+            if not isinstance(node, ast.Call):
+                continue
+            func = node.func
+            name = func.attr if isinstance(func, ast.Attribute) else getattr(func, "id", "")
+            if name == "translate" and len(node.args) >= 2:
+                text = literal(node.args[1])
+            elif name == "tr" and node.args:
+                text = literal(node.args[0])
+            else:
+                continue
+            if text and text not in known:
+                missing.append(f"{path.name}:{node.lineno} {text[:40]!r}")
+
+    check(
+        f"all {len(known)} catalogue strings come from extractable calls",
+        not missing,
+        "; ".join(missing[:4]),
+    )
+
+
+def test_translation_source_of_truth():
+    """Anything translated in the .ts must also be in translations_zh_cn.py.
+
+    The module is the file a maintainer edits; a translation that only exists inside
+    the generated .ts is invisible to the next person and gets lost the first time the
+    catalogue is rebuilt from scratch.
+    """
+    import xml.etree.ElementTree as ET
+
+    namespace: dict = {}
+    exec(  # noqa: S102 - the module is a plain dictionary assignment
+        (REPO / "labelCloud/i18n/translations_zh_cn.py").read_text(),
+        namespace,
+    )
+    translations = namespace["TRANSLATIONS"]
+
+    catalogue = ET.parse(REPO / "labelCloud/i18n/labelCloud_zh_CN.ts").getroot()
+    orphans = []
+    for context in catalogue.findall("context"):
+        for message in context.findall("message"):
+            source = message.find("source")
+            translation = message.find("translation")
+            if source is None or source.text is None or translation is None:
+                continue
+            if (translation.text or "").strip() and source.text not in translations:
+                orphans.append(source.text[:40])
+
+    check(
+        f"translations_zh_cn.py holds all {len(translations)} translated strings",
+        not orphans,
+        "; ".join(orphans[:4]),
+    )
+
+
 if __name__ == "__main__":
     print(f"python: {PYTHON}")
     print(f"repo:   {REPO}\n")
@@ -2530,6 +2626,8 @@ if __name__ == "__main__":
     test_keyframe_interpolation()
     test_kitti_labels_and_guard_reporting()
     test_quality_check()
+    test_source_strings_reach_the_catalogue()
+    test_translation_source_of_truth()
 
     failed = [name for name, ok, _ in RESULTS if not ok]
     print(f"\n{len(RESULTS) - len(failed)}/{len(RESULTS)} checks passed")

@@ -260,9 +260,13 @@ class GUI(QtWidgets.QMainWindow, Ui_MainWindow):
 
         # label list actions
         # self.act_rename_class = QtWidgets.QAction("Rename class") #TODO: Implement!
-        self.act_change_class_color = QtWidgets.QAction("Change class color")
-        self.act_delete_class = QtWidgets.QAction("Delete label")
-        self.act_crop_pointcloud_inside = QtWidgets.QAction("Save points inside as")
+        self.act_change_class_color = QtWidgets.QAction(
+            self.tr("Change class color")
+        )
+        self.act_delete_class = QtWidgets.QAction(self.tr("Delete label"))
+        self.act_crop_pointcloud_inside = QtWidgets.QAction(
+            self.tr("Save points inside as")
+        )
         self.label_list.addActions(
             [
                 self.act_change_class_color,
