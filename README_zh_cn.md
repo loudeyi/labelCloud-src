@@ -509,6 +509,22 @@ centroid / vertices 三种格式）、语言切换与「每条 `tr()` 文案都�
 `labelCloud/i18n/translations_zh_cn.py`，再跑一次 `tools/update_translations.py`。
 注意：**`pylupdate5` 会忽略源字符串后面带尾逗号的 `translate()` 调用**。
 
+
+### 开发约定
+
+短，而且能用机器检查的都写进了检查里：
+
+* **注释与文档用英文**，代码注释解释**为什么**（踩过什么坑），而不是这行在做什么。
+* **凡是用户能看到的文案都要走 `tr()` / `QCoreApplication.translate`**，中文写进
+  `labelCloud/i18n/translations_zh_cn.py`，不能只留在生成的 `.ts` 里 —— 两边缺一个，
+  `tests/check_assist.py` 都会失败。两个坑要记住：源字符串后面多一个逗号会让提取静默失效；
+  放在表里的文案必须由 `tools/update_translations.py` 注入。
+* **新增配置项必须给默认值**：写进 `labelCloud/resources/default_config.ini`，读取时带
+  `fallback=...`，这样旧的 `config.ini` 依然能用。
+* **没让写就不写**：读取不得改动数据集，没编辑过的帧不重写，写入被拒要报失败而不是成功。
+* **新行为配一条检查**：逻辑写成注入读写函数的纯函数（参考 `control/propagate.py`），
+  这样 `tests/check_assist.py` 不用 GUI 就能驱动；窗口接线放在 `tools/smoke_gui.py`。
+
 ## 兼容性与边界
 
 * 标注文件与上游 labelCloud 字节级兼容（`centroid_abs`、角度为度）。

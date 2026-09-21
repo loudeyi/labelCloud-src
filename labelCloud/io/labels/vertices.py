@@ -6,6 +6,7 @@ from typing import Any, Dict, List
 import numpy as np
 
 from . import BaseLabelFormat
+from .config import LabelConfig
 from ...definitions import Point3D
 from ...model import BBox
 from ...utils import math3d
@@ -43,6 +44,9 @@ class VerticesFormat(BaseLabelFormat):
 
                 bbox = BBox(*centroid, length, width, height)
                 bbox.set_rotations(*rotations)
+                # a class that only exists in the label files must still show up in the
+                # dropdown and get a colour (centroid.py does the same)
+                LabelConfig().ensure_class(label["name"])
                 bbox.set_classname(label["name"])
                 labels.append(bbox)
             logging.info(

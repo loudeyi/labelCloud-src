@@ -40,7 +40,6 @@ class FittingStrategy(BaseLabelingStrategy):
             mode=Mode.DRAWING,
         )
         self.fitted_bbox: BBox = None  # type: ignore[assignment]
-        self.failed = False
 
     def register_point(self, new_point: Point3D) -> None:
         self.point_1 = new_point
@@ -60,7 +59,6 @@ class FittingStrategy(BaseLabelingStrategy):
         controller = self.view.controller
         pointcloud = controller.pcd_manager.pointcloud
         if pointcloud is None:
-            self.failed = True
             self.view.status_manager.set_message(
                 QCoreApplication.translate(
                     "labelCloud", "Load a point cloud before fitting a box."
@@ -75,12 +73,10 @@ class FittingStrategy(BaseLabelingStrategy):
         )
         seed_index = assist.nearest_point_index(pointcloud.points, point)
         if seed_index is None:
-            self.failed = True
             return
 
         fitted = assist.fit_box(pointcloud.points, seed_index, classname)
         if fitted is None:
-            self.failed = True
             self.view.status_manager.set_message(
                 QCoreApplication.translate(
                     "labelCloud",
@@ -96,6 +92,5 @@ class FittingStrategy(BaseLabelingStrategy):
     def reset(self) -> None:
         super().reset()
         self.fitted_bbox = None  # type: ignore[assignment]
-        self.failed = False
         # the button stays pressed on purpose: the mode is sticky so several
         # objects can be fitted in a row

@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import List, NamedTuple, Optional
 
 import numpy as np
 from PyQt5 import QtGui
@@ -28,6 +28,21 @@ from .undo import BBoxState
 from .drawing_manager import DrawingManager
 from .pcd_manager import PointCloudManger
 from PyQt5.QtCore import QCoreApplication
+
+
+class ActivityEntry(NamedTuple):
+    """One line of the activity log (shown by ``Ctrl+Shift+S``).
+
+    A named tuple rather than a plain 5-tuple so the fields are documented, while the
+    existing unpacking (``for timestamp, kind, path, ok, message in ...``) keeps
+    working.
+    """
+
+    timestamp: float
+    kind: str  # "load" or "save"
+    path: str
+    ok: bool
+    message: str
 
 
 class Controller:
@@ -80,8 +95,8 @@ class Controller:
 
         # Save safety
         self.save_error_count = 0
-        #: (timestamp, kind, path, ok, message) of loads and writes, newest last
-        self.activity_log: List[tuple] = []
+        #: every load and every write, newest last (see :class:`ActivityEntry`)
+        self.activity_log: List[ActivityEntry] = []
         #: kept for compatibility with anything reading the old name
         self.save_log = self.activity_log
         self.SAVE_LOG_LIMIT = 200
@@ -578,7 +593,7 @@ class Controller:
         path = str(path)
         name = shorten_filename(path)
         if kind == "load":
-            self.activity_log.append((_time.time(), "load", path, True, ""))
+            self.activity_log.append(ActivityEntry(_time.time(), "load", path, True, ""))
             del self.activity_log[: max(0, len(self.activity_log) - self.SAVE_LOG_LIMIT)]
             self.view.status_manager.set_loaded_file(
                 path,
@@ -586,7 +601,9 @@ class Controller:
                 len(getattr(self.pcd_manager, "pcds", []) or []),
             )
             return
-        self.activity_log.append((_time.time(), "save", path, bool(ok), message))
+        self.activity_log.append(
+            ActivityEntry(_time.time(), "save", path, bool(ok), message)
+        )
         del self.save_log[: max(0, len(self.save_log) - self.SAVE_LOG_LIMIT)]
 
         # the status bar has room for the file itself; the full path goes into the

@@ -105,7 +105,9 @@ def install_language(application: Optional[QCoreApplication] = None) -> str:
     if language != ENGLISH:
         qm_file = translation_file(language)
         if qm_file.is_file():
-            translator = QTranslator(app)
+            # no parent: the module keeps the only reference, so the previous
+            # translator is really destroyed when the language changes
+            translator = QTranslator()
             if translator.load(str(qm_file)):
                 app.installTranslator(translator)
                 _translator = translator

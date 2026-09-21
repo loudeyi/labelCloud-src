@@ -138,7 +138,10 @@ class LabelConfig(object, metaclass=SingletonABCMeta):
                 ClassConfig.from_dict(c, fallback_id=i)
                 for i, c in enumerate(data["classes"])
             ]
-            self.default = data.get("default", self.classes[0].id)
+            # an empty "classes" list is a configuration error, but it must reach
+            # validate() as such instead of raising IndexError here
+            fallback_id = self.classes[0].id if self.classes else 0
+            self.default = data.get("default", fallback_id)
             self.type = LabelingMode(data.get("type", LabelingMode.OBJECT_DETECTION))
             self.format = data.get("format", self.FALLBACK_FORMAT)
         elif isinstance(data, list) and data:
@@ -189,7 +192,17 @@ class LabelConfig(object, metaclass=SingletonABCMeta):
             class_name,
             next_id,
         )
-        self.save_config()
+        try:
+            self.save_config()
+        except OSError as error:
+            # a read-only class definition must not break opening a frame: the class
+            # is in memory for this session either way
+            logging.warning(
+                "Could not write the class definition file (%s); class '%s' is only "
+                "available for this session.",
+                error,
+                class_name,
+            )
         return True
 
     def save_config(self) -> None:

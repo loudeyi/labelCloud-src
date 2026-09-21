@@ -575,6 +575,27 @@ Adding a translatable string: wrap it in `self.tr(...)` (or
 `labelCloud/i18n/translations_zh_cn.py` and rerun `tools/update_translations.py`. Note that
 `pylupdate5` ignores a `translate()` call whose source text has a **trailing comma**.
 
+
+### Conventions
+
+Short, and enforced by the checks where a machine can do it:
+
+* **Comments and documentation in English**, code comments explain *why* (the trap that
+  was hit), not what the line does. Docstrings are complete sentences.
+* **Every string a user can see goes through `tr()` / `QCoreApplication.translate`**, and
+  its Chinese goes into `labelCloud/i18n/translations_zh_cn.py` — never only into the
+  generated `.ts`. `tests/check_assist.py` fails when either side is missing. Watch the
+  two traps: a trailing comma after the text silently stops extraction, and a string
+  that lives in a table must be injected by `tools/update_translations.py`.
+* **New options always have a default** in `labelCloud/resources/default_config.ini`,
+  read with `fallback=...`, so an older `config.ini` keeps working.
+* **Nothing writes without being asked**: reading must not modify a dataset, an
+  unedited frame is never rewritten, and a refused write is reported as a failure
+  rather than as a success.
+* **A new behaviour gets a check.** Logic goes into a plain function with injected
+  readers/writers (see `control/propagate.py`) so `tests/check_assist.py` can drive it
+  without a GUI; window wiring belongs in `tools/smoke_gui.py`.
+
 ## Compatibility and limits
 
 * Label files stay byte-compatible with upstream labelCloud (`centroid_abs`, degrees).
